@@ -1,0 +1,16 @@
+{"situation": "User asks how SQLite's WAL mode lets readers keep going while a write is in progress", "expect": "fire", "why": "how-does-it-work question about a concept", "class": "core"}
+{"situation": "User types /feynman consensus algorithms", "expect": "fire", "why": "explicit invocation", "class": "core"}
+{"situation": "In a repo, user asks why the deploy script computes a content hash before copying files", "expect": "fire", "why": "why question about part of a codebase", "class": "core"}
+{"situation": "User says they keep confusing OAuth access tokens and refresh tokens and wants to actually understand the difference", "expect": "fire", "why": "asking to understand a concept, contrast between two", "class": "core"}
+{"situation": "User asks to explain what a git worktree is and when they would use one", "expect": "fire", "why": "explain-a-concept request", "class": "core"}
+{"situation": "User asks how the recall hook in this repository decides which facts to inject", "expect": "fire", "why": "repo-specific mechanism question", "class": "core"}
+{"situation": "User asks to be walked through how async/await is scheduled in Python so they can teach it to a junior", "expect": "fire", "why": "preparing to teach is the method's home ground", "class": "edge"}
+{"situation": "Two weeks after learning about WAL, user asks a passing question about checkpointing", "expect": "fire", "why": "returning to a known concept should start from its card and open gaps", "class": "edge"}
+{"situation": "User asks what port the dev server listens on", "expect": "skip", "why": "one-line factual lookup", "class": "core"}
+{"situation": "User asks to add a retry loop around the HTTP client in services/fetch.py", "expect": "skip", "why": "code change, no request to understand", "class": "core"}
+{"situation": "User asks what you said two messages ago about the test failure", "expect": "skip", "why": "question about the conversation, not a concept", "class": "core"}
+{"situation": "User asks to explain the diff you just produced before they approve it", "expect": "skip", "why": "'explain' keyword but it is a review of a change, not learning a concept", "class": "adversarial"}
+{"situation": "User mentions Richard Feynman's lectures while asking you to format a bibliography", "expect": "skip", "why": "name collision, formatting task", "class": "adversarial"}
+{"situation": "User asks you to understand the failing CI log and fix the flaky test", "expect": "skip", "why": "'understand' used as a verb for debugging work, deliverable is a fix", "class": "adversarial"}
+{"situation": "User asks why the build is failing right now", "expect": "skip", "why": "why question, but it is an incident to diagnose, not a concept to learn", "class": "adversarial"}
+{"situation": "Inside an ICM workspace mid-stage, user asks how the stage's input table is interpreted", "expect": "skip", "why": "ICM workspace rule: ordinary questions do not fire there", "class": "edge"}

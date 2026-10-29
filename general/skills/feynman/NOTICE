@@ -1,0 +1,4 @@
+The four-step protocol in references/protocol.md is adapted from the "feynman" skill
+in https://github.com/neurofoo/agent-skills (MIT License, Copyright (c) 2025).
+The skill text, the concept-graph store and tooling, and the hook are original work
+in this repository.
