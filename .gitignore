@@ -1,3 +1,6 @@
+# Agent scratch
+.tmp/
+
 # Logs
 logs
 *.log
