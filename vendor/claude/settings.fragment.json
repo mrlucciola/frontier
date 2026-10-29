@@ -10,6 +10,23 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/concept-graph/recall.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python3 ~/.claude/tools/concept-graph/cg.py:*)",
+      "Bash(cg:*)"
     ]
   }
 }
