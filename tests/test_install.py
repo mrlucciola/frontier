@@ -92,6 +92,28 @@ def main():
         check("SessionStart" not in s3["hooks"], "empty event list removed")
         check(s3["permissions"]["allow"] == ["Bash(ls:*)"], "uninstall removed only our allow rules")
 
+        # --only installs and uninstalls one component without touching the other
+        home3 = pathlib.Path(tmp) / "home3"
+        home3.mkdir()
+        run(home3, "--only", "icm")
+        check((home3 / "skills/icm-run").exists() and not (home3 / "skills/feynman").exists()
+              and not (home3 / "tools").exists() and not (home3 / "concepts").exists(), "--only icm installs icm only")
+        md = (home3 / "CLAUDE.md").read_text()
+        check("## ICM workspaces" in md and "## Recalled concepts" not in md, "--only icm appends icm instructions only")
+        s = json.loads((home3 / "settings.json").read_text())
+        check("SessionStart" in s["hooks"] and "UserPromptSubmit" not in s["hooks"], "--only icm registers icm hook only")
+        check("Bash(python3 _tools/*)" in s["permissions"]["allow"], "icm allow rule present")
+        run(home3, "--only", "feynman")
+        check((home3 / "skills/feynman").exists() and (home3 / "concepts/index.json").exists(), "--only feynman adds feynman")
+        s = json.loads((home3 / "settings.json").read_text())
+        check("SessionStart" in s["hooks"] and "UserPromptSubmit" in s["hooks"], "both hooks after both installs")
+        run(home3, "--only", "icm", "--uninstall")
+        s = json.loads((home3 / "settings.json").read_text())
+        check(not (home3 / "skills/icm-run").exists() and (home3 / "skills/feynman").exists(), "uninstall icm keeps feynman")
+        check("SessionStart" not in s["hooks"] and "UserPromptSubmit" in s["hooks"], "uninstall icm keeps feynman hook")
+        check("Bash(python3 _tools/*)" not in s["permissions"]["allow"]
+              and "Bash(cg:*)" in s["permissions"]["allow"], "uninstall icm removes only icm rules")
+
         # foreign directory in the way is reported, not deleted
         home2 = pathlib.Path(tmp) / "home2"
         (home2 / "skills/feynman").mkdir(parents=True)

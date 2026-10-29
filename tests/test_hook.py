@@ -12,7 +12,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK = ROOT / "vendor/claude/hooks/icm-detect.sh"
-FRAGMENT = ROOT / "vendor/claude/settings.fragment.json"
+FRAGMENT = ROOT / "vendor/claude/settings.icm.fragment.json"
 
 CASES = [
     # name, entries, expect_output, expected substrings

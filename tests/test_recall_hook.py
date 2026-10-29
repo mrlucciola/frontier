@@ -14,7 +14,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK = ROOT / "vendor/claude/hooks/concept-graph/recall.sh"
 CG = ROOT / "general/tools/concept-graph/cg.py"
-FRAGMENT = ROOT / "vendor/claude/settings.fragment.json"
+FRAGMENT = ROOT / "vendor/claude/settings.feynman.fragment.json"
 FAILS = []
 
 

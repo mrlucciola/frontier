@@ -4,8 +4,9 @@ What Claude Code needs beyond the provider-neutral `general/` layer.
 
 | File | Role |
 |---|---|
-| `install.py` | copies or symlinks everything into `~/.claude`, merges `settings.fragment.json` into `~/.claude/settings.json`, appends the instruction sections to `~/.claude/CLAUDE.md`. `--dry-run`, `--link`, `--uninstall`. |
-| `settings.fragment.json` | the two hook registrations (SessionStart: `icm-detect.sh`; UserPromptSubmit: `concept-graph/recall.sh`) and the Bash allow rules for the `cg` command. Claude Code's own schema; merged, never copied over. |
+| `install.py` | copies or symlinks a component into `~/.claude`, merges its settings fragment into `~/.claude/settings.json`, appends its instruction section to `~/.claude/CLAUDE.md`. `--only icm\|feynman`, `--dry-run`, `--link`, `--uninstall`, `--force`. Guides: `docs/install-icm.md`, `docs/install-feynman.md`. |
+| `settings.icm.fragment.json` | SessionStart hook `icm-detect.sh` and the `Bash(python3 _tools/*)` allow rule for workspace scripts. Claude Code's own schema; merged, never copied over. |
+| `settings.feynman.fragment.json` | UserPromptSubmit hook `concept-graph/recall.sh` and the two Bash allow rules for the `cg` command. |
 | `hooks/icm-detect.sh` | SessionStart: one line of context when the cwd is an ICM workspace. |
 | `hooks/concept-graph/recall.sh` | UserPromptSubmit: shell fast path over the concept lexicon, python only on a hit, at most one JSON object out, exit 0 always. |
 

@@ -155,8 +155,8 @@ general/
     cg.py                       the engine, stdlib only, python 3.9+; see 5.4
     tests/test_cg.py
 vendor/claude/
-  install.py                    copy or link into ~/.claude, merge settings, append instructions
-  settings.fragment.json        hook registrations + Bash allow rules
+  install.py                    copy or link into ~/.claude, merge settings, append instructions (--only feynman)
+  settings.feynman.fragment.json  hook registration + Bash allow rules
   hooks/concept-graph/recall.sh UserPromptSubmit fast path (9/10 item 1)
 tests/test_recall_hook.py, tests/test_install.py
 ```

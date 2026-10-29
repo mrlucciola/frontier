@@ -24,46 +24,38 @@ general/                              provider-neutral
   skills/feynman/                     SKILL.md, references/{protocol,card}.md, routing-corpus.jsonl, NOTICE
   tools/concept-graph/cg.py           the concept graph engine (stdlib, python 3.9+) + tests/
 vendor/
-  claude/install.py                   installer: copy or link, merge settings, append instructions
-  claude/settings.fragment.json       hook registrations + Bash allow rules, Claude Code schema
+  claude/install.py                   installer: copy or link, merge settings, append instructions; --only icm|feynman
+  claude/settings.icm.fragment.json   ICM hook registration + allow rule, Claude Code schema
+  claude/settings.feynman.fragment.json  concept recall hook + cg allow rules
   claude/hooks/icm-detect.sh          SessionStart: ICM workspace detection
   claude/hooks/concept-graph/recall.sh  UserPromptSubmit: concept recall, shell fast path
   codex/README.md                     what applies to Codex and what is unverified
   omlx/README.md                      unknown config model; what to verify
 tests/                                test_hook.py, test_recall_hook.py, test_install.py
+docs/install-icm.md                   copy-paste install + first test, ICM
+docs/install-feynman.md               copy-paste install + first test, Feynman
 docs/feynman/design.md                assessment, abstraction, 8/9/10 design
 ```
 
 ## Install (on the target machine)
 
+One script, one component at a time or both. Each component has its own
+copy-paste guide with a first live test:
+
+- **ICM**: [`docs/install-icm.md`](/docs/install-icm.md)
+- **Feynman + concept graph**: [`docs/install-feynman.md`](/docs/install-feynman.md)
+
 ```
 git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/vendor/claude/install.py --dry-run   # read what it will do
-python3 ~/frontier-clean/vendor/claude/install.py             # copy into ~/.claude
+python3 ~/frontier-clean/vendor/claude/install.py --dry-run          # both, read-only preview
+python3 ~/frontier-clean/vendor/claude/install.py --only feynman     # or --only icm, or no flag for both
 ```
 
-What that does: skills to `~/.claude/skills/`, the tool to `~/.claude/tools/concept-graph/`,
-hooks to `~/.claude/hooks/`, the hook registrations and allow rules merged into
-`~/.claude/settings.json` (backup first), the two instruction sections appended to
-`~/.claude/CLAUDE.md` once (backup first), and `~/.claude/concepts/` created.
-`--link` symlinks instead of copying so `git pull` updates the live files;
-`--uninstall` removes everything it installed and keeps your cards.
-
-Verify:
-
-```
-python3 ~/frontier-clean/tests/test_install.py
-python3 ~/frontier-clean/tests/test_recall_hook.py
-python3 ~/frontier-clean/general/tools/concept-graph/tests/test_cg.py
-python3 ~/.claude/tools/concept-graph/cg.py status
-```
-
-Then, in Claude Code: `/feynman <any concept>`. Open a new session in another
-directory and ask about that concept; a `memory:` block with the card should precede
-your prompt, and the skill should refine the card instead of starting over.
-
-Settings hot-reload; no restart is needed for hooks or permissions. Skills are read at
-session start, so a brand-new skill needs a new session.
+The installer copies (or with `--link`, symlinks) files into `~/.claude`, merges the
+component's hook registration and allow rules into `~/.claude/settings.json`, appends
+its instruction section to `~/.claude/CLAUDE.md` once, and backs both files up first.
+`--uninstall` reverses that and keeps your cards. Settings hot-reload; a new skill needs
+a new session.
 
 ## How the pieces fit
 
