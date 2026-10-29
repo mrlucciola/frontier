@@ -5,7 +5,7 @@
 #                                                     printed SHA into the pin below)
 set -euo pipefail
 
-PIN=""   # full 40-hex SHA; empty until the first pull
+PIN="8bc2f5610d3843b3ffa31a142effe6b6337fef3c"   # full 40-hex SHA; empty until the first pull
 REPO="https://github.com/RinDig/icm-architect"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
