@@ -4,16 +4,17 @@ Upstream: https://github.com/RinDig/icm-architect
 License: MIT
 Format: Agent Skills (SKILL.md entry, references/, assets/templates/, scripts/)
 
-This folder is populated by `vendor.sh`, not committed by hand. Do not edit
-vendored files; if a change is needed, carry it in `icm-run/references/`
-and let the workspace's own files override.
+The vendored tree is committed to this repo at the commit named in `VENDOR.lock`,
+so a fresh clone deploys without network. `vendor.sh` is the only thing that writes
+it: pull, replace, lock. Do not edit vendored files; if a change is needed, carry it
+in `icm-run/references/` and let the workspace's own files override.
 
-## Pin
+## Pin and bump
 
-Set `ICM_ARCHITECT_COMMIT` in vendor.sh to a full SHA before first deploy.
-Bump deliberately. Upstream is active (13 commits at vendoring time) and
-its templates define stage numbering (`01_name`) that icm-run's detection
-regex also accepts alongside `01-name`.
+`PIN` in `vendor.sh` holds the full SHA. First pull: `ICM_ARCHITECT_COMMIT=main bash
+vendor.sh`, paste the printed SHA into `PIN`, commit the tree, the lock, and the script
+together. Bump the same way, deliberately. Upstream is active and its templates define
+stage numbering (`01_name`) that icm-run's detection also accepts alongside `01-name`.
 
 ## What the skill provides
 
@@ -22,8 +23,8 @@ regex also accepts alongside `01-name`.
 - Restructure mode: inventory -> classify (catalog/contract/factory/product/dead)
   -> reference-integrity check -> approval gate -> copy-verify-remove -> walk test
 - scripts/: standard-library Python a workspace copies into `_tools/` (link check,
-  graph, index generation, quote check). Permission configs need an allow rule
-  for `python3 _tools/*.py` in each vendor's schema.
+  graph, index generation, quote check). The permission rule they need is in the
+  top-level README.
 
 ## Known skew between upstream sources
 
