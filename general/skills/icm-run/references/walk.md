@@ -13,7 +13,7 @@ The five-layer load order. Stop reading as soon as you have what the stage needs
 ## Determining the current stage
 
 1. If the user named a stage, that is it.
-2. Otherwise run the status scan: the first stage whose `output/` is empty (or `.gitkeep` only) is current.
+2. Otherwise run the status scan: the first stage whose `output/` is empty (or dotfiles only) is current.
 3. If every stage has output, report the pipeline complete and ask whether to start a new run or re-run a stage.
 
 Re-running a stage is normal (incremental recompilation, paper §6.1). Re-running stage N does not touch stage N-1. Say which existing output files will be overwritten before overwriting.

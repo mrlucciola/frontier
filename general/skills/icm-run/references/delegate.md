@@ -26,7 +26,7 @@ Nothing else. No entry file, no root CONTEXT.md, no sibling outputs, no "here is
 
 ## Isolation for code-producing stages
 
-If sub-agents write to a repo, each works in its own git worktree and returns a diff or branch name. The orchestrator never lets two sub-agents edit the same tree.
+If sub-agents write to a repo, the orchestrator creates one git worktree per sub-agent, hands each the path, and collects a diff or branch name back. Sub-agents never create or remove worktrees themselves, and no two edit the same tree.
 
 ## Vendor notes
 

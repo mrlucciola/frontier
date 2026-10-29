@@ -5,7 +5,7 @@ State is the filesystem. Derive it; never maintain a status file.
 ## Scan
 
 1. List `stages/` entries matching `NN-name` or `NN_name`, sorted by number.
-2. For each, list `output/` excluding `.gitkeep`.
+2. For each, list `output/` excluding dotfiles (`.gitkeep`, `.DS_Store`, and the like).
 3. COMPLETE if any file remains, else PENDING.
 4. Current stage = first PENDING. If none, pipeline COMPLETE.
 

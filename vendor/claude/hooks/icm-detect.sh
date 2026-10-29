@@ -12,14 +12,15 @@ if [ -f CONTEXT.md ] && [ -d stages ]; then
 fi
 [ "$is_icm" -eq 1 ] || exit 0
 
+# Claude Code auto-loads CLAUDE.md, so it is the entry file whenever present.
 entry="none"
 [ -f AGENTS.md ] && entry="AGENTS.md"
-[ -f CLAUDE.md ] && entry="CLAUDE.md"
-[ -f AGENTS.md ] && [ -f CLAUDE.md ] && entry="AGENTS.md (CLAUDE.md also present; one should be a pointer)"
+[ -f CLAUDE.md ] && entry="CLAUDE.md (already loaded)"
+[ -f AGENTS.md ] && [ -f CLAUDE.md ] && entry="CLAUDE.md (already loaded; AGENTS.md also present and should be a pointer, do not read it)"
 
 # Escape for JSON (backslash and double quote only; paths with other control chars are not expected).
 dir="$(printf '%s' "$PWD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-msg="ICM workspace detected at $dir. Entry file: $entry. Read it, then run status (icm-run skill) before acting. Load only what the current stage's Inputs table lists."
+msg="ICM workspace detected at $dir. Entry file: $entry. Run status (icm-run skill) before acting. Load only what the current stage's Inputs table lists."
 
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$msg"
 exit 0
