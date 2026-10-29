@@ -1,6 +1,10 @@
 # Agent scratch
 .tmp/
 
+# Python
+__pycache__/
+*.pyc
+
 # Logs
 logs
 *.log
