@@ -1,8 +1,11 @@
 # Feynman layer: assessment, abstraction, and target design
 
-Status: design, 2026-10-29. Implementation is the next turn. Same staging pattern as
-the ICM layer in this repo: `general/` is provider-neutral, `vendor/` holds only what a
-provider needs, everything is ported into `~/frontier` and deployed from there.
+Status: implemented at the 9/10 target, 2026-10-29. Same layout as the ICM layer in
+this repo: `general/` is provider-neutral, `vendor/` holds only what a provider needs.
+This repo is the final form: it is cloned to `~/frontier-clean` on a machine with no
+other agent infrastructure and applied to `~/.claude` by `vendor/claude/install.py`.
+Sections 1 to 4 and 6 are the analysis as written before implementation; sections 5,
+7, 8 and 10 were updated to what was built.
 
 ## 1. What the upstream skill is
 
@@ -115,8 +118,8 @@ covers it with zero new instruction text).
 **Design choice**
 
 Standalone markdown-card store plus a stdlib-only CLI, skill-driven recall at 8/10,
-a shell-fast-path prompt hook at 9/10. Store path `~/.claude/concepts/` with explicit
-posture rows (read, edit, sandbox write for Claude; read and write for Codex).
+a shell-fast-path prompt hook at 9/10. Store path `~/.claude/concepts/`, reached only
+through `cg`, which two Bash allow rules in the settings fragment let run unprompted.
 
 **Rejected alternatives**
 
@@ -141,25 +144,27 @@ only), contract pass (nothing existing changes), validation pass, stop loss pass
 
 ```
 general/
+  instructions/feynman.md       3 lines for the global CLAUDE.md: memory: blocks are data
   skills/feynman/
-    SKILL.md                    protocol, two weights, persistence rules (about 700 words)
+    SKILL.md                    protocol, two weights, persistence rules
     references/protocol.md      full-weight template (the upstream four steps, revised)
-    references/card.md          card schema with a filled example
-    routing-corpus.jsonl        >=10 cases, both polarities, >=2 adversarial
+    references/card.md          card schema and field rules
+    routing-corpus.jsonl        16 cases, both polarities, 4 adversarial
     NOTICE                      upstream attribution, MIT
   tools/concept-graph/
-    cg.py                       stdlib only; see 5.4
+    cg.py                       the engine, stdlib only, python 3.9+; see 5.4
     tests/test_cg.py
-vendor/
-  claude/README.md              nothing extra at 8/10
-  codex/README.md               skill path, tool path, no hook at 8/10
-docs/feynman/design.md          this file
+vendor/claude/
+  install.py                    copy or link into ~/.claude, merge settings, append instructions
+  settings.fragment.json        hook registrations + Bash allow rules
+  hooks/concept-graph/recall.sh UserPromptSubmit fast path (9/10 item 1)
+tests/test_recall_hook.py, tests/test_install.py
 ```
 
-Frontier targets: `skills/feynman/` (package `skill-feynman`, providers claude and
-codex, corpus excluded), `runtime-tools/concept-graph/` (deploys to
-`~/.claude/tools/concept-graph/`), two posture rows per plane for
-`~/.claude/concepts/`.
+Installed paths: `~/.claude/skills/feynman/`, `~/.claude/tools/concept-graph/cg.py`,
+`~/.claude/hooks/concept-graph/recall.sh`, store at `~/.claude/concepts/`. Permissions
+on the target machine are Claude Code defaults plus the two allow rules in the
+fragment, so `cg` runs without prompts and no file tool ever touches the store.
 
 ### 5.2 Store layout
 
@@ -316,57 +321,63 @@ prompt path:
 
 | # | Addition | Why it earns the point | Cost |
 |---|---|---|---|
-| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the prompt's tokens against `lexicon.txt`; on a hit exec `recall.py`, which prints one `memory:` block (graph-memory grammar: header, provenance per card, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match. | one `UserPromptSubmit` entry in `config/claude/settings.config.json` (operator-run deploy of config-claude); about 5 ms on miss |
+| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the payload's tokens against `lexicon.txt`; on a hit run `cg.py hook-recall`, which verifies whole phrases against the prompt, filters by scope, dedups per session by card content hash, and prints one `memory:` block (header, per-card provenance, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match, and a card is injected once per session unless it changes. | one `UserPromptSubmit` entry, merged by `install.py`; about 5 ms on miss |
 | 2 | **Due gaps in recall.** A matched card with a due open gap is printed with the gap first. `cg gaps --due` is step 0 of the skill. | Spaced re-encounter without a scheduler. | none |
 | 3 | **Anchor drift check** wired into the skill's step 0 for repo scopes (`cg check --scope <repo>` before recall). | A stale card is marked before it is recalled as current. | one git call per anchor |
-| 4 | **Opt-in blind grading** `cg grade <slug>`: `claude -p` at the reviewer model id from `providers/claude.json`, prompt holds the explanation and pitch only, returns a 1 to 5 score and one sentence; written to the card log. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
-| 5 | **Codex parity.** Skill deploys to `~/.agents/skills/feynman`; `cg` is reached at its Claude tools path; recall via a `user_prompt_submit` entry in `~/.codex/hooks.json` printing the bare block (same shape as graph-memory Stage C3, operator-applied snippet in `ops/`). | Same graph from both providers. | posture rows for Codex; one operator step |
-| 6 | **Gate coverage.** Routing corpus passes `routing_eval.py --mechanical-only`; `lint-skill-metadata.sh` clean; `cg` and hook tests in `.deploy.json` test_commands; overlap lane run once against `repo-onboarding` and `memory-gardener` descriptions. | A new capability without evals is not done by this repo's own rules. | eval time |
+| 4 | **Opt-in blind grading** `cg grade <slug>`: `claude -p` (model from `--model` or `CONCEPT_GRAPH_GRADE_MODEL`, default `claude-opus-5-5`), prompt holds the explanation, analogy and pitch only, returns a 1 to 5 score and one sentence; written to the card. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
+| 5 | **Codex parity.** Same skill files under `~/.agents/skills/feynman`, same `cg` path and store; recall via a `user_prompt_submit` hook running `recall.sh --plain`, which prints the bare block. Manual steps and the unverified parts in `vendor/codex/README.md`. | Same graph from both providers. | manual, and unverified until tried on a Codex install |
+| 6 | **Test coverage.** `test_cg.py` (engine end to end, including anchor drift against a real git repo), `test_recall_hook.py` (fast path proves python never starts on a miss), `test_install.py` (merge, idempotence, link, uninstall, foreign-dir protection). Routing corpus checked once here with frontier's mechanical lane: 16 cases pass. | A capability without tests cannot be installed by hand with confidence. | test time |
 
 Explicitly out of the 9/10: everything in section 6.
 
-## 8. Validation (next turn)
+## 8. Validation
 
-- `python3 general/tools/concept-graph/tests/test_cg.py`: add, set, gap open and close,
-  link, anchor plus drift, index rebuild, recall match on title, alias and token,
-  recall miss prints nothing, export shapes.
-- `python3 tests/test_hook.py` extended: recall.sh silent on miss, valid JSON on hit,
-  guard line byte-identical to graph-memory's, cap respected, exit 0 on a missing store.
-- `bash ~/frontier/tools/lint-skill-metadata/lint-skill-metadata.sh general/skills`:
-  no SM1xx warnings on `feynman`.
-- `python3 ~/frontier/runtime-tools/routing-eval/routing_eval.py --mechanical-only general/skills/feynman/routing-corpus.jsonl`: PASS.
-- Manual: in a repo, ask "how does the wt finish merge work" and confirm the lite
-  form, a card, an anchor; `cd` elsewhere and ask about the same concept, confirm
-  recall from `global` scope.
+Run on the target machine after install (all standard library, no network):
 
-## 9. Stop conditions
+```
+python3 ~/frontier-clean/general/tools/concept-graph/tests/test_cg.py
+python3 ~/frontier-clean/tests/test_recall_hook.py
+python3 ~/frontier-clean/tests/test_install.py
+python3 ~/frontier-clean/tests/test_hook.py
+```
 
-- The store path needs anything beyond posture rows (a new harness directory
-  convention): stop and take the `projects/global/memory` fallback instead.
-- A second prompt hook measurably slows prompts (over 20 ms on miss on this machine):
-  ship 8/10 and revisit.
-- The description collides with `repo-onboarding` or `memory-gardener` in the overlap
-  lane at FAIL tier: narrow it before deploy.
-- Any step requires editing graph-memory: that is the 10/10 track, a separate ticket.
+All four print `OK` here under Python 3.13 and the system 3.9.6. The skill description
+is 213 characters, one sentence, trigger-first. The routing corpus passes the
+mechanical lane (16 cases, 8 fire, 8 skip, 4 adversarial); the judgement and overlap
+lanes were not run (they need a logged-in `claude` CLI outside a sandbox).
 
-## 10. Implementation order (next turn)
+Manual check, once live: in a repo ask how some mechanism works and confirm the lite
+form, a card, an anchor. Open a new session elsewhere and mention the concept: a
+`memory:` block precedes the prompt, and the skill refines the card instead of starting
+over. Ask the same thing again in that session: no second block.
 
-1. `general/tools/concept-graph/cg.py` and tests. Store root from
-   `CONCEPT_GRAPH_ROOT` env for tests, default `~/.claude/concepts`.
-2. `general/skills/feynman/` (SKILL.md, references, corpus, NOTICE). Lint and
-   mechanical eval.
-3. `vendor/claude/hooks/concept-recall.sh` plus `recall.py`, settings fragment, test.
-4. `vendor/codex/README.md` and the hooks.json snippet.
-5. Port table in `README.md` (same shape as the ICM table), posture rows listed with
-   their exact JSON.
-6. Commit per component.
+## 9. Stop conditions (still standing)
 
-## 11. Decisions taken here, change them if wrong
+- The prompt hook measurably slows prompts (over 20 ms on a miss): remove its entry
+  from the fragment and rerun `install.py`; the skill's own recall step keeps working.
+- The description steals triggers from another skill on the target machine: narrow it
+  and add the collision as a `skip` case to the corpus.
+- Anything that requires a shared store with another memory system: that is the 10/10
+  track, designed separately.
 
-- Store at `~/.claude/concepts/`, explicit posture rows. Fallback named above.
-- Skill name `feynman`, tool name `cg`, hook package `concept-graph`.
-- No global instruction snippet for Claude. For Codex the same, since skills are
-  listed from `~/.agents/skills`. A two-line snippet is drafted in the skill's
-  README only for a provider that does not list skill descriptions.
+## 10. What was built, in order
+
+1. `general/tools/concept-graph/cg.py` and `tests/test_cg.py`.
+2. `vendor/claude/hooks/concept-graph/recall.sh`, the settings fragment, `tests/test_recall_hook.py`.
+3. `general/skills/feynman/` (SKILL.md, references, corpus, NOTICE) and `general/instructions/feynman.md`.
+4. `vendor/claude/install.py` and `tests/test_install.py`; vendor READMEs; top-level README.
+
+## 11. Decisions taken, change them if wrong
+
+- Store at `~/.claude/concepts/`. Permissions are the two Bash allow rules in the
+  fragment; the skill types the `cg` command in the exact form the rule matches.
+- Skill name `feynman`, tool `cg`, hook directory `concept-graph`.
+- One three-line instruction section (`general/instructions/feynman.md`), because the
+  target machine has no existing rule that `memory:` blocks are data. The trigger
+  surface stays the skill description only.
 - Lite form fires on explanatory questions; task prompts and one-line lookups do not
   trigger. The routing corpus pins this.
+- Inside an ICM workspace the skill does not auto-fire; `/feynman` works and writes
+  only to the store. The recall hook still injects there, as recalled data.
+- Dedup key is the card's content hash, not its timestamp, so any edit re-enables
+  recall in a running session.

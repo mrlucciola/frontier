@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""Install this repo's Claude Code layer into ~/.claude. Standard library only.
+
+    python3 vendor/claude/install.py              # copy files, merge settings, append instructions
+    python3 vendor/claude/install.py --dry-run    # show every action, change nothing
+    python3 vendor/claude/install.py --link       # symlink instead of copy (git pull = live update)
+    python3 vendor/claude/install.py --uninstall  # remove what this script installed
+
+What it does, in order:
+  1. skills  -> ~/.claude/skills/{icm-architect,icm-run,feynman}
+  2. tool    -> ~/.claude/tools/concept-graph
+  3. hooks   -> ~/.claude/hooks/icm-detect.sh, ~/.claude/hooks/concept-graph/
+  4. settings: merges vendor/claude/settings.fragment.json into ~/.claude/settings.json
+     (hook entries by command string, permission allow rules by value; backup first)
+  5. instructions: appends general/instructions/*.md to ~/.claude/CLAUDE.md when their
+     heading is absent (backup first)
+  6. creates the concept store and prints the verification commands
+
+Idempotent: a second run replaces only what it installed (marker file .installed-from
+inside copied dirs). A target that exists without the marker is left alone unless
+--force is given.
+"""
+import argparse
+import datetime
+import json
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+
+REPO = pathlib.Path(__file__).resolve().parents[2]
+FRAGMENT = REPO / "vendor/claude/settings.fragment.json"
+MARKER = ".installed-from"
+
+DIRS = [
+    ("general/skills/icm-architect", "skills/icm-architect"),
+    ("general/skills/icm-run", "skills/icm-run"),
+    ("general/skills/feynman", "skills/feynman"),
+    ("general/tools/concept-graph", "tools/concept-graph"),
+    ("vendor/claude/hooks/concept-graph", "hooks/concept-graph"),
+]
+FILES = [
+    ("vendor/claude/hooks/icm-detect.sh", "hooks/icm-detect.sh"),
+]
+INSTRUCTIONS = [
+    ("general/instructions/icm.md", "## ICM workspaces"),
+    ("general/instructions/feynman.md", "## Recalled concepts"),
+]
+IGNORE = shutil.ignore_patterns("tests", "__pycache__", ".tmp", "*.pyc", "VENDOR.lock", "vendor.sh")
+
+
+def stamp():
+    return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+class Installer:
+    def __init__(self, home, dry, link, force):
+        self.home = home
+        self.dry = dry
+        self.link = link
+        self.force = force
+        self.problems = []
+
+    def say(self, msg):
+        print(("DRY  " if self.dry else "     ") + msg)
+
+    # ---- files
+
+    def _owned(self, target):
+        if target.is_symlink():
+            return True
+        return (target / MARKER).exists() if target.is_dir() else False
+
+    def put_dir(self, src_rel, dst_rel):
+        src, dst = REPO / src_rel, self.home / dst_rel
+        if dst.exists() or dst.is_symlink():
+            if not self._owned(dst) and not self.force:
+                self.problems.append("%s exists and was not installed by this script (use --force)" % dst)
+                return
+            self.say("remove %s" % dst)
+            if not self.dry:
+                if dst.is_symlink() or dst.is_file():
+                    dst.unlink()
+                else:
+                    shutil.rmtree(dst)
+        if self.link:
+            self.say("link   %s -> %s" % (dst, src))
+            if not self.dry:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.symlink_to(src, target_is_directory=True)
+        else:
+            self.say("copy   %s -> %s" % (src_rel, dst))
+            if not self.dry:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(src, dst, ignore=IGNORE)
+                (dst / MARKER).write_text(str(REPO) + "\n")
+
+    def put_file(self, src_rel, dst_rel):
+        src, dst = REPO / src_rel, self.home / dst_rel
+        self.say("%s   %s -> %s" % ("link" if self.link else "copy", src_rel, dst))
+        if self.dry:
+            return
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists() or dst.is_symlink():
+            dst.unlink()
+        if self.link:
+            dst.symlink_to(src)
+        else:
+            shutil.copy2(src, dst)
+            dst.chmod(0o755)
+
+    def remove(self, dst_rel):
+        dst = self.home / dst_rel
+        if not (dst.exists() or dst.is_symlink()):
+            return
+        if dst.is_dir() and not dst.is_symlink() and not self._owned(dst) and not self.force:
+            self.problems.append("%s was not installed by this script; left in place" % dst)
+            return
+        self.say("remove %s" % dst)
+        if self.dry:
+            return
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        else:
+            shutil.rmtree(dst)
+
+    # ---- settings
+
+    def _settings(self):
+        path = self.home / "settings.json"
+        if path.exists():
+            with open(path, encoding="utf-8") as fh:
+                return path, json.load(fh)
+        return path, {}
+
+    def _write_settings(self, path, data):
+        if self.dry:
+            return
+        if path.exists():
+            shutil.copy2(path, path.with_name("settings.json.bak-%s" % stamp()))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)
+            fh.write("\n")
+        os.replace(tmp, path)
+
+    @staticmethod
+    def _commands(group):
+        return [h.get("command", "") for h in group.get("hooks", [])]
+
+    def merge_settings(self):
+        frag = json.loads(FRAGMENT.read_text())
+        path, data = self._settings()
+        changed = False
+        hooks = data.setdefault("hooks", {})
+        for event, groups in frag.get("hooks", {}).items():
+            existing = hooks.setdefault(event, [])
+            present = {c for g in existing for c in self._commands(g)}
+            for g in groups:
+                cmds = self._commands(g)
+                if all(c in present for c in cmds):
+                    continue
+                self.say("settings: add %s hook %s" % (event, cmds))
+                existing.append(g)
+                changed = True
+        perms = data.setdefault("permissions", {})
+        allow = perms.setdefault("allow", [])
+        for rule in frag.get("permissions", {}).get("allow", []):
+            if rule not in allow:
+                self.say("settings: allow %s" % rule)
+                allow.append(rule)
+                changed = True
+        if changed:
+            self._write_settings(path, data)
+        else:
+            self.say("settings: already up to date")
+
+    def unmerge_settings(self):
+        frag = json.loads(FRAGMENT.read_text())
+        path, data = self._settings()
+        if not data:
+            return
+        ours = {c for groups in frag.get("hooks", {}).values() for g in groups for c in self._commands(g)}
+        changed = False
+        for event, groups in list(data.get("hooks", {}).items()):
+            kept = [g for g in groups if not any(c in ours for c in self._commands(g))]
+            if len(kept) != len(groups):
+                self.say("settings: remove %s hook(s) from %s" % (len(groups) - len(kept), event))
+                changed = True
+                if kept:
+                    data["hooks"][event] = kept
+                else:
+                    del data["hooks"][event]
+        rules = frag.get("permissions", {}).get("allow", [])
+        allow = data.get("permissions", {}).get("allow", [])
+        kept = [r for r in allow if r not in rules]
+        if len(kept) != len(allow):
+            self.say("settings: remove %d allow rule(s)" % (len(allow) - len(kept)))
+            data["permissions"]["allow"] = kept
+            changed = True
+        if changed:
+            self._write_settings(path, data)
+
+    # ---- instructions
+
+    def append_instructions(self):
+        path = self.home / "CLAUDE.md"
+        current = path.read_text(encoding="utf-8") if path.exists() else ""
+        additions = []
+        for rel, heading in INSTRUCTIONS:
+            if heading in current:
+                continue
+            additions.append((REPO / rel).read_text(encoding="utf-8").strip() + "\n")
+            self.say("instructions: append %s to %s" % (rel, path))
+        if not additions:
+            self.say("instructions: already present")
+            return
+        if self.dry:
+            return
+        if path.exists():
+            shutil.copy2(path, path.with_name("CLAUDE.md.bak-%s" % stamp()))
+        with open(path, "a", encoding="utf-8") as fh:
+            if current and not current.endswith("\n"):
+                fh.write("\n")
+            fh.write("\n" + "\n".join(additions))
+
+    # ---- flows
+
+    def install(self):
+        for s, d in DIRS:
+            self.put_dir(s, d)
+        for s, d in FILES:
+            self.put_file(s, d)
+        if self.problems:
+            return
+        self.merge_settings()
+        self.append_instructions()
+        self.say("store: %s" % (self.home / "concepts"))
+        if not self.dry:
+            os.environ.setdefault("CONCEPT_GRAPH_ROOT", str(self.home / "concepts"))
+            subprocess.run([sys.executable, str(self.home / "tools/concept-graph/cg.py"), "init"], check=False)
+
+    def uninstall(self):
+        for _, d in DIRS:
+            self.remove(d)
+        for _, d in FILES:
+            self.remove(d)
+        self.unmerge_settings()
+        self.say("left in place: %s (your cards) and the instruction sections in %s" % (
+            self.home / "concepts", self.home / "CLAUDE.md"))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--home", default="~/.claude")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--link", action="store_true", help="symlink dirs and files instead of copying")
+    ap.add_argument("--force", action="store_true", help="replace targets this script did not install")
+    ap.add_argument("--uninstall", action="store_true")
+    a = ap.parse_args()
+    home = pathlib.Path(os.path.expanduser(a.home))
+    inst = Installer(home, a.dry_run, a.link, a.force)
+    if a.uninstall:
+        inst.uninstall()
+    else:
+        inst.install()
+    if inst.problems:
+        print("\n".join("PROBLEM " + p for p in inst.problems))
+        return 1
+    if not a.uninstall:
+        print("\nverify:")
+        print("  python3 %s status" % (home / "tools/concept-graph/cg.py"))
+        print("  python3 %s" % (REPO / "tests/test_recall_hook.py"))
+        print("  python3 %s" % (REPO / "general/tools/concept-graph/tests/test_cg.py"))
+        print("  then in Claude Code: /feynman <any concept>, and in a new session ask about it.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
