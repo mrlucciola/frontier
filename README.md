@@ -1,81 +1,70 @@
-# frontier-clean: a thin global layer for Claude Code
+# frontier-clean: self-contained components for Claude Code
 
-Two additions to the global agent config, installed into `~/.claude` by one script:
+Each top-level directory is one component: everything it needs (skills, hooks, tools,
+settings fragment, instruction section, tests) plus its own `install.py`. Components
+know nothing about each other. Install one, both, or neither.
 
-- **ICM** (Interpretable Context Methodology, Van Clief & McDermott, arXiv:2603.16021):
-  one always-loaded instruction, two skills loaded on demand, one SessionStart hook.
-- **Feynman + concept graph**: a skill that answers "how does X work" questions the
-  Feynman way and persists what it learned as cards in a global concept graph; a tool
-  (`cg`) that owns the store; a UserPromptSubmit hook that recalls matching cards in any
-  directory. Design and rationale: `docs/feynman/design.md`.
+- **`icm/`** -- Interpretable Context Methodology (Van Clief & McDermott,
+  arXiv:2603.16021): one always-loaded instruction, two skills loaded on demand, one
+  SessionStart hook. Guide: [`icm/INSTALL.md`](/icm/INSTALL.md).
+- **`feynman/`** -- a skill that answers "how or why does X work" questions the Feynman
+  way and persists what it learned as cards in a global concept graph at
+  `~/.claude/concepts/`; a `cg` tool that owns the store; a UserPromptSubmit hook that
+  recalls matching cards in any directory. Guide:
+  [`feynman/INSTALL.md`](/feynman/INSTALL.md). Design: `feynman/docs/design.md`.
 
-Design rule for both: the global layer stays thin. A session that never touches a
-skill pays one skill description in the skills list and a few milliseconds of shell per
+Design rule: the global layer stays thin. A session that never touches a component
+pays one skill description in the skills list and a few milliseconds of shell per
 prompt. Nothing else.
 
-## Layout
-
-```
-general/                              provider-neutral
-  instructions/icm.md                 section for the global CLAUDE.md / AGENTS.md
-  instructions/feynman.md             section for the global CLAUDE.md / AGENTS.md (3 lines)
-  skills/icm-architect/               upstream skill, vendored at a pin (VENDOR.md)
-  skills/icm-run/                     executor skill for existing ICM workspaces
-  skills/feynman/                     SKILL.md, references/{protocol,card}.md, routing-corpus.jsonl, NOTICE
-  tools/concept-graph/cg.py           the concept graph engine (stdlib, python 3.9+) + tests/
-vendor/
-  claude/install.py                   installer: copy or link, merge settings, append instructions; --only icm|feynman
-  claude/settings.icm.fragment.json   ICM hook registration + allow rule, Claude Code schema
-  claude/settings.feynman.fragment.json  concept recall hook + cg allow rules
-  claude/hooks/icm-detect.sh          SessionStart: ICM workspace detection
-  claude/hooks/concept-graph/recall.sh  UserPromptSubmit: concept recall, shell fast path
-  codex/README.md                     what applies to Codex and what is unverified
-  omlx/README.md                      unknown config model; what to verify
-tests/                                test_hook.py, test_recall_hook.py, test_install.py
-docs/install-icm.md                   copy-paste install + first test, ICM
-docs/install-feynman.md               copy-paste install + first test, Feynman
-docs/feynman/design.md                assessment, abstraction, 8/9/10 design
-```
-
-## Install (on the target machine)
-
-One script, one component at a time or both. Each component has its own
-copy-paste guide with a first live test:
-
-- **ICM**: [`docs/install-icm.md`](/docs/install-icm.md)
-- **Feynman + concept graph**: [`docs/install-feynman.md`](/docs/install-feynman.md)
+## Install
 
 ```
 git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/vendor/claude/install.py --dry-run          # both, read-only preview
-python3 ~/frontier-clean/vendor/claude/install.py --only feynman     # or --only icm, or no flag for both
+python3 ~/frontier-clean/icm/install.py --dry-run && python3 ~/frontier-clean/icm/install.py
+python3 ~/frontier-clean/feynman/install.py --dry-run && python3 ~/frontier-clean/feynman/install.py
 ```
 
-The installer copies (or with `--link`, symlinks) files into `~/.claude`, merges the
-component's hook registration and allow rules into `~/.claude/settings.json`, appends
-its instruction section to `~/.claude/CLAUDE.md` once, and backs both files up first.
-`--uninstall` reverses that and keeps your cards. Settings hot-reload; a new skill needs
-a new session.
+Each installer copies (or with `--link`, symlinks) its files into `~/.claude`, merges
+its hook registration and allow rules into `~/.claude/settings.json`, appends its
+instruction section to `~/.claude/CLAUDE.md` once, and backs both files up first.
+`--uninstall` reverses that (Feynman keeps your cards). Settings hot-reload; a new
+skill needs a new session. Follow each component's INSTALL.md for file checks and a
+first live test.
 
-## How the pieces fit
+## Component layout convention
 
-| Moment | What runs | Cost when idle |
-|---|---|---|
-| session start | `icm-detect.sh`: silent unless cwd is an ICM workspace | ~2 ms |
-| every prompt | `recall.sh`: grep the prompt against `~/.claude/concepts/lexicon.txt`; on a hit, `cg.py hook-recall` verifies phrases, filters by scope, dedups per session, prints at most 2 cards in 1,200 chars | ~5 ms, 0 tokens |
-| explanatory question or `/feynman` | the `feynman` skill: recall, explain, audit gaps, close with evidence, refine, persist through `cg` | skill text only when it fires |
-| any time | `cg` subcommands: `recall show add write set gap gaps link anchor check neighbors export grade status index` | none |
+```
+<component>/
+  install.py          installs ONLY this component; stdlib, idempotent, --dry-run/--link/--uninstall
+  INSTALL.md          clone-to-first-test guide
+  instructions/*.md   section(s) appended to the global CLAUDE.md
+  skills/<name>/      skill directories, copied under ~/.claude/skills/
+  hooks/ or tools/    executables, copied under ~/.claude/hooks/ or ~/.claude/tools/
+  config/*.fragment.json  hook registrations + allow rules, merged into ~/.claude/settings.json
+  tests/              component-level tests (plain python3, no dependencies)
+```
 
-Store: `~/.claude/concepts/cards/<slug>.md` is the source of truth; `index.json` and
-`lexicon.txt` are derived; `log.jsonl` records writes. Schema: `general/skills/feynman/references/card.md`.
+Deployment targets Claude Code only. Other harnesses (Codex, local models) have their
+own config surfaces and deployment needs; port a component's files to them separately
+rather than growing a shared installer.
 
-## Codex and other harnesses
+## Verify everything
 
-The instructions, skills, tool and store are provider-neutral. `vendor/codex/README.md`
-lists the manual steps and the (unverified) hook registration. omlx: instruction only,
-until `vendor/omlx/README.md`'s questions are answered.
+```
+python3 ~/frontier-clean/icm/tests/test_hook.py
+python3 ~/frontier-clean/icm/tests/test_install.py
+python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
+python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
+python3 ~/frontier-clean/feynman/tests/test_install.py
+# expect: OK five times
+```
 
 ## Sources
 
-- ICM paper: https://arxiv.org/abs/2603.16021; protocol repo: https://github.com/RinDig/Interpretable-Context-Methodology; builder skill: https://github.com/RinDig/icm-architect
-- Feynman skill the protocol is adapted from: https://github.com/neurofoo/agent-skills (MIT; see `general/skills/feynman/NOTICE`)
+- ICM paper: https://arxiv.org/abs/2603.16021; protocol repo:
+  https://github.com/RinDig/Interpretable-Context-Methodology; builder skill:
+  https://github.com/RinDig/icm-architect (vendored at a pin, see
+  `icm/skills/icm-architect/VENDOR.md`)
+- Feynman protocol adapted from: https://github.com/neurofoo/agent-skills (MIT; see
+  `feynman/skills/feynman/NOTICE`)

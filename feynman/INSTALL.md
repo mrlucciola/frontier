@@ -4,7 +4,11 @@ What you get: the `feynman` skill (answers "how or why does X work" questions th
 Feynman way and persists a card), the `cg` tool that owns the concept graph at
 `~/.claude/concepts/`, a UserPromptSubmit hook that recalls matching cards in any
 directory, a three-line instruction section, and two allow rules so `cg` runs without
-prompts. Design: `docs/feynman/design.md`.
+prompts. Design: `docs/design.md`.
+
+Everything this component needs lives in this directory: `skills/`, `tools/`
+(the engine `cg.py` and the hook `recall.sh`, side by side), `config/`,
+`instructions/`, `tests/`, `install.py`.
 
 Requirements: macOS or Linux, `python3` 3.9 or newer, `bash`, `git`, Claude Code
 installed. No network is used by the install or at runtime. `cg grade` is the one
@@ -14,17 +18,16 @@ command that calls a model, and only when you run it.
 
 ```
 git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/vendor/claude/install.py --only feynman --dry-run
-python3 ~/frontier-clean/vendor/claude/install.py --only feynman
+python3 ~/frontier-clean/feynman/install.py --dry-run
+python3 ~/frontier-clean/feynman/install.py
 ```
 
 The dry run prints every action and changes nothing. The install copies
-`skills/feynman`, `tools/concept-graph` and `hooks/concept-graph` into `~/.claude`,
-merges the hook and the allow rules into `~/.claude/settings.json`
-(a `settings.json.bak-<timestamp>` is written first), appends the
-"## Recalled concepts" section to `~/.claude/CLAUDE.md` (also backed up), and creates
-`~/.claude/concepts/`. Rerunning is safe: it only replaces what it installed and never
-touches your cards.
+`skills/feynman` and `tools/concept-graph` into `~/.claude`, merges the hook and the
+allow rules into `~/.claude/settings.json` (a `settings.json.bak-<timestamp>` is
+written first), appends the "## Recalled concepts" section to `~/.claude/CLAUDE.md`
+(also backed up), and creates `~/.claude/concepts/`. Rerunning is safe: it only
+replaces what it installed and never touches your cards.
 
 Prefer symlinks, so `git pull` updates the live files: add `--link`.
 
@@ -34,9 +37,9 @@ Prefer symlinks, so `git pull` updates the live files: add `--link`.
 python3 ~/.claude/tools/concept-graph/cg.py status
 grep -c "Recalled concepts" ~/.claude/CLAUDE.md
 grep -c "concept-graph/recall.sh" ~/.claude/settings.json
-python3 ~/frontier-clean/general/tools/concept-graph/tests/test_cg.py
-python3 ~/frontier-clean/tests/test_recall_hook.py
-python3 ~/frontier-clean/tests/test_install.py
+python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
+python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
+python3 ~/frontier-clean/feynman/tests/test_install.py
 # expect: "cards: 0", 1, 1, OK, OK, OK
 ```
 
@@ -54,11 +57,11 @@ python3 ~/.claude/tools/concept-graph/cg.py add wal-mode --title "SQLite WAL mod
   --pitch "WAL lets many readers and one writer work at the same time." --confidence 3
 python3 ~/.claude/tools/concept-graph/cg.py recall how does wal work
 # expect: a block starting "memory: 1 concept (scope: global)" and ending with the guard line
-printf '{"session_id":"demo","cwd":"%s","prompt":"why does WAL let readers continue?"}' "$PWD" | bash ~/.claude/hooks/concept-graph/recall.sh
+printf '{"session_id":"demo","cwd":"%s","prompt":"why does WAL let readers continue?"}' "$PWD" | bash ~/.claude/tools/concept-graph/recall.sh
 # expect: one JSON line with hookSpecificOutput.additionalContext holding the same block
-printf '{"session_id":"demo","cwd":"%s","prompt":"why does WAL let readers continue?"}' "$PWD" | bash ~/.claude/hooks/concept-graph/recall.sh
+printf '{"session_id":"demo","cwd":"%s","prompt":"why does WAL let readers continue?"}' "$PWD" | bash ~/.claude/tools/concept-graph/recall.sh
 # expect: no output (the same session already saw this card)
-printf '{"session_id":"demo","cwd":"%s","prompt":"tell me a joke"}' "$PWD" | bash ~/.claude/hooks/concept-graph/recall.sh
+printf '{"session_id":"demo","cwd":"%s","prompt":"tell me a joke"}' "$PWD" | bash ~/.claude/tools/concept-graph/recall.sh
 # expect: no output
 ```
 
@@ -74,7 +77,7 @@ Start a new session (skills load at session start; the hook and permissions are 
 immediately):
 
 ```
-cd ~ && claude --model claude-opus-5-5 --effort medium
+cd ~ && claude
 # paste into the session: /feynman git worktrees
 # expect: the four-step protocol, then a "Card" section listing the cg commands it ran
 python3 ~/.claude/tools/concept-graph/cg.py list
@@ -84,7 +87,7 @@ python3 ~/.claude/tools/concept-graph/cg.py list
 Now a second session, from any other directory, with an ordinary question:
 
 ```
-cd /tmp && claude --model claude-opus-5-5 --effort medium
+cd /tmp && claude
 # paste into the session: how do git worktrees differ from branches?
 # expect: a "memory: 1 concept" block ahead of your prompt (visible in the transcript),
 #         and the skill's lite form that refines the existing card instead of starting over
@@ -114,7 +117,7 @@ printf '#!/bin/sh\nexec python3 "$HOME/.claude/tools/concept-graph/cg.py" "$@"\n
 
 ```
 git -C ~/frontier-clean pull
-python3 ~/frontier-clean/vendor/claude/install.py --only feynman
+python3 ~/frontier-clean/feynman/install.py
 ```
 
 With `--link` installs, the pull alone is enough. Cards are never touched by an update.
@@ -122,11 +125,11 @@ With `--link` installs, the pull alone is enough. Cards are never touched by an 
 ## 7. Uninstall
 
 ```
-python3 ~/frontier-clean/vendor/claude/install.py --only feynman --uninstall
+python3 ~/frontier-clean/feynman/install.py --uninstall
 ```
 
-Removes the skill, the tool, the hook, its registration and the allow rules. Keeps
-`~/.claude/concepts/` (your cards) and the "## Recalled concepts" section in
+Removes the skill, the tool (hook included), its registration and the allow rules.
+Keeps `~/.claude/concepts/` (your cards) and the "## Recalled concepts" section in
 `~/.claude/CLAUDE.md`; delete those by hand if you want them gone.
 
 ## If something is off
@@ -134,7 +137,7 @@ Removes the skill, the tool, the hook, its registration and the allow rules. Kee
 - `cg` asks for permission every time: the agent must type the command exactly as
   `python3 ~/.claude/tools/concept-graph/cg.py ...`; the skill says so. Check that
   `permissions.allow` in `~/.claude/settings.json` holds the two rules from
-  `vendor/claude/settings.feynman.fragment.json`.
+  `feynman/config/settings.feynman.fragment.json`.
 - No memory block appears: run step 3's `printf | bash recall.sh` line from the same
   directory. Silence there means no card matched (titles, aliases and slugs match as
   whole words; check with `cg recall <words>`). Output there but none in the agent means

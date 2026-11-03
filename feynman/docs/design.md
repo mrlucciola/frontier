@@ -1,11 +1,13 @@
 # Feynman layer: assessment, abstraction, and target design
 
-Status: implemented at the 9/10 target, 2026-10-29. Same layout as the ICM layer in
-this repo: `general/` is provider-neutral, `vendor/` holds only what a provider needs.
-This repo is the final form: it is cloned to `~/frontier-clean` on a machine with no
-other agent infrastructure and applied to `~/.claude` by `vendor/claude/install.py`.
-Sections 1 to 4 and 6 are the analysis as written before implementation; sections 5,
-7, 8 and 10 were updated to what was built.
+Status: implemented at the 9/10 target, 2026-10-29; reorganized component-first by the
+operator on 2026-10-30 (everything this component needs lives under `feynman/`, with
+its own `install.py`; the shared installer and the `vendor/`/`general/` split were
+removed as tight coupling). This repo is the final form: it is cloned to
+`~/frontier-clean` on a machine with no other agent infrastructure and applied to
+`~/.claude` by `feynman/install.py`. Sections 1 to 4 and 6 are the analysis as written
+before implementation; sections 5, 7, 8 and 10 reflect what was built, with paths
+updated to the component-first layout.
 
 ## 1. What the upstream skill is
 
@@ -143,8 +145,11 @@ only), contract pass (nothing existing changes), validation pass, stop loss pass
 ### 5.1 Components
 
 ```
-general/
+feynman/
+  install.py                    copy or link into ~/.claude, merge settings, append instructions
+  INSTALL.md                    clone-to-first-test guide
   instructions/feynman.md       3 lines for the global CLAUDE.md: memory: blocks are data
+  config/settings.feynman.fragment.json  hook registration + Bash allow rules
   skills/feynman/
     SKILL.md                    protocol, two weights, persistence rules
     references/protocol.md      full-weight template (the upstream four steps, revised)
@@ -153,12 +158,10 @@ general/
     NOTICE                      upstream attribution, MIT
   tools/concept-graph/
     cg.py                       the engine, stdlib only, python 3.9+; see 5.4
-    tests/test_cg.py
-vendor/claude/
-  install.py                    copy or link into ~/.claude, merge settings, append instructions (--only feynman)
-  settings.feynman.fragment.json  hook registration + Bash allow rules
-  hooks/concept-graph/recall.sh UserPromptSubmit fast path (9/10 item 1)
-tests/test_recall_hook.py, tests/test_install.py
+    recall.sh                   UserPromptSubmit fast path (9/10 item 1), beside the engine
+    tests/test_cg.py            tool-only test
+  tests/                        component-level: test_recall_hook.py, test_install.py
+  docs/design.md                this file
 ```
 
 Installed paths: `~/.claude/skills/feynman/`, `~/.claude/tools/concept-graph/cg.py`,
@@ -325,7 +328,7 @@ prompt path:
 | 2 | **Due gaps in recall.** A matched card with a due open gap is printed with the gap first. `cg gaps --due` is step 0 of the skill. | Spaced re-encounter without a scheduler. | none |
 | 3 | **Anchor drift check** wired into the skill's step 0 for repo scopes (`cg check --scope <repo>` before recall). | A stale card is marked before it is recalled as current. | one git call per anchor |
 | 4 | **Opt-in blind grading** `cg grade <slug>`: `claude -p` (model from `--model` or `CONCEPT_GRAPH_GRADE_MODEL`, default `claude-opus-5-5`), prompt holds the explanation, analogy and pitch only, returns a 1 to 5 score and one sentence; written to the card. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
-| 5 | **Codex parity.** Same skill files under `~/.agents/skills/feynman`, same `cg` path and store; recall via a `user_prompt_submit` hook running `recall.sh --plain`, which prints the bare block. Manual steps and the unverified parts in `vendor/codex/README.md`. | Same graph from both providers. | manual, and unverified until tried on a Codex install |
+| 5 | **Codex parity.** Dropped at the 2026-10-30 reorg: deployment targets Claude Code only. The engine keeps `hook-recall --plain` (bare-block output) so another harness can register `recall.sh --plain` itself; porting is manual and out of scope here. | Kept the engine harness-neutral without a second deploy path. | none here |
 | 6 | **Test coverage.** `test_cg.py` (engine end to end, including anchor drift against a real git repo), `test_recall_hook.py` (fast path proves python never starts on a miss), `test_install.py` (merge, idempotence, link, uninstall, foreign-dir protection). Routing corpus checked once here with frontier's mechanical lane: 16 cases pass. | A capability without tests cannot be installed by hand with confidence. | test time |
 
 Explicitly out of the 9/10: everything in section 6.
@@ -335,13 +338,12 @@ Explicitly out of the 9/10: everything in section 6.
 Run on the target machine after install (all standard library, no network):
 
 ```
-python3 ~/frontier-clean/general/tools/concept-graph/tests/test_cg.py
-python3 ~/frontier-clean/tests/test_recall_hook.py
-python3 ~/frontier-clean/tests/test_install.py
-python3 ~/frontier-clean/tests/test_hook.py
+python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
+python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
+python3 ~/frontier-clean/feynman/tests/test_install.py
 ```
 
-All four print `OK` here under Python 3.13 and the system 3.9.6. The skill description
+All three print `OK` here under Python 3.13 and the system 3.9.6. The skill description
 is 213 characters, one sentence, trigger-first. The routing corpus passes the
 mechanical lane (16 cases, 8 fire, 8 skip, 4 adversarial); the judgement and overlap
 lanes were not run (they need a logged-in `claude` CLI outside a sandbox).
@@ -362,17 +364,19 @@ over. Ask the same thing again in that session: no second block.
 
 ## 10. What was built, in order
 
-1. `general/tools/concept-graph/cg.py` and `tests/test_cg.py`.
-2. `vendor/claude/hooks/concept-graph/recall.sh`, the settings fragment, `tests/test_recall_hook.py`.
-3. `general/skills/feynman/` (SKILL.md, references, corpus, NOTICE) and `general/instructions/feynman.md`.
-4. `vendor/claude/install.py` and `tests/test_install.py`; vendor READMEs; top-level README.
+1. `tools/concept-graph/cg.py` and its `tests/test_cg.py`.
+2. `tools/concept-graph/recall.sh`, the settings fragment, `tests/test_recall_hook.py`.
+3. `skills/feynman/` (SKILL.md, references, corpus, NOTICE) and `instructions/feynman.md`.
+4. A shared installer and top-level README; replaced on 2026-10-30 by the per-component
+   `install.py`, `INSTALL.md` and `tests/test_install.py` after the operator's
+   component-first reorg.
 
 ## 11. Decisions taken, change them if wrong
 
 - Store at `~/.claude/concepts/`. Permissions are the two Bash allow rules in the
   fragment; the skill types the `cg` command in the exact form the rule matches.
 - Skill name `feynman`, tool `cg`, hook directory `concept-graph`.
-- One three-line instruction section (`general/instructions/feynman.md`), because the
+- One three-line instruction section (`instructions/feynman.md`), because the
   target machine has no existing rule that `memory:` blocks are data. The trigger
   surface stays the skill description only.
 - Lite form fires on explanatory questions; task prompts and one-line lookups do not

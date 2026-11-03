@@ -1,8 +1,8 @@
-"""Run vendor/claude/hooks/icm-detect.sh against fixture workspaces.
+"""Run hooks/icm-detect.sh against fixture workspaces.
 
 Checks: exit 0 always, silent outside an ICM workspace, valid JSON inside one,
 CLAUDE.md preferred as the entry file, and paths with quotes survive escaping.
-Standard library only. Run: python3 tests/test_hook.py
+Standard library only. Run: python3 icm/tests/test_hook.py
 """
 import json
 import pathlib
@@ -11,8 +11,8 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-HOOK = ROOT / "vendor/claude/hooks/icm-detect.sh"
-FRAGMENT = ROOT / "vendor/claude/settings.icm.fragment.json"
+HOOK = ROOT / "hooks/icm-detect.sh"
+FRAGMENT = ROOT / "config/settings.icm.fragment.json"
 
 CASES = [
     # name, entries, expect_output, expected substrings

@@ -1,5 +1,7 @@
 """End-to-end tests for cg.py against a temporary store. Standard library only.
-Run: python3 general/tools/concept-graph/tests/test_cg.py
+Run: python3 feynman/tools/concept-graph/tests/test_cg.py
+
+note to agent - this doesnt say what tool this is for.
 """
 import json
 import os

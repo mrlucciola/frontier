@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.claude/hooks/concept-graph/recall.sh\"",
+            "command": "\"$HOME/.claude/tools/concept-graph/recall.sh\"",
             "timeout": 3
           }
         ]

@@ -4,11 +4,12 @@
 # starting python. On a hit, cg.py hook-recall verifies whole phrases against the
 # prompt, applies scope and per-session dedup, and prints at most one JSON object.
 # Always exit 0; never print anything but that object.
-# Installed at ~/.claude/hooks/concept-graph/recall.sh (see vendor/claude/install.py).
+# Lives beside cg.py; installed to ~/.claude/tools/concept-graph/ (feynman/install.py).
 set -u
 
+here="$(cd "$(dirname "$0")" && pwd)"
 root="${CONCEPT_GRAPH_ROOT:-$HOME/.claude/concepts}"
-cg="${CONCEPT_GRAPH_CG:-$HOME/.claude/tools/concept-graph/cg.py}"
+cg="${CONCEPT_GRAPH_CG:-$here/cg.py}"
 py="${CONCEPT_GRAPH_PYTHON:-python3}"
 lex="$root/lexicon.txt"
 

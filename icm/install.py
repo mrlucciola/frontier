@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-"""Install this repo's Claude Code layer into ~/.claude. Standard library only.
+"""Install the ICM component into ~/.claude. Standard library only, Python 3.9+.
 
-    python3 vendor/claude/install.py                  # both components
-    python3 vendor/claude/install.py --only feynman   # one component (repeatable)
-    python3 vendor/claude/install.py --dry-run        # show every action, change nothing
-    python3 vendor/claude/install.py --link           # symlink instead of copy (git pull = live update)
-    python3 vendor/claude/install.py --uninstall      # remove what this script installed
+    python3 icm/install.py              # install or update
+    python3 icm/install.py --dry-run    # show every action, change nothing
+    python3 icm/install.py --link       # symlink instead of copy (git pull = live update)
+    python3 icm/install.py --uninstall  # remove what this script installed
 
-Components:
-  icm      skills icm-architect + icm-run, hook icm-detect.sh, settings.icm.fragment.json,
-           instructions/icm.md
-  feynman  skill feynman, tool concept-graph, hook concept-graph/recall.sh,
-           settings.feynman.fragment.json, instructions/feynman.md, store ~/.claude/concepts
+What it does, in order:
+  1. skills/icm-architect, skills/icm-run -> ~/.claude/skills/
+  2. hooks/icm-detect.sh                  -> ~/.claude/hooks/icm-detect.sh
+  3. merges config/settings.icm.fragment.json into ~/.claude/settings.json
+     (hook entries by command string, allow rules by value; backup first)
+  4. appends instructions/icm.md to ~/.claude/CLAUDE.md when its heading is
+     absent (backup first)
 
-For each selected component, in order: copy (or link) its files into ~/.claude, merge
-its settings fragment into ~/.claude/settings.json (hook entries by command string,
-allow rules by value; backup first), append its instruction section to
-~/.claude/CLAUDE.md when the heading is absent (backup first).
-
-Idempotent: a second run replaces only what it installed (marker file .installed-from
-inside copied dirs). A target that exists without the marker is left alone unless
---force is given.
+Idempotent: a second run replaces only what it installed (marker file
+.installed-from inside copied dirs). A target that exists without the marker is
+left alone unless --force is given. This script knows nothing about any other
+component in this repo.
 """
 import argparse
 import datetime
@@ -28,30 +25,23 @@ import json
 import os
 import pathlib
 import shutil
-import subprocess
 import sys
 
-REPO = pathlib.Path(__file__).resolve().parents[2]
+COMPONENT = pathlib.Path(__file__).resolve().parent
 MARKER = ".installed-from"
 
-COMPONENTS = {
-    "icm": {
-        "dirs": [("general/skills/icm-architect", "skills/icm-architect"),
-                 ("general/skills/icm-run", "skills/icm-run")],
-        "files": [("vendor/claude/hooks/icm-detect.sh", "hooks/icm-detect.sh")],
-        "fragment": "vendor/claude/settings.icm.fragment.json",
-        "instructions": [("general/instructions/icm.md", "## ICM workspaces")],
-    },
-    "feynman": {
-        "dirs": [("general/skills/feynman", "skills/feynman"),
-                 ("general/tools/concept-graph", "tools/concept-graph"),
-                 ("vendor/claude/hooks/concept-graph", "hooks/concept-graph")],
-        "files": [],
-        "fragment": "vendor/claude/settings.feynman.fragment.json",
-        "instructions": [("general/instructions/feynman.md", "## Recalled concepts")],
-    },
-}
-IGNORE = shutil.ignore_patterns("tests", "__pycache__", ".tmp", "*.pyc", "VENDOR.lock", "vendor.sh")
+DIRS = [
+    ("skills/icm-architect", "skills/icm-architect"),
+    ("skills/icm-run", "skills/icm-run"),
+]
+FILES = [
+    ("hooks/icm-detect.sh", "hooks/icm-detect.sh"),
+]
+FRAGMENT = COMPONENT / "config/settings.icm.fragment.json"
+INSTRUCTIONS = [
+    ("instructions/icm.md", "## ICM workspaces"),
+]
+IGNORE = shutil.ignore_patterns("tests", "__pycache__", ".tmp", "*.pyc")
 
 
 def stamp():
@@ -59,19 +49,12 @@ def stamp():
 
 
 class Installer:
-    def __init__(self, home, dry, link, force, components):
+    def __init__(self, home, dry, link, force):
         self.home = home
         self.dry = dry
         self.link = link
         self.force = force
-        self.components = components
         self.problems = []
-
-    def _fragments(self):
-        return [json.loads((REPO / COMPONENTS[c]["fragment"]).read_text()) for c in self.components]
-
-    def _instructions(self):
-        return [pair for c in self.components for pair in COMPONENTS[c]["instructions"]]
 
     def say(self, msg):
         print(("DRY  " if self.dry else "     ") + msg)
@@ -84,7 +67,7 @@ class Installer:
         return (target / MARKER).exists() if target.is_dir() else False
 
     def put_dir(self, src_rel, dst_rel):
-        src, dst = REPO / src_rel, self.home / dst_rel
+        src, dst = COMPONENT / src_rel, self.home / dst_rel
         if dst.exists() or dst.is_symlink():
             if not self._owned(dst) and not self.force:
                 self.problems.append("%s exists and was not installed by this script (use --force)" % dst)
@@ -105,10 +88,10 @@ class Installer:
             if not self.dry:
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(src, dst, ignore=IGNORE)
-                (dst / MARKER).write_text(str(REPO) + "\n")
+                (dst / MARKER).write_text(str(COMPONENT) + "\n")
 
     def put_file(self, src_rel, dst_rel):
-        src, dst = REPO / src_rel, self.home / dst_rel
+        src, dst = COMPONENT / src_rel, self.home / dst_rel
         self.say("%s   %s -> %s" % ("link" if self.link else "copy", src_rel, dst))
         if self.dry:
             return
@@ -162,40 +145,38 @@ class Installer:
         return [h.get("command", "") for h in group.get("hooks", [])]
 
     def merge_settings(self):
+        frag = json.loads(FRAGMENT.read_text())
         path, data = self._settings()
         changed = False
         hooks = data.setdefault("hooks", {})
-        perms = data.setdefault("permissions", {})
-        allow = perms.setdefault("allow", [])
-        for frag in self._fragments():
-            for event, groups in frag.get("hooks", {}).items():
-                existing = hooks.setdefault(event, [])
-                present = {c for g in existing for c in self._commands(g)}
-                for g in groups:
-                    cmds = self._commands(g)
-                    if all(c in present for c in cmds):
-                        continue
-                    self.say("settings: add %s hook %s" % (event, cmds))
-                    existing.append(g)
-                    changed = True
-            for rule in frag.get("permissions", {}).get("allow", []):
-                if rule not in allow:
-                    self.say("settings: allow %s" % rule)
-                    allow.append(rule)
-                    changed = True
+        for event, groups in frag.get("hooks", {}).items():
+            existing = hooks.setdefault(event, [])
+            present = {c for g in existing for c in self._commands(g)}
+            for g in groups:
+                cmds = self._commands(g)
+                if all(c in present for c in cmds):
+                    continue
+                self.say("settings: add %s hook %s" % (event, cmds))
+                existing.append(g)
+                changed = True
+        allow = data.setdefault("permissions", {}).setdefault("allow", [])
+        for rule in frag.get("permissions", {}).get("allow", []):
+            if rule not in allow:
+                self.say("settings: allow %s" % rule)
+                allow.append(rule)
+                changed = True
         if changed:
             self._write_settings(path, data)
         else:
             self.say("settings: already up to date")
 
     def unmerge_settings(self):
+        frag = json.loads(FRAGMENT.read_text())
         path, data = self._settings()
         if not data:
             return
-        ours, rules = set(), []
-        for frag in self._fragments():
-            ours |= {c for groups in frag.get("hooks", {}).values() for g in groups for c in self._commands(g)}
-            rules += frag.get("permissions", {}).get("allow", [])
+        ours = {c for groups in frag.get("hooks", {}).values() for g in groups for c in self._commands(g)}
+        rules = frag.get("permissions", {}).get("allow", [])
         changed = False
         for event, groups in list(data.get("hooks", {}).items()):
             kept = [g for g in groups if not any(c in ours for c in self._commands(g))]
@@ -221,10 +202,10 @@ class Installer:
         path = self.home / "CLAUDE.md"
         current = path.read_text(encoding="utf-8") if path.exists() else ""
         additions = []
-        for rel, heading in self._instructions():
+        for rel, heading in INSTRUCTIONS:
             if heading in current:
                 continue
-            additions.append((REPO / rel).read_text(encoding="utf-8").strip() + "\n")
+            additions.append((COMPONENT / rel).read_text(encoding="utf-8").strip() + "\n")
             self.say("instructions: append %s to %s" % (rel, path))
         if not additions:
             self.say("instructions: already present")
@@ -241,32 +222,22 @@ class Installer:
     # ---- flows
 
     def install(self):
-        for c in self.components:
-            for s, d in COMPONENTS[c]["dirs"]:
-                self.put_dir(s, d)
-            for s, d in COMPONENTS[c]["files"]:
-                self.put_file(s, d)
+        for s, d in DIRS:
+            self.put_dir(s, d)
+        for s, d in FILES:
+            self.put_file(s, d)
         if self.problems:
             return
         self.merge_settings()
         self.append_instructions()
-        if "feynman" in self.components:
-            self.say("store: %s" % (self.home / "concepts"))
-            if not self.dry:
-                os.environ.setdefault("CONCEPT_GRAPH_ROOT", str(self.home / "concepts"))
-                subprocess.run([sys.executable, str(self.home / "tools/concept-graph/cg.py"), "init"], check=False)
 
     def uninstall(self):
-        for c in self.components:
-            for _, d in COMPONENTS[c]["dirs"]:
-                self.remove(d)
-            for _, d in COMPONENTS[c]["files"]:
-                self.remove(d)
+        for _, d in DIRS:
+            self.remove(d)
+        for _, d in FILES:
+            self.remove(d)
         self.unmerge_settings()
-        kept = ["the instruction sections in %s" % (self.home / "CLAUDE.md")]
-        if "feynman" in self.components:
-            kept.insert(0, "%s (your cards)" % (self.home / "concepts"))
-        self.say("left in place: " + " and ".join(kept))
+        self.say("left in place: the '## ICM workspaces' section in %s" % (self.home / "CLAUDE.md"))
 
 
 def main():
@@ -276,28 +247,17 @@ def main():
     ap.add_argument("--link", action="store_true", help="symlink dirs and files instead of copying")
     ap.add_argument("--force", action="store_true", help="replace targets this script did not install")
     ap.add_argument("--uninstall", action="store_true")
-    ap.add_argument("--only", action="append", choices=sorted(COMPONENTS), metavar="COMPONENT",
-                    help="icm or feynman; repeatable; default both")
     a = ap.parse_args()
     home = pathlib.Path(os.path.expanduser(a.home))
-    components = [c for c in COMPONENTS if c in (a.only or COMPONENTS)]
-    inst = Installer(home, a.dry_run, a.link, a.force, components)
-    if a.uninstall:
-        inst.uninstall()
-    else:
-        inst.install()
+    inst = Installer(home, a.dry_run, a.link, a.force)
+    inst.uninstall() if a.uninstall else inst.install()
     if inst.problems:
         print("\n".join("PROBLEM " + p for p in inst.problems))
         return 1
     if not a.uninstall:
         print("\nverify:")
-        if "icm" in components:
-            print("  python3 %s" % (REPO / "tests/test_hook.py"))
-            print("  docs/install-icm.md has the first live test")
-        if "feynman" in components:
-            print("  python3 %s status" % (home / "tools/concept-graph/cg.py"))
-            print("  python3 %s" % (REPO / "tests/test_recall_hook.py"))
-            print("  docs/install-feynman.md has the first live test")
+        print("  python3 %s" % (COMPONENT / "tests/test_hook.py"))
+        print("  %s has the first live test" % (COMPONENT / "INSTALL.md"))
     return 0
 
 

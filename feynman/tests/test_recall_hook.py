@@ -1,8 +1,10 @@
-"""Run vendor/claude/hooks/concept-graph/recall.sh against a temporary store.
+"""Run tools/concept-graph/recall.sh against a temporary store.
 
-Checks: silent exit 0 with no store, silent on a prompt with no lexicon token and
-python is NOT started, valid Claude JSON on a hit, and the settings fragment
-registers the script. Standard library only. Run: python3 tests/test_recall_hook.py
+Component-level test: it exercises the hook AND the component's settings fragment,
+so it lives in feynman/tests/, not beside the tool (tool-only tests stay in
+tools/concept-graph/tests/). Checks: silent exit 0 with no store, silent on a prompt
+with no lexicon token and python is NOT started, valid Claude JSON on a hit, and the
+fragment registers the script. Run: python3 feynman/tests/test_recall_hook.py
 """
 import json
 import os
@@ -11,10 +13,11 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-HOOK = ROOT / "vendor/claude/hooks/concept-graph/recall.sh"
-CG = ROOT / "general/tools/concept-graph/cg.py"
-FRAGMENT = ROOT / "vendor/claude/settings.feynman.fragment.json"
+COMPONENT = pathlib.Path(__file__).resolve().parent.parent
+TOOL = COMPONENT / "tools/concept-graph"
+HOOK = TOOL / "recall.sh"
+CG = TOOL / "cg.py"
+FRAGMENT = COMPONENT / "config/settings.feynman.fragment.json"
 FAILS = []
 
 
