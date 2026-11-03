@@ -1,0 +1,405 @@
+{
+ "schema_version": 2,
+ "version": "starter-2026-11-02-v2",
+ "note": "Concept keys equal feynman global node keys (global/<key>). Never change a question's meaning while keeping its id.",
+ "concepts": [
+  {
+   "key": "idempotency",
+   "title": "Idempotency",
+   "domain": "distributed"
+  },
+  {
+   "key": "event-ordering",
+   "title": "Event ordering",
+   "domain": "distributed"
+  },
+  {
+   "key": "transactional-outbox",
+   "title": "Transactions and outbox",
+   "domain": "distributed"
+  },
+  {
+   "key": "backpressure",
+   "title": "Backpressure",
+   "domain": "distributed"
+  },
+  {
+   "key": "consistency-models",
+   "title": "Read consistency",
+   "domain": "distributed"
+  },
+  {
+   "key": "cache-invalidation",
+   "title": "Cache invalidation",
+   "domain": "distributed"
+  },
+  {
+   "key": "rust-ownership",
+   "title": "Rust ownership",
+   "domain": "rust"
+  },
+  {
+   "key": "rust-lifetimes",
+   "title": "Rust lifetimes",
+   "domain": "rust"
+  },
+  {
+   "key": "rust-send-sync",
+   "title": "Rust Send and Sync",
+   "domain": "rust"
+  },
+  {
+   "key": "ts-narrowing",
+   "title": "TypeScript narrowing",
+   "domain": "typescript"
+  },
+  {
+   "key": "ts-unknown",
+   "title": "TypeScript runtime boundaries",
+   "domain": "typescript"
+  },
+  {
+   "key": "ts-generics",
+   "title": "TypeScript generics",
+   "domain": "typescript"
+  }
+ ],
+ "questions": [
+  {
+   "id": "idempotency-1",
+   "concept": "idempotency",
+   "dimension": "application",
+   "prompt": "A payment endpoint may receive concurrent retries with the same idempotency key. Which design prevents two committed charges in your database?",
+   "options": {
+    "A": "Read a cached result, then insert the charge if none exists.",
+    "B": "Claim a unique idempotency key and commit the charge plus stored result in the same database transaction.",
+    "C": "Serialize requests in each application instance using a mutex.",
+    "D": "Reject requests whose client timestamp is older than the most recent request."
+   },
+   "answer": "B",
+   "explanation": "A database uniqueness constraint arbitrates concurrent claims across instances; a transaction couples the claim, charge, and result. External payment execution needs its own idempotency or reconciliation contract."
+  },
+  {
+   "id": "idempotency-2",
+   "concept": "idempotency",
+   "dimension": "debugging",
+   "prompt": "A request reuses an existing idempotency key with a different payment amount. What should the endpoint do?",
+   "options": {
+    "A": "Return the original success without checking the request payload.",
+    "B": "Execute a second payment and replace the stored response.",
+    "C": "Reject the mismatch after comparing a canonical request fingerprint.",
+    "D": "Create a fresh server-generated key and execute the payment."
+   },
+   "answer": "C",
+   "explanation": "The key identifies one logical operation. Binding it to a canonical request fingerprint detects conflicting reuse without creating another operation."
+  },
+  {
+   "id": "event-ordering-1",
+   "concept": "event-ordering",
+   "dimension": "application",
+   "prompt": "A projection receives account versions 12, 14, then 13. Every event contains the complete account state. Which rule prevents rollback to stale state?",
+   "options": {
+    "A": "Apply an event only if its version exceeds the stored version.",
+    "B": "Apply events in delivery order because delivery is at least once.",
+    "C": "Apply the event with the latest local receipt timestamp.",
+    "D": "Ignore repeated payloads but apply every distinct payload."
+   },
+   "answer": "A",
+   "explanation": "With complete snapshots, comparing monotonic entity versions prevents an older event from overwriting newer state. Delta events require gap handling instead."
+  },
+  {
+   "id": "event-ordering-2",
+   "concept": "event-ordering",
+   "dimension": "debugging",
+   "prompt": "An event stream carries balance deltas. The consumer has applied sequence 8 and receives sequence 10. What preserves correctness?",
+   "options": {
+    "A": "Apply 10 and discard every later arrival with a smaller sequence.",
+    "B": "Apply 10 twice if sequence 9 is still absent after a timeout.",
+    "C": "Reset the balance to zero and resume at sequence 10.",
+    "D": "Buffer or defer 10 while recovering sequence 9, then apply each delta once."
+   },
+   "answer": "D",
+   "explanation": "A later delta does not subsume a missing delta. Recovering the gap and deduplicating each sequence preserves the ordered aggregate."
+  },
+  {
+   "id": "transactional-outbox-1",
+   "concept": "transactional-outbox",
+   "dimension": "application",
+   "prompt": "A service must commit an order and eventually publish its event. There is no distributed transaction with the broker. Which design closes the database-commit/publish crash window?",
+   "options": {
+    "A": "Publish the event first, then insert the order.",
+    "B": "Commit the order and an outbox row in one database transaction, then relay the row.",
+    "C": "Insert the order and publish concurrently, retrying whichever fails.",
+    "D": "Commit the order, then perform one synchronous broker call."
+   },
+   "answer": "B",
+   "explanation": "The committed outbox is durable intent to publish. A relay may publish more than once, so consumers still need idempotency."
+  },
+  {
+   "id": "transactional-outbox-2",
+   "concept": "transactional-outbox",
+   "dimension": "debugging",
+   "prompt": "An outbox relay publishes a message, then crashes before marking its row sent. What must downstream handling tolerate?",
+   "options": {
+    "A": "The message disappearing from every broker replica.",
+    "B": "A database rollback of the previously committed order.",
+    "C": "The same logical message being delivered again.",
+    "D": "An automatic change to the message identifier on restart."
+   },
+   "answer": "C",
+   "explanation": "The relay can republish the pending row after restart. A stable event identifier lets consumers deduplicate the repeated logical event."
+  },
+  {
+   "id": "backpressure-1",
+   "concept": "backpressure",
+   "dimension": "application",
+   "prompt": "Producers sustain 2,000 jobs/s while workers can sustain 1,000 jobs/s. Which measure bounds memory during prolonged overload?",
+   "options": {
+    "A": "Use a bounded queue with explicit admission control, rejection, or producer throttling.",
+    "B": "Increase each request timeout while retaining every incoming job in memory.",
+    "C": "Retry failed submissions immediately until a worker accepts them.",
+    "D": "Allocate one waiting task per incoming job without a queue limit."
+   },
+   "answer": "A",
+   "explanation": "An unbounded backlog grows whenever arrivals exceed service capacity. Bounded admission makes overload explicit and limits retained work."
+  },
+  {
+   "id": "backpressure-2",
+   "concept": "backpressure",
+   "dimension": "debugging",
+   "prompt": "A dependency is overloaded and clients immediately retry every failed request. Which change reduces retry amplification?",
+   "options": {
+    "A": "Remove all client deadlines so requests eventually succeed.",
+    "B": "Double retry concurrency for every failure.",
+    "C": "Retry at a fixed one-millisecond interval on every client.",
+    "D": "Use bounded retries with backoff and jitter, within a total request deadline."
+   },
+   "answer": "D",
+   "explanation": "Backoff and jitter spread retries; attempt and deadline limits bound additional load. Retry eligibility must still respect the operation semantics."
+  },
+  {
+   "id": "consistency-models-1",
+   "concept": "consistency-models",
+   "dimension": "application",
+   "prompt": "A client writes successfully to the leader, then reads an asynchronously replicated follower and sees the old value. Which targeted approach supports read-your-writes?",
+   "options": {
+    "A": "Randomly choose another follower for every read.",
+    "B": "Route the subsequent read to the leader, or wait for a follower to reach the write position.",
+    "C": "Increase the client-side response cache TTL.",
+    "D": "Attach a newer client wall-clock timestamp without changing replica routing."
+   },
+   "answer": "B",
+   "explanation": "Read-your-writes requires the read source to include that write. Routing or replication-position barriers provide that property; wall-clock labels alone do not."
+  },
+  {
+   "id": "consistency-models-2",
+   "concept": "consistency-models",
+   "dimension": "recognition",
+   "prompt": "Operation A completes before operation B begins. For a linearizable object, what constraint applies?",
+   "options": {
+    "A": "B must execute on the same physical machine as A.",
+    "B": "A and B must have equal network latency.",
+    "C": "The single-object ordering must place A before B.",
+    "D": "Every replica must acknowledge A before B can be invoked."
+   },
+   "answer": "C",
+   "explanation": "Linearizability respects real-time precedence for non-overlapping operations. It specifies observable behavior, not a particular replication mechanism."
+  },
+  {
+   "id": "cache-invalidation-1",
+   "concept": "cache-invalidation",
+   "dimension": "debugging",
+   "prompt": "A cache-aside reader fetches database version 4. A writer commits version 5 and invalidates the cache. The reader then caches version 4. What happened?",
+   "options": {
+    "A": "A stale fill raced with invalidation; invalidation alone did not prevent repopulating stale data.",
+    "B": "The database necessarily violated transaction isolation.",
+    "C": "The cache must have returned the wrong key.",
+    "D": "The writer must have invalidated before committing."
+   },
+   "answer": "A",
+   "explanation": "An in-flight read can populate stale data after invalidation. Version-aware writes, fencing, or an explicitly bounded-staleness design must address this race."
+  },
+  {
+   "id": "cache-invalidation-2",
+   "concept": "cache-invalidation",
+   "dimension": "application",
+   "prompt": "An expensive cached item expires and hundreds of requests miss simultaneously. Which technique directly reduces duplicate recomputation for that key?",
+   "options": {
+    "A": "Give all clients the same short retry interval.",
+    "B": "Disable the cache until traffic falls.",
+    "C": "Allow every request to recompute and keep the last result.",
+    "D": "Coalesce concurrent misses into one in-flight computation for the key."
+   },
+   "answer": "D",
+   "explanation": "Single-flight request coalescing shares one computation among concurrent callers. Distributed deployments need an appropriate cross-instance mechanism if duplication across instances also matters."
+  },
+  {
+   "id": "rust-ownership-1",
+   "concept": "rust-ownership",
+   "dimension": "recognition",
+   "prompt": "In Rust, let a = String::from(\"x\"); let b = a; is followed by an attempt to use a. Why is that use rejected?",
+   "options": {
+    "A": "String values must always be passed by shared reference.",
+    "B": "Assignment moved the non-Copy value, so a is no longer a valid owner.",
+    "C": "The variable b automatically holds a mutable borrow of a.",
+    "D": "The string allocation was freed immediately by the assignment."
+   },
+   "answer": "B",
+   "explanation": "String is not Copy. The assignment transfers ownership to b; the allocation remains owned by b rather than being freed by the move."
+  },
+  {
+   "id": "rust-ownership-2",
+   "concept": "rust-ownership",
+   "dimension": "application",
+   "prompt": "A function only needs to inspect a String without retaining it. Which parameter most naturally accepts both String borrows and string slices?",
+   "options": {
+    "A": "String",
+    "B": "&mut String",
+    "C": "&str",
+    "D": "Box<String>"
+   },
+   "answer": "C",
+   "explanation": "&str is a borrowed view of UTF-8 text. A String can be borrowed and coerced to &str without transferring ownership or requiring mutation."
+  },
+  {
+   "id": "rust-lifetimes-1",
+   "concept": "rust-lifetimes",
+   "dimension": "recognition",
+   "prompt": "What does a lifetime parameter linking a function input reference to its returned reference express?",
+   "options": {
+    "A": "A validity relationship that the compiler checks; it does not extend the referent lifetime.",
+    "B": "An instruction to keep the referent allocated until program exit.",
+    "C": "A runtime reference counter shared by the input and output.",
+    "D": "A request to clone the referent if the caller drops it early."
+   },
+   "answer": "A",
+   "explanation": "Lifetime annotations describe relationships among reference validities. They do not allocate, clone, or prolong the life of an owned value."
+  },
+  {
+   "id": "rust-lifetimes-2",
+   "concept": "rust-lifetimes",
+   "dimension": "debugging",
+   "prompt": "A function creates a local String and attempts to return a reference to its contents. Which redesign can return the text without a dangling reference?",
+   "options": {
+    "A": "Give the returned reference an unconstrained lifetime parameter.",
+    "B": "Annotate the local borrow as static.",
+    "C": "Wrap the local reference in Option.",
+    "D": "Return the owned String, transferring ownership to the caller."
+   },
+   "answer": "D",
+   "explanation": "The local String would otherwise be dropped on return. Returning ownership gives the caller responsibility for the allocation lifetime."
+  },
+  {
+   "id": "rust-send-sync-1",
+   "concept": "rust-send-sync",
+   "dimension": "recognition",
+   "prompt": "Which statement accurately describes Rust Send and Sync?",
+   "options": {
+    "A": "Send permits shared references across threads; Sync permits moving ownership across threads.",
+    "B": "Send permits transferring a value across threads; Sync means shared references to the type can be sent across threads.",
+    "C": "Both traits mean every method uses a mutex internally.",
+    "D": "Both traits guarantee lock-free access to mutable state."
+   },
+   "answer": "B",
+   "explanation": "Send concerns transferring values. Sync means &T is Send. Neither trait promises internal locking or lock-free algorithms."
+  },
+  {
+   "id": "rust-send-sync-2",
+   "concept": "rust-send-sync",
+   "dimension": "application",
+   "prompt": "Several threads need shared ownership of a mutable counter. Which standard combination supplies shared ownership and mutually exclusive mutation?",
+   "options": {
+    "A": "Rc<RefCell<u64>>",
+    "B": "Arc<RefCell<u64>>",
+    "C": "Arc<Mutex<u64>>",
+    "D": "Rc<Mutex<u64>>"
+   },
+   "answer": "C",
+   "explanation": "Arc supplies thread-safe shared ownership and Mutex supplies synchronized interior mutation. Rc is not thread-safe shared ownership; RefCell is not a cross-thread synchronization primitive."
+  },
+  {
+   "id": "ts-narrowing-1",
+   "concept": "ts-narrowing",
+   "dimension": "application",
+   "prompt": "A TypeScript union contains {kind: \"ok\", value: string} and {kind: \"error\", message: string}. How can code access value safely?",
+   "options": {
+    "A": "Check result.kind === \"ok\" before accessing result.value.",
+    "B": "Assert result as the success member before every access.",
+    "C": "Access result.value with a non-null assertion regardless of kind.",
+    "D": "Remove kind from both members and inspect their variable names."
+   },
+   "answer": "A",
+   "explanation": "A literal discriminant narrows the union to the matching member. Assertions do not validate which variant exists at runtime."
+  },
+  {
+   "id": "ts-narrowing-2",
+   "concept": "ts-narrowing",
+   "dimension": "debugging",
+   "prompt": "A switch over a discriminated union uses a default branch assigning the remaining value to never. What is the purpose?",
+   "options": {
+    "A": "Throw automatically whenever any valid variant reaches the switch.",
+    "B": "Erase the default branch from emitted JavaScript.",
+    "C": "Force runtime validation of all external objects.",
+    "D": "Make an unhandled union member produce a type-checking error."
+   },
+   "answer": "D",
+   "explanation": "After exhaustive narrowing, no member remains. If a new member is not handled, it cannot be assigned to never. This is a compile-time exhaustiveness check."
+  },
+  {
+   "id": "ts-unknown-1",
+   "concept": "ts-unknown",
+   "dimension": "application",
+   "prompt": "A network response is parsed and asserted as User using as User. What additional step establishes that required fields actually have the expected runtime types?",
+   "options": {
+    "A": "Enable a longer HTTP timeout.",
+    "B": "Validate the parsed value with runtime checks or a schema parser.",
+    "C": "Rename the response variable to user.",
+    "D": "Assert it a second time through unknown."
+   },
+   "answer": "B",
+   "explanation": "Type assertions change the compiler view, not the runtime value. Validation checks the data crossing the network boundary."
+  },
+  {
+   "id": "ts-unknown-2",
+   "concept": "ts-unknown",
+   "dimension": "recognition",
+   "prompt": "Why is unknown usually a safer type than any for unvalidated input?",
+   "options": {
+    "A": "unknown automatically strips unrecognized object fields.",
+    "B": "unknown inserts runtime checks before every property access.",
+    "C": "unknown requires narrowing or an explicit assertion before unsafe use; any bypasses those checks.",
+    "D": "unknown guarantees the incoming value is serializable JSON."
+   },
+   "answer": "C",
+   "explanation": "unknown preserves the need to establish a usable type. It does not perform runtime validation by itself, but prevents unchecked operations that any permits."
+  },
+  {
+   "id": "ts-generics-1",
+   "concept": "ts-generics",
+   "dimension": "application",
+   "prompt": "Which signature preserves the relationship between an object key and its corresponding value type?",
+   "options": {
+    "A": "function get<T, K extends keyof T>(obj: T, key: K): T[K]",
+    "B": "function get<T>(obj: T, key: string): any",
+    "C": "function get(obj: object, key: string): unknown",
+    "D": "function get<T>(obj: T, key: keyof T): T"
+   },
+   "answer": "A",
+   "explanation": "K is constrained to keys of T, and T[K] selects the value type for that specific key. Returning T would describe the whole object, not the selected property."
+  },
+  {
+   "id": "ts-generics-2",
+   "concept": "ts-generics",
+   "dimension": "recognition",
+   "prompt": "What does a constraint T extends {id: string} require?",
+   "options": {
+    "A": "T must contain exactly one property named id.",
+    "B": "Every value passed at runtime is validated for an id field.",
+    "C": "T must be a class whose constructor initializes id.",
+    "D": "T must be assignable to a shape containing a string id; additional fields may exist."
+   },
+   "answer": "D",
+   "explanation": "The constraint supplies a structural compile-time requirement. It neither bans additional properties in T nor performs runtime validation."
+  }
+ ]
+}

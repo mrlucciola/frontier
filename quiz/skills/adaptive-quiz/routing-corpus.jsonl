@@ -1,0 +1,12 @@
+{"situation": "User says: quiz me on distributed systems", "expect": "fire", "why": "explicit quiz request in a bank domain", "class": "core"}
+{"situation": "User runs /adaptive-quiz five questions on rust", "expect": "fire", "why": "explicit invocation", "class": "core"}
+{"situation": "User says they want to test themselves on idempotency and the outbox pattern with multiple choice", "expect": "fire", "why": "self-test request naming bank concepts", "class": "core"}
+{"situation": "After a study session on TypeScript narrowing, user asks to be drilled on it", "expect": "fire", "why": "drill request on a bank concept", "class": "core"}
+{"situation": "User asks for a few practice questions before an interview on caching and consistency", "expect": "fire", "why": "practice-questions request in bank domains", "class": "edge"}
+{"situation": "User asks to see their quiz accuracy so far", "expect": "fire", "why": "profile is part of the quiz workflow", "class": "edge"}
+{"situation": "User asks how Rust ownership works", "expect": "skip", "why": "understanding question, feynman territory", "class": "core"}
+{"situation": "User asks to add a quiz feature to their web app", "expect": "skip", "why": "'quiz' keyword but it is a coding task", "class": "adversarial"}
+{"situation": "User asks you to write exam questions about their company's internal style guide", "expect": "skip", "why": "authoring questions about arbitrary content; the bank is fixed", "class": "adversarial"}
+{"situation": "User asks to test the new API endpoint they just wrote", "expect": "skip", "why": "'test' means software testing, not a learner quiz", "class": "adversarial"}
+{"situation": "User asks what the capital of France is", "expect": "skip", "why": "ordinary factual question, no quiz request", "class": "core"}
+{"situation": "User asks you to review their answers to a take-home exam for correctness", "expect": "skip", "why": "grading external material, not running the bank", "class": "edge"}

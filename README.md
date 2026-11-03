@@ -12,6 +12,11 @@ know nothing about each other. Install one, both, or neither.
   `~/.claude/concepts/`; a `cg` tool that owns the store; a UserPromptSubmit hook that
   recalls matching cards in any directory. Guide:
   [`feynman/INSTALL.md`](/feynman/INSTALL.md). Design: `feynman/docs/design.md`.
+- **`quiz/`** -- an `adaptive-quiz` skill: fixed multiple-choice bank (24 items, 12
+  concepts) with deterministic answer history at `~/.claude/knowledge/quiz.sqlite3`.
+  Linked to feynman by identity only: concept keys equal card slugs, a missed concept
+  can become an open gap on the matching card, and neither reads the other's storage.
+  Guide: [`quiz/INSTALL.md`](/quiz/INSTALL.md).
 
 Design rule: the global layer stays thin. A session that never touches a component
 pays one skill description in the skills list and a few milliseconds of shell per
@@ -23,12 +28,13 @@ prompt. Nothing else.
 git clone <this repo> ~/frontier-clean
 python3 ~/frontier-clean/icm/install.py --dry-run && python3 ~/frontier-clean/icm/install.py
 python3 ~/frontier-clean/feynman/install.py --dry-run && python3 ~/frontier-clean/feynman/install.py
+python3 ~/frontier-clean/quiz/install.py --dry-run && python3 ~/frontier-clean/quiz/install.py
 ```
 
 Each installer copies (or with `--link`, symlinks) its files into `~/.claude`, merges
 its hook registration and allow rules into `~/.claude/settings.json`, appends its
 instruction section to `~/.claude/CLAUDE.md` once, and backs both files up first.
-`--uninstall` reverses that (Feynman keeps your cards). Settings hot-reload; a new
+`--uninstall` reverses that (Feynman keeps your cards, quiz keeps your answers). Settings hot-reload; a new
 skill needs a new session. Follow each component's INSTALL.md for file checks and a
 first live test.
 
@@ -57,7 +63,9 @@ python3 ~/frontier-clean/icm/tests/test_install.py
 python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
 python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
 python3 ~/frontier-clean/feynman/tests/test_install.py
-# expect: OK five times
+python3 ~/frontier-clean/quiz/tests/test_quiz.py
+python3 ~/frontier-clean/quiz/tests/test_install.py
+# expect: OK seven times
 ```
 
 ## Sources

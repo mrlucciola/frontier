@@ -14,3 +14,5 @@
 {"situation": "User asks you to understand the failing CI log and fix the flaky test", "expect": "skip", "why": "'understand' used as a verb for debugging work, deliverable is a fix", "class": "adversarial"}
 {"situation": "User asks why the build is failing right now", "expect": "skip", "why": "why question, but it is an incident to diagnose, not a concept to learn", "class": "adversarial"}
 {"situation": "Inside an ICM workspace mid-stage, user asks how the stage's input table is interpreted", "expect": "skip", "why": "ICM workspace rule: ordinary questions do not fire there", "class": "edge"}
+{"situation": "User asks you to test their understanding of backpressure by having them explain it and probing the weak spots", "expect": "fire", "why": "teach-back on a concept is the method's home ground", "class": "edge"}
+{"situation": "User asks for a five-question multiple-choice quiz on rust", "expect": "skip", "why": "fixed-bank multiple-choice practice is the adaptive-quiz skill", "class": "adversarial"}
