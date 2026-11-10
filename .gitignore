@@ -118,3 +118,13 @@ dist
 
 # TernJS port file
 .tern-port
+# pm archive: local history, not repo content (R2 amendment 2026-09-14).
+# Contents excluded rather than the directory, so the index can be
+# re-included -- git cannot re-include a file whose parent directory is
+# itself excluded.
+.pm/archive/*
+!.pm/archive/archive-index.jsonl
+# .pm/lock is local bookkeeping, not repo content (folds cl-f7d6b4,
+# spec/v2/SPEC.md section 1).
+.pm/lock
+.pm/tickets.jsonl
