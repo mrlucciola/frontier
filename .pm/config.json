@@ -1,5 +1,6 @@
 {
   "created_by": null,
+  "findings_required": true,
   "history_ref": "pm-store",
   "prefix": "fc",
   "spec_version": 2,
