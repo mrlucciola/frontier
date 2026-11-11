@@ -1,78 +1,100 @@
-# frontier-clean: self-contained components for Claude Code
+# frontier-clean
 
-Each top-level directory is one component: everything it needs (skills, hooks, tools,
-settings fragment, instruction section, tests) plus its own `install.py`. Components
-know nothing about each other. Install one, both, or neither.
+Self-contained components for agentic coding. This guide defines contribution
+standards and intended behavior. Component documentation describes supported
+providers, current behavior, and setup.
 
-- **`icm/`** -- Interpretable Context Methodology (Van Clief & McDermott,
-  arXiv:2603.16021): one always-loaded instruction, two skills loaded on demand, one
-  SessionStart hook. Guide: [`icm/INSTALL.md`](/icm/INSTALL.md).
-- **`feynman/`** -- a skill that answers "how or why does X work" questions the Feynman
-  way and persists what it learned as cards in a global concept graph at
-  `~/.claude/concepts/`; a `cg` tool that owns the store; a UserPromptSubmit hook that
-  recalls matching cards in any directory. Guide:
-  [`feynman/INSTALL.md`](/feynman/INSTALL.md). Design: `feynman/docs/design.md`.
-- **`quiz/`** -- an `adaptive-quiz` skill: fixed multiple-choice bank (24 items, 12
-  concepts) with deterministic answer history at `~/.claude/knowledge/quiz.sqlite3`.
-  Linked to feynman by identity only: concept keys equal card slugs, a missed concept
-  can become an open gap on the matching card, and neither reads the other's storage.
-  Guide: [`quiz/INSTALL.md`](/quiz/INSTALL.md).
+## Behavioral contract
 
-Design rule: the global layer stays thin. A session that never touches a component
-pays one skill description in the skills list and a few milliseconds of shell per
-prompt. Nothing else.
+- **Independent use.** Each component must own its instructions, implementation,
+  configuration, tests, and documentation. Components must remain independently
+  usable. Optional integrations must use small, explicit interfaces.
+- **Thin global context.** Keep global instructions and skill descriptions limited
+  to essential orientation and discovery. Load detailed guidance as it becomes
+  relevant to the task.
+- **Scoped instruction delivery.** Deliver instructions for the relevant component,
+  workspace, operation, and session state. Surface outstanding obligations when
+  the agent can act on them, including after long tasks or context compaction.
+- **One maintained source.** Keep executable files in their owning component.
+  Provider integration should reference those files directly or through symlinks.
+  Keep shared requirements in one source and isolate necessary provider differences.
 
-## Install
+## Instruction discovery and delivery
 
-```
-git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/icm/install.py --dry-run && python3 ~/frontier-clean/icm/install.py
-python3 ~/frontier-clean/feynman/install.py --dry-run && python3 ~/frontier-clean/feynman/install.py
-python3 ~/frontier-clean/quiz/install.py --dry-run && python3 ~/frontier-clean/quiz/install.py
-```
+Evaluate supported hooks for detecting workspace markers, tool operations, and
+session lifecycle events. Choose triggers using observed usage patterns and
+common action sequences. Keep detection inexpensive and avoid redundant injection
+while guidance remains available in context.
 
-Each installer copies (or with `--link`, symlinks) its files into `~/.claude`, merges
-its hook registration and allow rules into `~/.claude/settings.json`, appends its
-instruction section to `~/.claude/CLAUDE.md` once, and backs both files up first.
-`--uninstall` reverses that (Feynman keeps your cards, quiz keeps your answers). Settings hot-reload; a new
-skill needs a new session. Follow each component's INSTALL.md for file checks and a
-first live test.
+The following examples illustrate possible triggers and the guidance they deliver.
 
-## Component layout convention
+| Situation | Targeted guidance |
+| --- | --- |
+| First prompt in a workspace containing `.icm/` | Essential ICM orientation and where to find task-specific instructions. |
+| A ticket claim operation, such as `pm ticket claim` | Guidance needed to claim the ticket and establish session ownership. |
+| Session completion with an outstanding ticket claim | Guidance to close, park, or release that session's ticket. |
 
-```
+Workspace markers establish relevance. Operations and current state determine
+which instructions are actionable. Base completion reminders on actual outstanding
+obligations. Document each provider's supported triggers and limitations.
+
+## Repository and component structure
+
+Each top-level directory represents a capability or component, except `docs/` and
+directories beginning with `.`. Root documentation provides navigation and shared
+contribution standards. Each component owns its detailed documentation.
+
+Use the following layout as applicable. Create directories for the files the
+component needs.
+
+```text
 <component>/
-  install.py          installs ONLY this component; stdlib, idempotent, --dry-run/--link/--uninstall
-  INSTALL.md          clone-to-first-test guide
-  instructions/*.md   section(s) appended to the global CLAUDE.md
-  skills/<name>/      skill directories, copied under ~/.claude/skills/
-  hooks/ or tools/    executables, copied under ~/.claude/hooks/ or ~/.claude/tools/
-  config/*.fragment.json  hook registrations + allow rules, merged into ~/.claude/settings.json
-  tests/              component-level tests (plain python3, no dependencies)
+  README.md           Purpose, supported providers, and documentation links
+  INSTALL.md          Setup, first use, verification, disabling, and removal
+  instructions/       Agent instructions
+  skills/<name>/      Discoverable skills and their supporting files
+  hooks/              Event hooks
+  cli/                User-facing executables
+  tools/              Internal runtime tools and helpers
+  config/             Provider configuration fragments
+  tests/              Component tests
+  docs/               Detailed design and reference documentation
 ```
 
-Deployment targets Claude Code only. Other harnesses (Codex, local models) have their
-own config surfaces and deployment needs; port a component's files to them separately
-rather than growing a shared installer.
+Organize source files consistently with their role in agent environments. Document
+exact provider destinations, such as paths under `~/.claude/`, `~/.codex/`, or
+`~/.config/opencode/`, in the component's setup guide.
 
-## Verify everything
+## Setup and integration standards
 
-```
-python3 ~/frontier-clean/icm/tests/test_hook.py
-python3 ~/frontier-clean/icm/tests/test_install.py
-python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
-python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
-python3 ~/frontier-clean/feynman/tests/test_install.py
-python3 ~/frontier-clean/quiz/tests/test_quiz.py
-python3 ~/frontier-clean/quiz/tests/test_install.py
-# expect: OK seven times
-```
+- Symlink skills into the provider's supported discovery location.
+- Expose command-line executables through symlinks in `~/.local/bin` when needed.
+- Run hooks from their component directory wherever supported. Add provider-side
+  symlinks only where the provider requires files at a particular location.
+- Document the minimal configuration needed to register hooks, expose skills, and
+  load instructions. Preserve unrelated user configuration during setup and removal.
+- Keep shared component state in a provider-independent location where practical,
+  such as `~/.local/state/concepts/`. Document current paths and any migration steps.
+- Begin with clear operator instructions. Add small setup scripts when actual use
+  demonstrates repetitive work worth automating.
 
-## Sources
+## Documentation and validation
 
-- ICM paper: https://arxiv.org/abs/2603.16021; protocol repo:
-  https://github.com/RinDig/Interpretable-Context-Methodology; builder skill:
-  https://github.com/RinDig/icm-architect (vendored at a pin, see
-  `icm/skills/icm-architect/VENDOR.md`)
-- Feynman protocol adapted from: https://github.com/neurofoo/agent-skills (MIT; see
-  `feynman/skills/feynman/NOTICE`)
+Write component setup guides as concise walkthroughs with enough explanation to
+understand each step. Include prerequisites, copyable commands, expected results,
+and instructions for disabling and removing the integration. Explain how removal
+affects user data.
+
+Keep component tests local and runnable with Python's standard library. Document
+the relevant validation commands in the component guide and update instructions
+when behavior or setup changes. Measure context and hook overhead before making
+performance claims.
+
+## Components
+
+| Component | Purpose |
+| --- | --- |
+| [ICM](icm/) | Workspace methodology and staged work. |
+| [Feynman](feynman/) | Explanations, concept cards, and relevant recall. |
+| [Quiz](quiz/) | Adaptive questions and recorded learning progress. |
+| [Session telemetry](session-telemetry/README.md) | Usage and timing observations for authorized fresh Codex sessions. |
