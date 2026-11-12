@@ -1,0 +1,34 @@
+{
+  "schema_version": "cwf/v1",
+  "id": "sample-batch",
+  "integration_owner": "coordinator",
+  "items": [
+    {
+      "id": "schema",
+      "outcome": "Define interface",
+      "depends_on": [],
+      "writes": [
+        "schema/"
+      ],
+      "acceptance": [
+        "contract reviewed"
+      ]
+    },
+    {
+      "id": "consumer",
+      "outcome": "Adapt consumer",
+      "depends_on": [
+        "schema"
+      ],
+      "writes": [
+        "src/consumer"
+      ],
+      "acceptance": [
+        "consumer passes"
+      ]
+    }
+  ],
+  "acceptance": [
+    "combined behavior passes"
+  ]
+}

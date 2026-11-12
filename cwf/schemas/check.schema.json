@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cwf.local/schemas/check.schema.json",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "kind": {
+      "enum": [
+        "absent_literal",
+        "command"
+      ]
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "literal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 100
+    },
+    "timeout": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 600
+    },
+    "expected_exit": {
+      "type": "integer"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "authorization": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "required"
+  ],
+  "additionalProperties": false
+}

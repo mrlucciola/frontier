@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-07",
+  "platform": "Linux x86_64",
+  "status": "passed",
+  "checks": [
+    "ZIP CRC and path audit",
+    "clean extraction",
+    "version",
+    "disposable-home plan and apply",
+    "doctor owned integrity",
+    "installed launcher",
+    "discovery",
+    "disable and no-scan bypass",
+    "enable",
+    "uninstall preserving personal instructions/config",
+    "extracted automated suite: 65 passed, 1 optional skip"
+  ],
+  "live_configuration_modified": false,
+  "tested_runtime_sha256": "f1e3d1753414131c914624b2c05007ae1c4df728334a8f3df30a971c76c64498"
+}

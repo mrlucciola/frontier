@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cwf.local/schemas/packet.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "cwf/v1"
+    },
+    "packet_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "worktree_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "domain": {
+      "enum": [
+        "product",
+        "design",
+        "docs",
+        "plan",
+        "build",
+        "maintain"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "config_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "snapshot_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "locator": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "claim_status": {
+            "enum": [
+              "observed",
+              "inferred",
+              "accepted"
+            ]
+          },
+          "rank_reason": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "source_ref",
+          "locator",
+          "content_hash",
+          "kind",
+          "claim_status",
+          "rank_reason"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 40
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exclusion_reasons": {
+          "type": "object"
+        },
+        "omitted_results": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limits_hit": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "maxItems": 1000
+        },
+        "read_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifest_stable": {
+          "type": "boolean"
+        },
+        "semantic_completeness": {
+          "const": false
+        }
+      },
+      "required": [
+        "root",
+        "files",
+        "bytes",
+        "excluded",
+        "exclusion_reasons",
+        "omitted_results",
+        "limits_hit",
+        "read_failures",
+        "manifest_stable",
+        "semantic_completeness"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "enum": [
+        "complete_within_scope",
+        "partial",
+        "stale",
+        "unavailable"
+      ]
+    },
+    "persistence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "cache": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "required": [
+    "schema_version",
+    "packet_id",
+    "scope_id",
+    "worktree_id",
+    "domain",
+    "query",
+    "generated_at",
+    "tool_version",
+    "config_digest",
+    "snapshot_digest",
+    "findings",
+    "conflicts",
+    "coverage",
+    "status",
+    "persistence",
+    "cache"
+  ],
+  "additionalProperties": false
+}

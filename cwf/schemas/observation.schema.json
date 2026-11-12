@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cwf.local/schemas/observation.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "cwf/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "statement": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "claim_status": {
+      "enum": [
+        "observed",
+        "inferred",
+        "accepted"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "locator": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "freshness": {
+            "enum": [
+              "verified",
+              "unknown",
+              "stale"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "content_hash"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 30
+    },
+    "accepted_by": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "acceptance_source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "supersedes": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "statement",
+    "claim_status",
+    "sources"
+  ],
+  "additionalProperties": false
+}

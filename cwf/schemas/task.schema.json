@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cwf.local/schemas/task.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "cwf/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "product",
+          "design",
+          "docs",
+          "plan",
+          "build",
+          "maintain"
+        ]
+      },
+      "maxItems": 6
+    },
+    "scope_root": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "ready",
+        "running",
+        "blocked",
+        "verifying",
+        "complete",
+        "abandoned"
+      ]
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 1000
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "locator": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "freshness": {
+            "enum": [
+              "verified",
+              "unknown",
+              "stale"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "content_hash"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 1000
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "progress": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8000
+      },
+      "maxItems": 1000
+    },
+    "next_action": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "criterion",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 1000
+    },
+    "waivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "accepted_by": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "criterion",
+          "accepted_by",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 1000
+    },
+    "framework_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "outcome",
+    "scope_root",
+    "status",
+    "acceptance"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CWF Build"
+  short_description: "Context-aware build workflows and verification"
+  default_prompt: "Use $cwf-build to handle this task with relevant context and proportionate verification."

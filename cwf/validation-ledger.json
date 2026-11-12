@@ -1,0 +1,345 @@
+{
+  "release": "0.1.0",
+  "date": "2026-11-07",
+  "environment": {
+    "os": "Linux",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "git": "git version 2.51.1"
+  },
+  "automated_tests": {
+    "run": 66,
+    "passed": 65,
+    "failed": 0,
+    "skipped": 1,
+    "results": [
+      {
+        "id": "test_cwf.ContractTests.test_cli_invalid_json_and_exit",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.ContractTests.test_jsonschema_cross_validation",
+        "status": "skipped",
+        "reason": "optional development jsonschema unavailable"
+      },
+      {
+        "id": "test_cwf.ContractTests.test_published_schemas_equal_runtime_contracts",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.ContractTests.test_skill_frontmatter_and_references",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.ContractTests.test_unknown_config_fields_and_escape_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_active_task_prevents_worktree_removal",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_batch_normalized_paths_and_globs",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_check_literal_pass_fail_unknown",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_command_checks_require_authorization_and_bound_output",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_command_timeout",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_concurrent_write_overlap_rejected",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_cycle_rejected",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_shared_resources_rejected",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_topological_waves",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_unknown_dependency_rejected",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_worktree_clean_remove_dirty_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_worktree_recreation_updates_ownership",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_worktree_scope_ids_share_identity_not_working_state",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.CoordinationTests.test_worktree_subscope_task_and_ignored_files_prevent_removal",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_adapter_provenance_and_freshness",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_add_edit_delete_invalidate",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_corrupt_cache_falls_back_without_deletion",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_deterministic_findings_and_warm_fingerprint",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_ephemeral_leaves_no_state",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_git_ignore_respected",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_home_scan_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_large_file_is_unknown_not_clear",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_local_config_cannot_remove_exclusions",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_mode_off_does_not_scan_or_write",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_observation_retrieval_requires_current_sources",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_output_omissions_are_partial",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_packet_total_bytes_are_bounded",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_partial_bounds",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_scope_source_roots_intersect",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_sensitive_symlink_and_binary_excluded",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_targeted_nested_repo_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_targeted_read_and_check_respect_roots_and_git_ignores",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_traversal_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.DiscoveryTests.test_widget_candidates_include_migration_and_successor",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_apply_failure_recovers_owned_targets",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_custom_framework_config_preserved_on_uninstall",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_edited_owned_block_refuses_uninstall_without_partial_changes",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_effective_override_used",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_enable_disable_and_installed_launcher",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_foreign_collision_no_overwrite",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_guidance_cannot_be_orphaned_on_upgrade",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_install_preserves_personal_config_and_uninstall",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_interrupted_journal_recovery",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_later_instructions_survive_toggle_reapply_and_uninstall",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_receipt_recovery_failure_keeps_journal_pending",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_same_name_different_folder_collision",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_stale_plan_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_symlink_destination_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_tampered_bundle_refused",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_toggle_and_uninstall_failures_recover",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_toggle_conflict_does_not_partially_disable",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_uninstall_preserves_later_unrelated_edits",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.InstallTests.test_upgrade_and_rollback_preserve_state",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_accepted_observation_needs_attribution",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_checkpoint_cas_and_resume",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_complete_requires_evidence",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_off_still_allows_explicit_state_management",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_release_pin_mismatch_blocks",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_scope_isolation_and_summary_export",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_stale_resume_and_observation",
+        "status": "passed"
+      },
+      {
+        "id": "test_cwf.StateTests.test_unknown_schema_is_not_overwritten",
+        "status": "passed"
+      }
+    ]
+  },
+  "native_skill_validation": [
+    {
+      "skill": "cwf-build",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    },
+    {
+      "skill": "cwf-design",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    },
+    {
+      "skill": "cwf-docs",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    },
+    {
+      "skill": "cwf-maintain",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    },
+    {
+      "skill": "cwf-plan",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    },
+    {
+      "skill": "cwf-product",
+      "status": "passed",
+      "output": "Skill is valid!",
+      "stderr": ""
+    }
+  ],
+  "behavioral_exercises": [
+    {
+      "case": "A04/A05",
+      "invocation": "explicit",
+      "status": "limited_pass",
+      "observation": "Fresh agent reused modifyWidget1v2 for onIncrement, inspected migration and did not migrate unrelated call sites. Structural and Node-transformed checks; no TypeScript compiler or implicit activation test."
+    },
+    {
+      "case": "A08",
+      "invocation": "explicit",
+      "status": "partial",
+      "observation": "Fresh agent distinguished accepted multi-membership PRD from draft ERD; implementation source unavailable, so full three-source scenario remains unqualified."
+    }
+  ],
+  "untested": [
+    "macOS target execution",
+    "live Codex CLI skill discovery and implicit routing",
+    "live Codex IDE skill discovery and implicit routing",
+    "paired behavioral evaluation and cost-to-accepted-result",
+    "cross-user multi-computer pilot",
+    "semantic clone detection recall in large real repositories"
+  ],
+  "model_token_measurements": "unavailable",
+  "live_configuration_modified": false
+}

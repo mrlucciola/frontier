@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cwf.local/schemas/batch.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "cwf/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "integration_owner": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+          },
+          "outcome": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+            },
+            "maxItems": 1000
+          },
+          "writes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 8000
+            },
+            "maxItems": 1000
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 8000
+            },
+            "maxItems": 1000
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "depends_on",
+          "writes",
+          "acceptance"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 1000
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 1000
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "integration_owner",
+    "items",
+    "acceptance"
+  ],
+  "additionalProperties": false
+}
