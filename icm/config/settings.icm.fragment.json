@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.claude/hooks/icm-detect.sh\"",
+            "command": "\"$HOME/projects/frontier-clean/icm/hooks/icm-detect.sh\"",
             "timeout": 5
           }
         ]

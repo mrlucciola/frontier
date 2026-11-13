@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook: if the working directory is an ICM workspace, add one line
 # of context so the agent runs `status` before doing anything else.
-# Deployed to ~/.claude/hooks/icm-detect.sh; registered via settings.fragment.json.
+# Runs from this component; registered by config/settings.icm.fragment.json.
 set -u
 
 is_icm=0

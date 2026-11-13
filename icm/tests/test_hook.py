@@ -1,14 +1,16 @@
 """Run hooks/icm-detect.sh against fixture workspaces.
 
 Checks: exit 0 always, silent outside an ICM workspace, valid JSON inside one,
-CLAUDE.md preferred as the entry file, and paths with quotes survive escaping.
-Standard library only. Run: python3 icm/tests/test_hook.py
+CLAUDE.md preferred as the entry file, paths with quotes survive escaping, and
+the settings fragment registers the hook at its path in this component.
+Standard library only. Run: python3 -B icm/tests/test_hook.py
 """
 import json
+import os
 import pathlib
 import subprocess
-import sys
 import tempfile
+import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK = ROOT / "hooks/icm-detect.sh"
@@ -37,40 +39,31 @@ def build(base: pathlib.Path, entries):
             p.write_text("x\n")
 
 
-def main() -> int:
-    failures = []
-    json.loads(FRAGMENT.read_text())
-    with tempfile.TemporaryDirectory() as tmp:
-        for name, entries, expect_output, needles in CASES:
-            d = pathlib.Path(tmp) / name
-            build(d, entries)
-            r = subprocess.run(["bash", str(HOOK)], cwd=d, capture_output=True, text=True)
-            out = r.stdout.strip()
-            if r.returncode != 0:
-                failures.append(f"{name}: exit {r.returncode}")
-            if r.stderr.strip():
-                failures.append(f"{name}: stderr {r.stderr.strip()!r}")
-            if not expect_output:
-                if out:
-                    failures.append(f"{name}: expected silence, got {out!r}")
-                continue
-            try:
-                doc = json.loads(out)
-            except ValueError as ex:
-                failures.append(f"{name}: invalid JSON ({ex}): {out!r}")
-                continue
-            ctx = doc.get("hookSpecificOutput", {}).get("additionalContext", "")
-            if doc.get("hookSpecificOutput", {}).get("hookEventName") != "SessionStart":
-                failures.append(f"{name}: wrong hookEventName")
-            for n in needles:
-                if n not in out:
-                    failures.append(f"{name}: missing {n!r} in {ctx!r}")
-    if failures:
-        print("\n".join(failures))
-        return 1
-    print("OK")
-    return 0
+class HookTests(unittest.TestCase):
+    def test_fixture_workspaces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, entries, expect_output, needles in CASES:
+                with self.subTest(name):
+                    d = pathlib.Path(tmp) / name
+                    build(d, entries)
+                    r = subprocess.run(["bash", str(HOOK)], cwd=d, capture_output=True, text=True)
+                    out = r.stdout.strip()
+                    self.assertEqual(r.returncode, 0)
+                    self.assertEqual(r.stderr.strip(), "")
+                    if not expect_output:
+                        self.assertEqual(out, "")
+                        continue
+                    doc = json.loads(out)
+                    self.assertEqual(doc["hookSpecificOutput"]["hookEventName"], "SessionStart")
+                    for n in needles:
+                        self.assertIn(n, out)
+
+    def test_fragment_registers_the_hook_in_this_component(self):
+        frag = json.loads(FRAGMENT.read_text())
+        cmds = [h["command"] for grp in frag["hooks"]["SessionStart"] for h in grp["hooks"]]
+        self.assertEqual(cmds, ['"$HOME/projects/frontier-clean/icm/hooks/icm-detect.sh"'])
+        self.assertTrue(os.access(HOOK, os.X_OK), "the fragment runs the hook directly")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    unittest.main()
