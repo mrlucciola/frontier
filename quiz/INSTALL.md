@@ -1,5 +1,9 @@
 # Install: adaptive quiz
 
+> Historical setup reference. The `install.py` commands below describe a removed
+> installer. Use [component maintenance instructions](AGENTS.md) for current source
+> checks and treat this guide as input when documenting replacement setup.
+
 What you get: the `adaptive-quiz` skill, a fixed multiple-choice bank (24 items across
 12 concepts; domains: distributed, rust, typescript) with deterministic answer history
 at `~/.claude/knowledge/quiz.sqlite3`, and one allow rule so the quiz script runs

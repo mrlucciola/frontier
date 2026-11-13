@@ -1,5 +1,9 @@
 # Install: Feynman skill and concept graph
 
+> Historical setup reference. The `install.py` commands below describe a removed
+> installer. Use [component maintenance instructions](AGENTS.md) for current source
+> checks and treat this guide as input when documenting replacement setup.
+
 What you get: the `feynman` skill (answers "how or why does X work" questions the
 Feynman way and persists a card), the `cg` tool that owns the concept graph at
 `~/.claude/concepts/`, a UserPromptSubmit hook that recalls matching cards in any

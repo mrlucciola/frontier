@@ -1,5 +1,9 @@
 # Install: ICM layer
 
+> Historical setup reference. The `install.py` commands below describe a removed
+> installer. Use [component maintenance instructions](AGENTS.md) for current source
+> checks and treat this guide as input when documenting replacement setup.
+
 What you get: one instruction section in `~/.claude/CLAUDE.md`, two skills
 (`icm-architect` builds workspaces, `icm-run` executes stages), one SessionStart hook
 that tells the agent when the cwd is an ICM workspace, and one allow rule so a
