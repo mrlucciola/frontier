@@ -18,15 +18,18 @@ SHIM = "@AGENTS.md"
 ROOT_FILES = ("CLAUDE.md", "AGENTS.md", "README.md", "docs/contributing.md")
 INTEGRATION_DIRS = ("skills", "hooks", "instructions", "config", "cli")
 INDEX_HEADER = ["Component", "Purpose", "Development instructions"]
-ROUTE_HEADER = ["Change", "Read"]
+ROUTE_HEADERS = (["Change", "Read"], ["Work", "Read"])
+INTERPRETERS = ("python3", "/usr/bin/python3")
 EXEMPTION_HEADER = ["Component", "Rule", "Reason"]
 FROM_ROOT = "from the repository root"
 FROM_COMPONENT = "from this component directory"
+RUN_MESSAGE = ('no validation block: a paragraph beginning "Run" that says '
+               '"from the repository root", followed by a sh fence')
 
 RULES = (
     "R-FILE", "R-CLAUDE", "I-TABLE", "I-ROW", "I-MISSING", "I-UNINDEXED",
     "C-AGENTS", "C-README", "C-CLAUDE", "C-INSTALL", "C-README-ROUTE",
-    "A-TITLE", "A-OWNS", "A-TABLE", "A-RUN", "A-CWD", "A-TARGET",
+    "A-TITLE", "A-TABLE", "A-RUN", "A-CWD", "A-TARGET",
     "L-TARGET", "L-ROOT", "L-ANCHOR", "X-ROW", "X-STALE",
 )
 EXEMPTABLE = ("I-UNINDEXED",) + tuple(r for r in RULES if r[0] in "CAL")
@@ -218,8 +221,8 @@ def target_error(command, base):
         tokens = shlex.split(command)
     except ValueError:
         return "cannot parse command"
-    if not tokens or tokens[0] != "python3":
-        return "command must start with python3"
+    if not tokens or tokens[0] not in INTERPRETERS:
+        return "command must start with python3 or /usr/bin/python3"
     i, module, script = 1, None, None
     while i < len(tokens):
         token = tokens[i]
@@ -262,35 +265,31 @@ def check_agents(report, name):
     if not lines or not re.match(r"^# .+ maintenance$", lines[0]):
         add(1, "A-TITLE", 'first line must be "# <Name> maintenance"')
 
-    start = next((i for i in range(1, len(lines)) if lines[i].strip()), None)
-    paragraph = []
-    for line in lines[start:] if start is not None else []:
-        if not line.strip():
-            break
-        paragraph.append(line)
-    if not re.search(r"\bowns\b", " ".join(paragraph)):
-        add(start + 1 if start is not None else 1, "A-OWNS",
-            "first paragraph must say what this component owns")
-
     table = next(tables(prose), None)
     filled = table and any(len(c) == 2 and all(c) for _, c in table[2])
-    if not table or table[1] != ROUTE_HEADER or not filled:
+    if not table or table[1] not in ROUTE_HEADERS or not filled:
         add(table[0] if table else 1, "A-TABLE",
-            'route table header must be "| Change | Read |" with at least one filled row')
+            'route table header must be "| Change | Read |" or "| Work | Read |" '
+            "with at least one filled row")
 
     fence = next((f for f in fences if f[1] == "sh"), None)
-    above = next((i for i in range(fence[0] - 2, -1, -1) if lines[i].strip()), None) if fence else None
-    run_line = lines[above] if above is not None else ""
+    if not fence:
+        add(1, "A-RUN", RUN_MESSAGE)
+        return
+    end = next((i for i in range(fence[0] - 2, -1, -1) if lines[i].strip()), -1)
+    first = end
+    while first > 0 and lines[first - 1].strip():
+        first -= 1
+    paragraph = " ".join(line.strip() for line in lines[first:end + 1]) if end >= 0 else ""
     commands = [(n, line.strip()) for n, line in fence[2]
-                if line.strip() and not line.strip().startswith("#")] if fence else []
-    located = FROM_ROOT in run_line or FROM_COMPONENT in run_line
-    if not fence or not run_line.startswith("Run") or not located or not commands:
-        add(fence[0] if fence else 1, "A-RUN",
-            'no validation block: a "Run ... from the repository root." line followed by a sh fence')
+                if line.strip() and not line.strip().startswith("#")]
+    located = FROM_ROOT in paragraph or FROM_COMPONENT in paragraph
+    if not paragraph.startswith("Run") or not located or not commands:
+        add(first + 1 if end >= 0 else fence[0], "A-RUN", RUN_MESSAGE)
         return
     base = ROOT
-    if FROM_COMPONENT in run_line:
-        add(above + 1, "A-CWD", "validation commands must run from the repository root")
+    if FROM_COMPONENT in paragraph:
+        add(first + 1, "A-CWD", "validation commands must run from the repository root")
         base = ROOT / name
     for n, command in commands:
         error = target_error(command, base)

@@ -11,7 +11,7 @@ put the checkout path in front before opening one.
 | --- | --- |
 | Component structure, setup, or documentation | [Contribution standards](/docs/contributing.md) |
 | Instruction placement, skills, hooks, or context loading | [Instruction delivery](/docs/instruction-delivery.md) |
-| Component implementation or tests | The component's `AGENTS.md` and its task-specific routes |
+| Component implementation or tests | The component's `AGENTS.md` and its task-specific routes, then the [component principles](/docs/component-principles.md) |
 | Ticketed work | The ticket body, notes, and applicable workstream contract through `pm ticket` |
 
 Preserve other contributors' work and stay within the requested scope. Run the

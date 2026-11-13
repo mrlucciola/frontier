@@ -166,13 +166,33 @@ class CheckStructureTest(unittest.TestCase):
         self.write("alpha/README.md", "# Alpha\n\nSee [setup](/alpha/INSTALL.md).\n")
         self.assert_flags("alpha/README.md: C-README-ROUTE does not link /alpha/AGENTS.md")
 
-    def test_agents_title_owns_table(self):
+    def test_agents_title(self):
         self.replace("alpha/AGENTS.md", "# Alpha maintenance", "# Alpha")
         self.replace("alpha/AGENTS.md", "owns", "has")
-        self.replace("alpha/AGENTS.md", "| Change | Read |", "| Work | Read |")
         out = self.assert_flags("alpha/AGENTS.md:1: A-TITLE")
-        self.assertIn("alpha/AGENTS.md:3: A-OWNS", out)
-        self.assertIn("alpha/AGENTS.md:5: A-TABLE", out)
+        self.assertEqual(len(out.splitlines()), 2)
+
+    def test_agents_route_table(self):
+        row = "| Tool behavior | [Tests](/alpha/tests/test_a.py) |"
+        failing = (
+            ("| Change | Read |", "| Change | See |"),
+            ("| Change | Read |\n| --- | --- |\n" + row,
+             "| Change | Read | Why |\n| --- | --- | --- |\n" + row + " x |"),
+            (row, "| Tool behavior | |"),
+        )
+        for old, new in failing:
+            with self.subTest(new=new):
+                self.write("alpha/AGENTS.md", AGENTS.replace(old, new))
+                self.assert_flags("alpha/AGENTS.md:5: A-TABLE")
+        self.write("alpha/AGENTS.md", AGENTS.replace("| Change | Read |", "| Work | Read |"))
+        self.assert_passes()
+
+    def test_run_paragraph_may_span_lines(self):
+        self.replace("alpha/AGENTS.md", "Run the alpha checks from the repository root.",
+                     "Run the alpha checks from the\nrepository root. `-k` narrows to\none test name.")
+        self.assert_passes()
+        self.replace("alpha/AGENTS.md", "Run the alpha checks", "Use the alpha checks")
+        self.assert_flags("alpha/AGENTS.md:%d: A-RUN" % RUN_LINE)
 
     def test_agents_without_sh_fence(self):
         self.replace("alpha/AGENTS.md", "```sh\n" + COMMAND + "\n```\n", "")
@@ -196,8 +216,17 @@ class CheckStructureTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.write("alpha/AGENTS.md", AGENTS.replace(COMMAND, command))
                 self.assert_flags("alpha/AGENTS.md:%d: A-TARGET" % COMMAND_LINE)
-        self.write("alpha/AGENTS.md", AGENTS.replace(
-            COMMAND, "python3 -B -W error::ResourceWarning -m unittest discover -s alpha/tests"))
+        passing = (
+            "python3 -B -W error::ResourceWarning -m unittest discover -s alpha/tests",
+            "/usr/bin/python3 -B alpha/tests/test_a.py --cli alpha/nope",
+        )
+        for command in passing:
+            with self.subTest(command=command):
+                self.write("alpha/AGENTS.md", AGENTS.replace(COMMAND, command))
+                self.assert_passes()
+
+    def test_only_first_sh_fence_is_checked(self):
+        self.write("alpha/AGENTS.md", AGENTS + "\n```sh\npython3 -B /elsewhere/missing.py\n```\n")
         self.assert_passes()
 
     def test_links(self):
@@ -226,9 +255,9 @@ class CheckStructureTest(unittest.TestCase):
                 self.assert_passes()
 
     def test_exemption_applies_and_goes_stale(self):
-        self.exempt("| `alpha` | `A-TABLE` | The fixture keeps the old header. |")
-        self.assert_flags("docs/contributing.md:7: X-STALE exemption alpha A-TABLE matches no violation")
-        self.replace("alpha/AGENTS.md", "| Change | Read |", "| Work | Read |")
+        self.exempt("| `alpha` | `A-TITLE` | The fixture keeps the old title. |")
+        self.assert_flags("docs/contributing.md:7: X-STALE exemption alpha A-TITLE matches no violation")
+        self.replace("alpha/AGENTS.md", "# Alpha maintenance", "# Alpha")
         self.assertIn("(1 components, 1 exempted)", self.assert_passes())
 
     def test_exemption_row_errors(self):

@@ -71,18 +71,21 @@ python3 -B <component>/tests/test_<name>.py
 ```
 ````
 
+Open with what the component, or a named file in it, owns; the check does not
+read that paragraph. The route table's first header may be `Work` instead of
+`Change`.
+
 - `A-TITLE`: the first line is `# <Name> maintenance`.
-- `A-OWNS`: the first paragraph after the title uses the word `owns`.
-- `A-TABLE`: the first table has exactly the header `| Change | Read |` and at
-  least one row with both cells filled.
-- `A-RUN`: the first `sh` fence is the validation block, and the nearest
-  non-blank line above it begins with `Run` and names where to run it.
-- `A-CWD`: that line says `from the repository root`. Agent shells reset their
-  working directory between commands, so a command that needs another directory
-  cannot be run as written.
-- `A-TARGET`: each command in the block begins with `python3`, and the script it
-  names, or the `-s` directory and `-p` pattern of `-m unittest discover`,
-  exists.
+- `A-TABLE`: the first table has exactly two columns, headed `Change` or `Work`
+  and then `Read`, and at least one row with both cells filled.
+- `A-RUN`: the first `sh` fence is the validation block, and the paragraph
+  directly above it begins with `Run` and names where to run it.
+- `A-CWD`: that paragraph says `from the repository root`. Agent shells reset
+  their working directory between commands, so a command that needs another
+  directory cannot be run as written.
+- `A-TARGET`: each command in the block begins with `python3` or
+  `/usr/bin/python3`, and the script it names, or the `-s` directory and `-p`
+  pattern of `-m unittest discover`, exists. Later `sh` fences are not checked.
 
 ## Links
 
@@ -120,9 +123,8 @@ and instructions for disabling and removing the integration. Explain how removal
 affects user data.
 
 Put validation commands in the component's `AGENTS.md` and update instructions
-when behavior or setup changes. Keep component tests inside the component and
-runnable with Python's standard library. Measure context and hook overhead before
-making performance claims.
+when behavior or setup changes. Keep component tests inside the component. Write
+a component's code and tests by the [component principles](/docs/component-principles.md).
 
 Run the structure check from the repository root after changing a routing
 document, a component's top-level layout, or the component index.
@@ -143,6 +145,6 @@ the row when the component conforms.
 | Component | Rule | Reason |
 | --- | --- | --- |
 | `cwf` | `C-CLAUDE` | Every regular file under `cwf/` becomes part of its release manifest. |
-| `cwf` | `A-TABLE` | The route table header is `Work`; `cwf/` is not edited for repository conventions. |
 | `cwf` | `A-CWD` | cwf tests are documented to run from `cwf/`. |
 | `cwf` | `L-ROOT` | cwf routing documents use relative links; `cwf/` is not edited for repository conventions. |
+| `wt` | `A-RUN` | wt has no test suite yet; the first ticket of the wt epic adds `tests/test_wt_cli.py` and its commands. |

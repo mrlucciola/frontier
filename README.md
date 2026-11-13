@@ -37,3 +37,5 @@ Use the guide relevant to your change.
 | [Quiz](/quiz/README.md) | Adaptive questions and learning progress | [Quiz maintenance](/quiz/AGENTS.md) |
 | [Session telemetry](/session-telemetry/README.md) | Fresh Codex usage and timing observations | [Telemetry maintenance](/session-telemetry/AGENTS.md) |
 | [CWF](/cwf/README.md) | Contextual discovery, task continuity, and coordinated work | [CWF maintenance](/cwf/AGENTS.md) |
+| [pm](/pm/README.md) | Ticket store for agent work | [pm maintenance](/pm/AGENTS.md) |
+| [wt](/wt/README.md) | Worktree lifecycle for ticketed work | [wt maintenance](/wt/AGENTS.md) |
