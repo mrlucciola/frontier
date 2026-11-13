@@ -1,7 +1,8 @@
 """Fixture stand-in for the opencode CLI: fake_opencode.py STATE_FILE <real argv...>.
 
 The JSON state file is the whole world: `sessions` (id -> {info, messages}), the scripted
-`next_turn` that `run` applies, and the `calls` / `runs` this process recorded.
+`next_turn` that `run` applies, and the `calls` / `dirs` / `runs` this process recorded.
+A session `run` creates is located at the process's working directory.
 
 next_turn keys (all optional):
   messages      scripted messages appended after the user message that echoes the prompt
@@ -81,7 +82,7 @@ def new_session(session_id, model, agent):
     zero = {"input": 0, "output": 0, "reasoning": 0, "cache": {"read": 0, "write": 0}}
     return {"info": {"id": session_id, "projectID": "prj_fixture", "agent": agent or "build",
                      "model": ref, "cost": 0, "tokens": zero, "time": {"created": 1, "updated": 1},
-                     "location": {"directory": "/fixture/work"}},
+                     "location": {"directory": os.getcwd()}},
             "messages": []}
 
 
@@ -128,6 +129,7 @@ def main():
     with open(path) as handle:
         state = json.load(handle)
     state.setdefault("calls", []).append(args)
+    state.setdefault("dirs", []).append({"pwd": os.environ.get("PWD"), "cwd": os.getcwd()})
     save(path, state)
     if args[:1] == ["--version"]:
         print("opencode v0.0.0-fixture")

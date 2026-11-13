@@ -68,9 +68,12 @@ class Client:
     def __init__(self, command, cwd):
         self.command = list(command)
         self.cwd = cwd
+        # A child inherits the caller's PWD, not its new working directory. Set it
+        # so a CLI that trusts PWD still works in the fixture.
+        self.env = {**os.environ, "PWD": str(cwd)}
 
     def output(self, *args):
-        done = subprocess.run([*self.command, *args], cwd=self.cwd, stdin=subprocess.DEVNULL,
+        done = subprocess.run([*self.command, *args], cwd=self.cwd, env=self.env, stdin=subprocess.DEVNULL,
                               capture_output=True, timeout=API_TIMEOUT)
         return done.returncode, done.stdout, done.stderr
 
@@ -133,8 +136,9 @@ def session_messages(client, session_id):
 def run_turn(client, argv, timeout):
     """Run the turn to exit. Never answers a prompt and never auto-approves."""
     started = time.monotonic()
-    process = subprocess.Popen([*client.command, *argv], cwd=client.cwd, stdin=subprocess.DEVNULL,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+    process = subprocess.Popen([*client.command, *argv], cwd=client.cwd, env=client.env,
+                               stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=True)
     timed_out = False
     try:
         out, err = process.communicate(timeout=timeout)
@@ -154,8 +158,10 @@ def run_turn(client, argv, timeout):
         if process.poll() is None:
             process.kill()
             out, err = process.communicate()
-    # The stream's event schema is not published; keep counts, never contents.
-    stream = {"bytes": len(out), "json_lines": 0, "other_lines": 0, "event_types": Counter()}
+    # The stream's event schema is not published; keep counts and the session
+    # IDs it names, never contents.
+    stream = {"bytes": len(out), "json_lines": 0, "other_lines": 0, "event_types": Counter(),
+              "session_ids": []}
     for line in out.splitlines():
         if not line.strip():
             continue
@@ -167,6 +173,11 @@ def run_turn(client, argv, timeout):
         stream["json_lines"] += 1
         kind = event.get("type") if isinstance(event, dict) else None
         stream["event_types"][kind if isinstance(kind, str) else "untyped"] += 1
+        holders = [event, *event.values()] if isinstance(event, dict) else []
+        for holder in holders:
+            named = holder.get("sessionID") if isinstance(holder, dict) else None
+            if isinstance(named, str) and named not in stream["session_ids"]:
+                stream["session_ids"].append(named)
     stream["event_types"] = dict(stream["event_types"])
     return {"timed_out": timed_out, "exit_code": process.returncode, "stream": stream,
             "elapsed_s": time.monotonic() - started,
@@ -176,8 +187,8 @@ def run_turn(client, argv, timeout):
 def reduce_messages(messages, prompt):
     """Reduce the phase's new messages. Tool input/output and reasoning are discarded."""
     reduced = {"steps": [], "agent_messages": [], "tool_items": [], "skills": [],
-               "context_messages": [], "idle": [], "user_messages": 0, "prompt_echoed": False,
-               "other_message_types": Counter()}
+               "context_messages": [], "idle": [], "user_messages": 0, "user_message_texts": [],
+               "prompt_echoed": False, "other_message_types": Counter()}
     for message in messages:
         kind = message.get("type")
         if kind == "assistant":
@@ -217,8 +228,12 @@ def reduce_messages(messages, prompt):
             reduced["idle"].append({"id": message["id"], "outcome": message.get("outcome"),
                                     "error_type": error.get("type")})
         elif kind == "user":
+            said = message.get("text")
+            digest, size = text_digest(said)
             reduced["user_messages"] += 1
-            reduced["prompt_echoed"] = reduced["prompt_echoed"] or message.get("text") == prompt
+            reduced["user_message_texts"].append({"id": message["id"], "text_sha256": digest, "text_bytes": size})
+            if isinstance(said, str) and said.strip() == prompt.strip():
+                reduced["prompt_echoed"] = True
         else:
             reduced["other_message_types"][kind if isinstance(kind, str) else "untyped"] += 1
     reduced["other_message_types"] = dict(reduced["other_message_types"])
@@ -349,6 +364,13 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
         session_delta = delta(before or zero, after)
         if any(v is not None and v < 0 for v in (*session_delta["tokens"].values(), session_delta["cost_usd"])):
             diagnostics["regressing_session_totals"] += 1
+    # A turn that ran somewhere else loaded that place's instructions and files.
+    location = session.get("location") if isinstance(session.get("location"), dict) else {}
+    location_is_cwd = None
+    if isinstance(location.get("directory"), str):
+        location_is_cwd = os.path.realpath(location["directory"]) == os.path.realpath(cwd)
+        if not location_is_cwd:
+            diagnostics["location_not_cwd"] += 1
     outcome, evidence = classify(failure, run or {"exit_code": None}, reduced, session, phase_usage, diagnostics)
 
     created = [s["time"]["created"] for s in reduced["steps"] if s["time"]["created"] is not None]
@@ -358,7 +380,8 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
         if step["model"] not in models:
             models.append(step["model"])
     configuration.update({"session_agent": session.get("agent"), "session_model": session.get("model"),
-                          "location": session.get("location"), "step_models": models})
+                          "location": session.get("location"), "location_is_cwd": location_is_cwd,
+                          "step_models": models})
     return {
         "surface": SURFACE, "phase": PHASES[phase], "outcome": outcome,
         "completion_evidence": evidence, "failure_detail": failure_detail, "session_id": session_id,
@@ -372,6 +395,7 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
         "tool_items": reduced["tool_items"], "skills": reduced["skills"],
         "context_messages": reduced["context_messages"], "agent_messages": reduced["agent_messages"],
         "idle_messages": reduced["idle"], "user_messages": reduced["user_messages"],
+        "user_message_texts": reduced["user_message_texts"], "prompt_bytes": len(prompt.encode()),
         "prompt_echoed": reduced["prompt_echoed"] if after is not None else None,
         "other_message_types": reduced["other_message_types"],
         "run_stream": run["stream"] if run else None,

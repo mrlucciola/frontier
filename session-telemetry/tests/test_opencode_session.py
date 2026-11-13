@@ -69,6 +69,7 @@ class FixtureCase(unittest.TestCase):
         self.state = {"sessions": {}, "next_turn": {}}
 
     def seed(self, messages, tokens, cost, sid=SID, **extra):
+        extra.setdefault("location", {"directory": os.path.realpath(self.cwd)})
         self.state["sessions"][sid] = {"info": info(sid, tokens, cost, **extra), "messages": messages}
 
     def turn(self, **scripted):
@@ -100,7 +101,8 @@ class TurnTests(FixtureCase):
                        {"created": 1000, "firstToken": 1001, "streamed": 1002, "completed": 1003})
         a2 = assistant("msg_a2", tk(150, 30, 0, 80, 0), 0.5, "stop", [text("hel"), text("lo")],
                        {"created": 1004, "completed": 1006}, M2)
-        stdout = [{"type": "step_start"}, {"type": "text"}, {"type": "tool_use"}, {"type": "text"},
+        stdout = [{"type": "step_start", "sessionID": SID}, {"type": "text", "part": {"sessionID": SID}},
+                  {"type": "tool_use", "part": {"sessionID": "ses_other"}}, {"type": "text"},
                   {"type": "step_finish"}, {"no": "type"}, "plain progress line", ""]
         self.finish(a1, a2, add_tokens=tk(250, 50, 5, 140, 10), add_cost=0.75, stdout=stdout)
         r = self.measure()
@@ -132,15 +134,20 @@ class TurnTests(FixtureCase):
         self.assertEqual(r["configuration"]["config_sources_sha256"], hashlib.sha256(config).hexdigest())
         self.assertEqual(r["configuration"]["config_sources_bytes"], len(config))
         self.assertEqual(r["configuration"]["session_agent"], "build")
-        self.assertEqual(r["configuration"]["location"], {"directory": "/fixture/work"})
+        self.assertEqual(r["configuration"]["location"], {"directory": os.path.realpath(self.cwd)})
+        self.assertIs(r["configuration"]["location_is_cwd"], True)
         self.assertEqual(r["prompt_sha256"], hashlib.sha256(PROMPT.encode()).hexdigest())
+        self.assertEqual(r["prompt_bytes"], len(PROMPT))
         self.assertIs(r["prompt_echoed"], True)
         self.assertEqual(r["user_messages"], 1)
+        self.assertEqual(r["user_message_texts"], [{"id": "msg_user_000", "text_sha256": r["prompt_sha256"],
+                                                    "text_bytes": len(PROMPT)}])
         self.assertEqual(r["idle_messages"], [{"id": "msg_idle", "outcome": "succeeded", "error_type": None}])
         printed = "".join((json.dumps(x) if isinstance(x, dict) else x) + "\n" for x in stdout)
         self.assertEqual(r["run_stream"], {
             "bytes": len(printed), "json_lines": 6, "other_lines": 1,
-            "event_types": {"step_start": 1, "text": 2, "tool_use": 1, "step_finish": 1, "untyped": 1}})
+            "event_types": {"step_start": 1, "text": 2, "tool_use": 1, "step_finish": 1, "untyped": 1},
+            "session_ids": [SID, "ses_other"]})
         self.assertEqual(r["process_exit_code"], 0)
         self.assertEqual(r["stderr_bytes"], len("fixture stderr\n"))
         self.assertEqual(r["stderr_sha256"], hashlib.sha256(b"fixture stderr\n").hexdigest())
@@ -211,6 +218,30 @@ class TurnTests(FixtureCase):
         self.assertEqual(r["outcome"], "session_not_found")
         self.assertEqual(self.runs(), [])
         self.assertEqual(self.after["sessions"], {})
+
+    def test_every_child_gets_the_fixture_as_cwd_and_pwd(self):
+        self.finish(assistant("msg_a1", tk(1, 1)), add_tokens=tk(1, 1))
+        with mock.patch.dict(os.environ, {"PWD": "/somewhere/else"}):
+            r = self.measure()
+        self.assertEqual(r["outcome"], "completed_with_usage")
+        self.assertEqual(len(self.after["dirs"]), len(self.after["calls"]))
+        for seen in self.after["dirs"]:
+            self.assertEqual(seen, {"pwd": str(self.cwd), "cwd": os.path.realpath(self.cwd)})
+
+    def test_session_located_outside_cwd_is_invalid_telemetry(self):
+        self.finish(assistant("msg_a1", tk(5, 2), 0.25), add_tokens=tk(5, 2), add_cost=0.25,
+                    set_info={"location": {"directory": "/somewhere/else"}})
+        r = self.measure()
+        self.assertEqual(r["outcome"], "invalid_telemetry")
+        self.assertEqual(r["diagnostics"], {"location_not_cwd": 1})
+        self.assertIs(r["configuration"]["location_is_cwd"], False)
+        self.assertEqual(r["step_usage_sum"], {"tokens": flat(5, 2), "cost_usd": 0.25})
+
+    def test_session_without_location_is_not_judged(self):
+        self.finish(assistant("msg_a1", tk(1, 1)), add_tokens=tk(1, 1), set_info={"location": None})
+        r = self.measure()
+        self.assertEqual(r["outcome"], "completed_with_usage")
+        self.assertIsNone(r["configuration"]["location_is_cwd"])
 
     def test_run_that_creates_no_session(self):
         self.turn(skip_create=True)
@@ -527,9 +558,16 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(len(reduced["steps"]), 2)
 
     def test_reduce_messages_prompt_not_echoed(self):
-        reduced = oc.reduce_messages([{"id": "m", "type": "user", "text": "other"}], "hi")
+        reduced = oc.reduce_messages([{"id": "m", "type": "user", "text": "other"}, {"id": "n", "type": "user"}], "hi")
         self.assertFalse(reduced["prompt_echoed"])
-        self.assertEqual(reduced["user_messages"], 1)
+        self.assertEqual(reduced["user_messages"], 2)
+        self.assertEqual(reduced["user_message_texts"], [
+            {"id": "m", "text_sha256": hashlib.sha256(b"other").hexdigest(), "text_bytes": 5},
+            {"id": "n", "text_sha256": hashlib.sha256(b"").hexdigest(), "text_bytes": 0}])
+
+    def test_reduce_messages_prompt_echo_ignores_outer_whitespace(self):
+        reduced = oc.reduce_messages([{"id": "m", "type": "user", "text": "\nhi \n"}], "hi")
+        self.assertTrue(reduced["prompt_echoed"])
 
     def test_classify(self):
         def reduced(idle_outcomes=(), finishes=()):
