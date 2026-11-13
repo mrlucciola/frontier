@@ -75,7 +75,8 @@ None written yet. Write them in ticket order as each becomes ready, under
   epic. The code under `pm/` is the thing being built; it is never put on `PATH` here.
 - The fc store sets `findings_required`: every `wt finish` and `wt park` carries
   `--findings`.
-- fc-9076a6 (deferred config features) is not yours; leave it open.
+- fc-9076a6 (deferred config features) is yours only if `pm ticket tree fc-c3514f`
+  lists it as a child. The ledger says how to schedule it. Otherwise leave it open.
 
 ## Your first turn
 
@@ -84,6 +85,7 @@ None written yet. Write them in ticket order as each becomes ready, under
 3. Confirm the baseline on disk before any worker starts:
    `/usr/bin/python3 -B pm/tests/run_parity.py --cli /Users/matthias/frontier/runtime-tools/pm/ticket/src/ticket -k HelpTextTest`
    must end `parity: passed 3, pending 0, failed 0, skipped 0`. If it does not, stop and
-   report; the gate itself is broken.
+   report; the gate itself is broken. Then run the drift command in `pm/docs/cut-list.md`;
+   on any output, port the new kept-surface tests before dispatching a worker.
 4. Write the first fc-2b34c9 prompt, `wt start fc-2b34c9 --as claude`, dispatch its worker.
 5. End with the cadence update, not a plan or a summary of what you read.

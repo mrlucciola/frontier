@@ -12,8 +12,30 @@ Operator ruling, 2026-11-12. The rewrite keeps the on-disk format (spec v2,
 | Dropped | `upgrade`, `adopt`, `fix-labels`, `notes-prune`, per-call telemetry, `intake/`, `integrations/mao.py` |
 | Deferred | `compact_closed_after_days`, `archive_closed_after_days`, `history_interval_seconds` |
 
-Checked before ruling: every registered store is at `spec_version: 2`, and no
-registered store's `config.json` sets a deferred key.
+Every registered store is at `spec_version: 2`.
+
+**The deferral needs a new ruling.** When the cut was ruled, no registered store
+set a deferred key. Two hours later frontier-clean commit 88103df set all three
+on this repository's own store (`history_interval_seconds: 900`,
+`compact_closed_after_days: 7`, `archive_closed_after_days: 21`). The features
+are new work in the old pm (frontier c86faab0, 2026-11-12) and now have a live
+user. Until the operator rules again, they stay deferred in fc-9076a6, and that
+ticket blocks the cutover runbook, so the switch cannot silently turn them off.
+
+## Baseline and upstream drift
+
+The old pm is still being changed. The parity suite and spec copies here match
+frontier `ff71ab3a` (2026-11-12T23:32-05:00). The first copy was taken at
+`c86faab0`; three upstream commits landed during that work and were folded in.
+
+Before the rewrite is declared at parity, the integration ticket runs this and
+ports every new test on kept surface, with the count table below updated:
+
+```sh
+git --no-pager -C /Users/matthias/frontier diff --stat ff71ab3a HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
+```
+
+Empty output means no drift.
 
 ## What the cuts change
 
@@ -29,6 +51,12 @@ registered store's `config.json` sets a deferred key.
   [config schema](/pm/docs/spec/v2/config.schema.json), so `validate` still type-checks
   them. They have no effect: every mutating op snapshots history, and closed
   rows stay in `tickets.jsonl` until `pm ticket archive` moves them.
+- **Rows the old pm compacted must still read correctly.** Deferring the sweep
+  does not defer the data. An epic may carry a `subtasks` array, `show <id>` of
+  a compacted id answers from it with `compacted: true`, and every mutating verb
+  on that id refuses. The parity suite has no test for this; the reference is
+  the old `ticket/tests/test_ticket_core.py`, and the store-core ticket adds the
+  CLI tests to `tests/test_cli_contract.py`.
 
 ## Parity suite
 
@@ -37,11 +65,11 @@ It passes against the old CLI and is the gate for the new one.
 
 | | Count |
 | --- | --- |
-| Tests in the old suite | 275 |
+| Tests in the old suite at `ff71ab3a` | 281 |
 | Removed | 13 |
 | Changed | 8 |
-| Skipped as deferred | 6 |
-| Run against the CLI under test | 256 |
+| Skipped as deferred | 9 |
+| Run against the CLI under test | 259 |
 
 Removed, with the dropped item each one covered:
 
@@ -83,6 +111,9 @@ Skipped with `@DEFERRED` until `history_interval_seconds` is built. Removing the
 decorator is that ticket's first step:
 
 - `HistoryCliTest.test_deferred_note_makes_no_commit_and_marks_once`
+- `HistoryCliTest.test_validate_accepts_the_deferred_marker`
+- `HistoryCliTest.test_enable_ignores_the_marker_and_disable_drops_the_line`
+- `HistoryCliTest.test_restore_clears_the_deferred_marker`
 - `HistoryCliTest.test_deferred_create_unclaimed_is_deferred`
 - `HistoryCliTest.test_deferred_claim_release_close_reopen_snapshot_at_once`
 - `HistoryCliTest.test_deferred_marker_past_the_interval_flushes_on_next_op`

@@ -389,6 +389,33 @@ class TicketCliTest(unittest.TestCase):
         self.assertEqual(after["body"], "line one\nline two\nline three")
         self.assertIn("OK spec_version=2", run(self.store, "lint"))
 
+    def test_note_kind_is_stored_and_optional(self):
+        tid = self.make("typed")
+        run(self.store, "note", tid, "plain")
+        run(self.store, "note", tid, "ruled", "--kind", "decision")
+        run(self.store, "note", tid, "--kind", "decision", "--text", "ruled again")
+        run(self.store, "note", tid, "--kind", "decision", "ruled third")
+        run(self.store, "note", tid, "x", "--kind", "bogus", expect=2)
+        notes = json.loads(run(self.store, "show", tid, "--json"))["notes"]
+        self.assertNotIn("kind", notes[0])
+        self.assertEqual((notes[1]["text"], notes[1]["kind"]), ("ruled", "decision"))
+        self.assertEqual((notes[2]["text"], notes[2]["kind"]), ("ruled again", "decision"))
+        self.assertEqual((notes[3]["text"], notes[3]["kind"]), ("ruled third", "decision"))
+        self.assertEqual(len(notes), 4)
+        self.assertIn("OK spec_version=2", run(self.store, "lint"))
+
+    def test_lifecycle_verbs_write_their_kind_and_show_hides_edit_trail(self):
+        tid = self.make("lifecycle", "--priority", "3")
+        run(self.store, "edit", tid, "--priority", "1")
+        text = run(self.store, "show", tid)
+        self.assertNotIn("edit history", text)
+        self.assertIn("1 edit-trail note hidden", text)
+        self.assertIn("edit history: priority was P3", run(self.store, "show", tid, "--all-notes"))
+        run(self.store, "close", tid, "--note", "done", "--findings", "none")
+        notes = json.loads(run(self.store, "show", tid, "--json"))["notes"]
+        self.assertEqual([n["kind"] for n in notes], ["edit-trail", "worker-return"])
+        self.assertIn("OK spec_version=2", run(self.store, "lint"))
+
     def test_edit_append_body_no_double_newline_when_body_ends_with_one(self):
         tid = self.make("appendable", "--body", "line one\n")
         run(self.store, "edit", tid, "--append-body", "line two")
@@ -1337,6 +1364,23 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("zz-000000: unknown ticket", r.stderr)
         self.assertIn(a, self.ids_in_store())
 
+    def test_archived_id_is_refused_as_archived_not_as_unknown(self):
+        a, _ = self.closed_pair()
+        live = run(self.store, "create", "still open")
+        run(self.store, "archive", a)
+        for argv in (("note", a, "x"), ("claim", a, "--as", "w"), ("reopen", a),
+                     ("dep", live, "blocks", a)):
+            with self.subTest(argv=argv):
+                r = subprocess.run([sys.executable, TICKET_CLI, "--repo", self.store,
+                                    *argv], capture_output=True, text=True)
+                self.assertEqual(r.returncode, 1)
+                self.assertIn(f"{a} is archived; it cannot be changed. "
+                              "File a new ticket.", r.stderr)
+        r = subprocess.run([sys.executable, TICKET_CLI, "--repo", self.store,
+                            "archive", a], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{a}: already archived", r.stderr)
+
     def test_archive_without_ids_or_date_is_refused(self):
         self.closed_pair()
         r = subprocess.run([sys.executable, TICKET_CLI, "--repo", self.store, "archive"],
@@ -1872,6 +1916,39 @@ class HistoryCliTest(unittest.TestCase):
             self.assertEqual(f.read(), first)
         self.assertEqual(os.path.getmtime(self.pending), mtime)
         self.assertEqual(self.cli("history", "status")[0], "deferred")
+
+    @DEFERRED
+    def test_validate_accepts_the_deferred_marker(self):
+        self._enable_deferred()
+        tid, _ = self.cli("create", "row")
+        self.cli("note", tid, "one")
+        self.assertTrue(os.path.exists(self.pending))
+        out, _ = self.cli("validate")
+        self.assertTrue(out.startswith("OK"), out)
+
+    @DEFERRED
+    def test_enable_ignores_the_marker_and_disable_drops_the_line(self):
+        self._enable_deferred()
+        marker = f"{V2_STORE_DIR}/history-pending"
+        with open(os.path.join(self.repo, ".gitignore")) as f:
+            self.assertIn(marker, f.read().splitlines())
+        self.cli("create", "row")
+        self.assertTrue(os.path.exists(self.pending))
+        self.assertEqual(self.git("status", "--porcelain", "--", marker), "")
+        self.cli("history", "disable")
+        self.assertFalse(os.path.exists(self.pending))
+        with open(os.path.join(self.repo, ".gitignore")) as f:
+            self.assertNotIn(marker, f.read().splitlines())
+
+    @DEFERRED
+    def test_restore_clears_the_deferred_marker(self):
+        self._enable_deferred()
+        self.cli("create", "row")
+        self.assertTrue(os.path.exists(self.pending))
+        os.remove(self.path)
+        self.cli("history", "restore")
+        self.assertFalse(os.path.exists(self.pending))
+        self.assertEqual(self.cli("history", "status")[0], "on")
 
     @DEFERRED
     def test_deferred_create_unclaimed_is_deferred(self):

@@ -47,6 +47,8 @@ lifecycle field (`closure_reason`). `ticket_core.PROJECTION_VERSION` is unaffect
                                   MUST be gitignored (folds cl-f7d6b4, see below)
   migrate-report.md        MAY    written by adopt/migrate; not validated
   upgrade-<from>-to-<to>.md MAY   written by upgrade; not validated
+  history-pending          MAY    a history snapshot is owed (below); not validated;
+                                  gitignored by `history enable`
   archive/                 MAY    gitignored except the index; see section 6
     archive-index.jsonl    MAY    tracked
     tickets-<yyyy>.jsonl    MAY   rows moved out by `archive`

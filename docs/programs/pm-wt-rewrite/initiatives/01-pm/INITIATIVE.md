@@ -29,10 +29,25 @@ None.
 
 ## Facts not to re-derive
 
-- **Baseline.** On 2026-11-12 the trimmed suite ran against the old CLI, sandboxed:
-  `Ran 262 tests in 239.420s`, `OK (skipped=6)`,
-  `parity: passed 256, pending 0, failed 0, skipped 6`. Git repos created under the
+- **Baseline.** The trimmed suite ran against the old CLI at frontier `ff71ab3a`,
+  sandboxed: `Ran 268 tests in 232.077s`, `OK (skipped=9)`,
+  `parity: passed 259, pending 0, failed 0, skipped 9`. Git repos created under the
   suite's temp directories work inside the sandbox.
+- **Upstream moves.** The old pm took three commits during preparation (typed notes,
+  the archived-id refusal, the `history-pending` store entry); all three are in the
+  suite. `pm/docs/cut-list.md` has the drift command. Run it on your first turn and
+  again in fc-59011f. New upstream tests on kept surface are ported by you, in a
+  ticket of their own, never by a verb worker.
+- **Typed notes are kept surface.** `note --kind`, the kinds `close` and `edit` write,
+  and `show` hiding `edit-trail` notes unless `--all-notes` are in the parity suite;
+  they are not named in the ticket bodies, which were written before the resync.
+- **Deferred keys are live on this repo's store.** `.pm/config.json` here sets all three
+  since 88103df. The installed pm honors them. If fc-9076a6 is a child of fc-c3514f
+  when you start, the operator has ruled it into this run: schedule it in step 3,
+  merge it after fc-c5e673 (both touch history commits), and it removes the nine
+  `@DEFERRED` decorators. If it is not a child, leave it alone.
+- **Compacted rows.** Whatever the ruling, fc-2b34c9 makes the store read epics that
+  carry `subtasks`, answer `show` for a compacted id, and refuse mutations on it.
 - **Run time.** The full suite takes about four minutes. Workers iterate with `-k` and
   run the full `--allow-pending` gate once before reporting.
 - **The harness runs `[sys.executable, <cli>, <verb>, ...]`.** `pm/tools/ticket` must be
@@ -50,8 +65,8 @@ None.
   `PM_STORES_FILE=/Users/matthias/frontier/runtime-tools/pm/stores.json`, and set
   `PM_TELEMETRY_DIR=-` so the old CLI writes no telemetry row. Ten stores are
   registered; `~/claude` is frozen. All ten are `spec_version: 2`.
-- **Old source sizes**, for the line-count note at close: `ticket` 3049,
-  `ticket_core.py` 2767, `gitcommit.py` 220, `gitfault.py` 207, `board.py` 198,
+- **Old source sizes** at `ff71ab3a`, for the line-count note at close: `ticket` 3087,
+  `ticket_core.py` 2783, `gitcommit.py` 220, `gitfault.py` 207, `board.py` 198,
   `overview.py` 165.
 - **`show --field`** is new surface, specified in fc-2b34c9 and tested in
   `test_cli_contract.py`, not in the parity suite.

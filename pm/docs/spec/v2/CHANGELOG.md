@@ -1,5 +1,9 @@
 # pm/ticket spec changelog
 
+## v2.5 corrections (2026-11-12, fr-bba140)
+
+`history-pending` is a section 1 store entry: `validate` no longer reports it as I-01 (with `history_interval_seconds` it exists between flushes). `history enable` writes a `.pm/history-pending` gitignore line with the working file's line and `history disable` removes both; `history restore` and `history disable` delete the marker. A mutating verb on an archived id exits 1 with `<id> is archived; it cannot be changed. File a new ticket.` instead of `no such ticket`; `archive <archived id>` reports `<id>: already archived`.
+
 ## v2.6 additions (2026-11-12, fr-d964dd)
 
 Additive, no `spec_version` bump. Optional note key `kind`, one of `worker-return`, `park`, `finding`, `decision`, `edit-trail`, `provenance`, `measurement` (design C6.1); rows without it stay valid and no existing note is migrated. `note <id> <text> --kind <kind>` writes it (refused on a v1 store). On v2 stores `close` writes `worker-return` (`park` with `--unmerged`; the deploy-check-skipped note is `finding`), `edit` and detach-on-close write `edit-trail`, a `create --dup-of` sighting writes `finding`. Text `show` hides `edit-trail` notes (one line says how many) unless `--all-notes`; `show --json` is unchanged apart from the key.

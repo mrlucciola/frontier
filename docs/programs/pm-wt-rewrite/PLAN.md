@@ -34,14 +34,20 @@ new code.
 /usr/bin/python3 -B pm/tests/run_parity.py --cli pm/tools/ticket
 ```
 
-Baseline, 2026-11-12, against the old CLI at
-`~/frontier/runtime-tools/pm/ticket/src/ticket`:
+Baseline against the old CLI at `~/frontier/runtime-tools/pm/ticket/src/ticket`,
+frontier `ff71ab3a`:
 
 ```text
-Ran 262 tests in 239.420s
-OK (skipped=6)
-parity: passed 256, pending 0, failed 0, skipped 6
+Ran 268 tests in 232.077s
+OK (skipped=9)
+parity: passed 259, pending 0, failed 0, skipped 9
 ```
+
+**The old pm is a moving target.** Three upstream commits landed while the
+suite was being prepared. The suite is pinned to `ff71ab3a`; the
+[cut list](/pm/docs/cut-list.md) holds the drift check the integration ticket
+runs before declaring parity. Freezing feature work on the old pm for the
+length of Run 1 removes this risk entirely.
 
 **The pending rule.** While verbs are still being built, anything not built
 calls `store.unbuilt(<name>)`: it appends the name to the file in
@@ -77,7 +83,25 @@ their own verb files.
 | 3 | fc-d73327 lifecycle; fc-739601 reads; fc-c10bcf structure and edges; fc-c5e673 history; fc-913d02 checks and views | parallel, at most four workers at once |
 | 4 | fc-59011f integration: `pending 0`, golden diff on every registered store, docs, readability review | serial |
 
-fc-9076a6 holds the deferred config features and is not part of the run.
+### Open ruling: the deferred config features
+
+fc-9076a6 holds `history_interval_seconds`, `compact_closed_after_days` and
+`archive_closed_after_days`. They were deferred on the finding that no store
+used them. That stopped being true the same night: frontier-clean 88103df
+turned all three on for this repository's store. As ruled, fc-9076a6 is outside
+Run 1 and blocks the cutover runbook (fc-10981e).
+
+Recommended instead: build them in Run 1. Run these before launching the seed,
+and the overseer schedules fc-9076a6 as a sixth step-3 ticket:
+
+```sh
+pm ticket reparent fc-9076a6 fc-c3514f
+pm ticket dep fc-459fe0 blocks fc-9076a6
+pm ticket dep fc-9076a6 blocks fc-59011f
+```
+
+Either way the rewrite must read rows the old pm already compacted; that is in
+fc-2b34c9.
 
 ## Run 2: wt (epic fc-262fa8)
 
