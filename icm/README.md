@@ -7,12 +7,12 @@ and the workspace's own contracts.
 
 | Work | Start here |
 | --- | --- |
-| Maintain the component or run its checks | [Development instructions](AGENTS.md) |
-| Build or restructure a workspace | [ICM architect skill](skills/icm-architect/SKILL.md) |
-| Execute a stage, inspect status, or run setup | [ICM run skill](skills/icm-run/SKILL.md) |
-| Review the former Claude installer workflow | [Historical setup guide](INSTALL.md) |
+| Maintain the component or run its checks | [Development instructions](/icm/AGENTS.md) |
+| Build or restructure a workspace | [ICM architect skill](/icm/skills/icm-architect/SKILL.md) |
+| Execute a stage, inspect status, or run setup | [ICM run skill](/icm/skills/icm-run/SKILL.md) |
+| Set up, verify, disable, or remove the Claude Code integration | [Setup guide](/icm/INSTALL.md) |
 
 ## Sources
 
 - ICM paper, arXiv:2603.16021, and [methodology repository](https://github.com/RinDig/Interpretable-Context-Methodology).
-- [ICM architect upstream](https://github.com/RinDig/icm-architect), with local pin and maintenance rules in [VENDOR.md](skills/icm-architect/VENDOR.md).
+- [ICM architect upstream](https://github.com/RinDig/icm-architect), with local pin and maintenance rules in [VENDOR.md](/icm/skills/icm-architect/VENDOR.md).

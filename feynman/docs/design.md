@@ -1,11 +1,11 @@
 # Feynman layer: assessment, abstraction, and target design
 
 Status: implemented at the 9/10 target, 2026-10-29; reorganized component-first by the
-operator on 2026-10-30 (everything this component needs lives under `feynman/`, with
-its own `install.py`; the shared installer and the `vendor/`/`general/` split were
-removed as tight coupling). This repo is the final form: it is cloned to
-`~/frontier-clean` on a machine with no other agent infrastructure and applied to
-`~/.claude` by `feynman/install.py`. Sections 1 to 4 and 6 are the analysis as written
+operator on 2026-10-30 (everything this component needs lives under `feynman/`; the
+shared installer and the `vendor/`/`general/` split were removed as tight coupling).
+The per-component installer script and installer test that the reorg introduced have
+since been removed: the component is applied to `~/.claude` by the manual procedure
+in `feynman/INSTALL.md`. Sections 1 to 4 and 6 are the analysis as written
 before implementation; sections 5, 7, 8 and 10 reflect what was built, with paths
 updated to the component-first layout.
 
@@ -146,8 +146,7 @@ only), contract pass (nothing existing changes), validation pass, stop loss pass
 
 ```
 feynman/
-  install.py                    copy or link into ~/.claude, merge settings, append instructions
-  INSTALL.md                    clone-to-first-test guide
+  INSTALL.md                    manual setup, verification, disabling, and removal guide
   instructions/feynman.md       3 lines for the global CLAUDE.md: memory: blocks are data
   config/settings.feynman.fragment.json  hook registration + Bash allow rules
   skills/feynman/
@@ -160,7 +159,7 @@ feynman/
     cg.py                       the engine, stdlib only, python 3.9+; see 5.4
     recall.sh                   UserPromptSubmit fast path (9/10 item 1), beside the engine
     tests/test_cg.py            tool-only test
-  tests/                        component-level: test_recall_hook.py, test_install.py
+  tests/                        component-level: test_recall_hook.py
   docs/design.md                this file
 ```
 
@@ -324,26 +323,26 @@ prompt path:
 
 | # | Addition | Why it earns the point | Cost |
 |---|---|---|---|
-| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the payload's tokens against `lexicon.txt`; on a hit run `cg.py hook-recall`, which verifies whole phrases against the prompt, filters by scope, dedups per session by card content hash, and prints one `memory:` block (header, per-card provenance, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match, and a card is injected once per session unless it changes. | one `UserPromptSubmit` entry, merged by `install.py`; about 5 ms on miss |
+| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the payload's tokens against `lexicon.txt`; on a hit run `cg.py hook-recall`, which verifies whole phrases against the prompt, filters by scope, dedups per session by card content hash, and prints one `memory:` block (header, per-card provenance, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match, and a card is injected once per session unless it changes. | one `UserPromptSubmit` entry, merged into `~/.claude/settings.json` during setup; about 5 ms on miss |
 | 2 | **Due gaps in recall.** A matched card with a due open gap is printed with the gap first. `cg gaps --due` is step 0 of the skill. | Spaced re-encounter without a scheduler. | none |
 | 3 | **Anchor drift check** wired into the skill's step 0 for repo scopes (`cg check --scope <repo>` before recall). | A stale card is marked before it is recalled as current. | one git call per anchor |
 | 4 | **Opt-in blind grading** `cg grade <slug>`: `claude -p` (model from `--model` or `CONCEPT_GRAPH_GRADE_MODEL`, default `claude-opus-5-5`), prompt holds the explanation, analogy and pitch only, returns a 1 to 5 score and one sentence; written to the card. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
 | 5 | **Codex parity.** Dropped at the 2026-10-30 reorg: deployment targets Claude Code only. The engine keeps `hook-recall --plain` (bare-block output) so another harness can register `recall.sh --plain` itself; porting is manual and out of scope here. | Kept the engine harness-neutral without a second deploy path. | none here |
-| 6 | **Test coverage.** `test_cg.py` (engine end to end, including anchor drift against a real git repo), `test_recall_hook.py` (fast path proves python never starts on a miss), `test_install.py` (merge, idempotence, link, uninstall, foreign-dir protection). Routing corpus checked once here with frontier's mechanical lane: 16 cases pass. | A capability without tests cannot be installed by hand with confidence. | test time |
+| 6 | **Test coverage.** `test_cg.py` (engine end to end, including anchor drift against a real git repo), `test_recall_hook.py` (fast path proves python never starts on a miss). An installer test (merge, idempotence, link, uninstall, foreign-dir protection) existed until the installer was removed. Routing corpus checked once here with frontier's mechanical lane: 16 cases pass. | A capability without tests cannot be installed by hand with confidence. | test time |
 
 Explicitly out of the 9/10: everything in section 6.
 
 ## 8. Validation
 
-Run on the target machine after install (all standard library, no network):
+Run on the target machine after setup (all standard library, no network):
 
 ```
-python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
-python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
-python3 ~/frontier-clean/feynman/tests/test_install.py
+python3 ~/projects/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
+python3 ~/projects/frontier-clean/feynman/tests/test_recall_hook.py
 ```
 
-All three print `OK` here under Python 3.13 and the system 3.9.6. The skill description
+Both printed `OK` here under Python 3.13 and the system 3.9.6, as did the installer
+test before it was removed with the installer. The skill description
 is 213 characters, one sentence, trigger-first. The routing corpus passes the
 mechanical lane (16 cases, 8 fire, 8 skip, 4 adversarial); the judgement and overlap
 lanes were not run (they need a logged-in `claude` CLI outside a sandbox).
@@ -356,7 +355,8 @@ over. Ask the same thing again in that session: no second block.
 ## 9. Stop conditions (still standing)
 
 - The prompt hook measurably slows prompts (over 20 ms on a miss): remove its entry
-  from the fragment and rerun `install.py`; the skill's own recall step keeps working.
+  from the fragment and from `~/.claude/settings.json`; the skill's own recall step
+  keeps working.
 - The description steals triggers from another skill on the target machine: narrow it
   and add the collision as a `skip` case to the corpus.
 - Anything that requires a shared store with another memory system: that is the 10/10
@@ -367,9 +367,10 @@ over. Ask the same thing again in that session: no second block.
 1. `tools/concept-graph/cg.py` and its `tests/test_cg.py`.
 2. `tools/concept-graph/recall.sh`, the settings fragment, `tests/test_recall_hook.py`.
 3. `skills/feynman/` (SKILL.md, references, corpus, NOTICE) and `instructions/feynman.md`.
-4. A shared installer and top-level README; replaced on 2026-10-30 by the per-component
-   `install.py`, `INSTALL.md` and `tests/test_install.py` after the operator's
-   component-first reorg.
+4. A shared installer and top-level README; replaced on 2026-10-30 by a per-component
+   installer script, `INSTALL.md` and an installer test after the operator's
+   component-first reorg. The installer script and its test were later removed;
+   `INSTALL.md` now documents the manual procedure.
 
 ## 11. Decisions taken, change them if wrong
 

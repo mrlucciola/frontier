@@ -4,7 +4,7 @@
 # starting python. On a hit, cg.py hook-recall verifies whole phrases against the
 # prompt, applies scope and per-session dedup, and prints at most one JSON object.
 # Always exit 0; never print anything but that object.
-# Lives beside cg.py; installed to ~/.claude/tools/concept-graph/ (feynman/install.py).
+# Lives beside cg.py; linked at ~/.claude/tools/concept-graph/ (feynman/INSTALL.md).
 set -u
 
 here="$(cd "$(dirname "$0")" && pwd)"

@@ -7,12 +7,12 @@ through `CONCEPT_GRAPH_ROOT`.
 
 | Work | Start here |
 | --- | --- |
-| Maintain the tool, hook, or component | [Development instructions](AGENTS.md) |
-| Explain a concept or update a card | [Feynman skill](skills/feynman/SKILL.md) |
-| Review design decisions and history | [Design record](docs/design.md) |
-| Review the former Claude installer workflow | [Historical setup guide](INSTALL.md) |
+| Maintain the tool, hook, or component | [Development instructions](/feynman/AGENTS.md) |
+| Explain a concept or update a card | [Feynman skill](/feynman/skills/feynman/SKILL.md) |
+| Review design decisions and history | [Design record](/feynman/docs/design.md) |
+| Set up, verify, disable, or remove the Claude Code integration | [Setup guide](/feynman/INSTALL.md) |
 
 ## Sources
 
 Adapted from [neurofoo/agent-skills](https://github.com/neurofoo/agent-skills) under
-MIT. Attribution is preserved in [NOTICE](skills/feynman/NOTICE).
+MIT. Attribution is preserved in [NOTICE](/feynman/skills/feynman/NOTICE).

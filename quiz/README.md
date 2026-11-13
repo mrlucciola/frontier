@@ -9,6 +9,6 @@ gap after a missed answer. Each component owns its storage and works independent
 
 | Work | Start here |
 | --- | --- |
-| Maintain the CLI, question bank, or component | [Development instructions](AGENTS.md) |
-| Conduct a quiz | [Adaptive quiz skill](skills/adaptive-quiz/SKILL.md) |
-| Review the former Claude installer workflow | [Historical setup guide](INSTALL.md) |
+| Maintain the CLI, question bank, or component | [Development instructions](/quiz/AGENTS.md) |
+| Conduct a quiz | [Adaptive quiz skill](/quiz/skills/adaptive-quiz/SKILL.md) |
+| Set up, verify, disable, or remove the Claude Code integration | [Setup guide](/quiz/INSTALL.md) |

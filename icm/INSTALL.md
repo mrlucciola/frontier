@@ -1,64 +1,135 @@
-# Install: ICM layer
+# Setup: ICM
 
-> Historical setup reference. The `install.py` commands below describe a removed
-> installer. Use [component maintenance instructions](AGENTS.md) for current source
-> checks and treat this guide as input when documenting replacement setup.
+Manual setup for Claude Code, the only provider this component ships configuration
+for. You get two skills (`icm-architect` builds workspaces, `icm-run` executes
+stages), a SessionStart hook that tells the agent when the working directory is an
+ICM workspace, one allow rule so a workspace's own `_tools/*.py` scripts run without
+prompts, and one instruction section in `~/.claude/CLAUDE.md`.
 
-What you get: one instruction section in `~/.claude/CLAUDE.md`, two skills
-(`icm-architect` builds workspaces, `icm-run` executes stages), one SessionStart hook
-that tells the agent when the cwd is an ICM workspace, and one allow rule so a
-workspace's own `_tools/*.py` scripts run without prompts.
+Everything is linked from this directory, so the repository must stay in place.
 
-Everything this component needs lives in this directory: `skills/`, `hooks/`,
-`config/`, `instructions/`, `tests/`, `install.py`.
+| Source in this component | Provider destination | How |
+| --- | --- | --- |
+| `skills/icm-architect/` | `~/.claude/skills/icm-architect` | symlink |
+| `skills/icm-run/` | `~/.claude/skills/icm-run` | symlink |
+| `hooks/icm-detect.sh` | `~/.claude/hooks/icm-detect.sh` | symlink |
+| `config/settings.icm.fragment.json` | `~/.claude/settings.json` | merged by hand |
+| `instructions/icm.md` | `~/.claude/CLAUDE.md` | appended once |
 
-Requirements: macOS or Linux, `python3` 3.9 or newer, `bash`, Claude Code installed.
-No network is used by the install or at runtime.
+## Prerequisites
 
-## 1. Clone and install
+- macOS or Linux with `bash` and `python3` 3.9 or newer.
+- Claude Code installed.
+- This repository checked out at `~/projects/frontier-clean`. If it lives elsewhere,
+  substitute that path in every command.
 
+Setup uses no network.
+
+## 1. Link the skills and the hook
+
+Confirm nothing is already at the destinations. `ln -s` onto an existing directory
+would create the link inside it instead of failing.
+
+```sh
+ls -d ~/.claude/skills/icm-architect ~/.claude/skills/icm-run ~/.claude/hooks/icm-detect.sh
+# expect: "No such file or directory" three times; inspect anything that is listed before going on
 ```
-git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/icm/install.py --dry-run
-python3 ~/frontier-clean/icm/install.py
-```
 
-The dry run prints every action and changes nothing. The install copies
-`skills/icm-architect`, `skills/icm-run` and `hooks/icm-detect.sh` into `~/.claude`,
-merges the SessionStart hook and the allow rule into `~/.claude/settings.json`
-(a `settings.json.bak-<timestamp>` is written first), and appends the
-"## ICM workspaces" section to `~/.claude/CLAUDE.md` (also backed up). Rerunning is
-safe: it only replaces what it installed.
-
-Prefer symlinks, so `git pull` updates the live files: add `--link`.
-
-## 2. Check the files
-
-```
+```sh
+mkdir -p ~/.claude/skills ~/.claude/hooks
+ln -s ~/projects/frontier-clean/icm/skills/icm-architect ~/.claude/skills/icm-architect
+ln -s ~/projects/frontier-clean/icm/skills/icm-run ~/.claude/skills/icm-run
+ln -s ~/projects/frontier-clean/icm/hooks/icm-detect.sh ~/.claude/hooks/icm-detect.sh
 ls ~/.claude/skills/icm-architect/SKILL.md ~/.claude/skills/icm-run/SKILL.md ~/.claude/hooks/icm-detect.sh
-grep -c "ICM workspaces" ~/.claude/CLAUDE.md
+# expect: three paths listed
+```
+
+The hook is linked because the settings fragment registers
+`"$HOME/.claude/hooks/icm-detect.sh"`, not the path inside this component. The link
+makes that registered path resolve to `hooks/icm-detect.sh` here.
+
+## 2. Register the hook and the allow rule
+
+The entries live in the [settings fragment](/icm/config/settings.icm.fragment.json).
+
+If `~/.claude/settings.json` does not exist yet, the fragment is a complete settings
+file:
+
+```sh
+cp ~/projects/frontier-clean/icm/config/settings.icm.fragment.json ~/.claude/settings.json
+```
+
+Otherwise keep a copy and edit the file by hand, leaving every other key and entry
+as it is:
+
+```sh
+cp ~/.claude/settings.json ~/.claude/settings.json.bak-icm
+```
+
+- Add this group to the `hooks.SessionStart` array, creating `hooks` and
+  `SessionStart` if they are absent:
+
+  ```json
+  {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "\"$HOME/.claude/hooks/icm-detect.sh\"",
+        "timeout": 5
+      }
+    ]
+  }
+  ```
+
+- Add `"Bash(python3 _tools/*)"` to the `permissions.allow` array, creating it if
+  absent.
+
+```sh
+python3 -m json.tool ~/.claude/settings.json /dev/null
 grep -c "icm-detect.sh" ~/.claude/settings.json
-python3 ~/frontier-clean/icm/tests/test_hook.py
-python3 ~/frontier-clean/icm/tests/test_install.py
-# expect: three paths listed, 1, 1, OK, OK
+# expect: no output from the first command (the file parses), then 1
 ```
 
-## 3. First live test
+## 3. Add the instruction section
 
-The hook fires only inside an ICM workspace. Build a throwaway one by hand and run the
-hook directly, no agent needed:
+[instructions/icm.md](/icm/instructions/icm.md) is the "## ICM workspaces" section. Append
+it once.
 
+```sh
+grep -c "ICM workspaces" ~/.claude/CLAUDE.md
+# expect: 0 or "No such file or directory"; if it prints 1 the section is already there, skip this step
+printf '\n\n' >> ~/.claude/CLAUDE.md
+cat ~/projects/frontier-clean/icm/instructions/icm.md >> ~/.claude/CLAUDE.md
+grep -c "ICM workspaces" ~/.claude/CLAUDE.md
+# expect: 1
 ```
-mkdir -p /tmp/icm-demo/stages/01-research && touch /tmp/icm-demo/CONTEXT.md /tmp/icm-demo/CLAUDE.md
+
+## 4. Verify without an agent
+
+The hook prints only inside an ICM workspace: a root `CONTEXT.md` plus a `stages/NN-*`
+or `stages/NN_*` directory. Build a throwaway one and run the hook directly.
+
+```sh
+mkdir -p /tmp/icm-demo/stages/01-research
+touch /tmp/icm-demo/CONTEXT.md /tmp/icm-demo/CLAUDE.md
 cd /tmp/icm-demo && bash ~/.claude/hooks/icm-detect.sh
 # expect: one JSON line containing "ICM workspace detected at /tmp/icm-demo. Entry file: CLAUDE.md (already loaded)"
 cd ~ && bash ~/.claude/hooks/icm-detect.sh
 # expect: no output
 ```
 
-Then through the agent. Start a new session (skills are read at session start):
+Component check, which uses temporary directories only:
 
+```sh
+python3 -B ~/projects/frontier-clean/icm/tests/test_hook.py
+# expect: OK
 ```
+
+## 5. First use with the agent
+
+Start a new session; skills are read at session start.
+
+```sh
 cd ~ && claude
 # paste into the session: build me an ICM workspace for writing a weekly engineering newsletter
 # expect: the icm-architect skill runs its questionnaire and creates a directory with CONTEXT.md and stages/
@@ -66,39 +137,65 @@ cd ~ && claude
 
 Open a second session inside the workspace it created:
 
-```
+```sh
 cd <the workspace it created> && claude
 # paste into the session: status
 # expect: the icm-run skill renders the pipeline and names the next pending stage
 ```
 
-## 4. Update
+## Update
 
-```
-git -C ~/frontier-clean pull
-python3 ~/frontier-clean/icm/install.py
-```
-
-With `--link` installs, the pull alone is enough.
-
-## 5. Uninstall
-
-```
-python3 ~/frontier-clean/icm/install.py --uninstall
+```sh
+git -C ~/projects/frontier-clean pull
 ```
 
-Removes the two skills, the hook, the hook registration and the allow rule. Leaves the
-"## ICM workspaces" section in `~/.claude/CLAUDE.md`; delete it by hand if you want it
-gone.
+The links pick up skill and hook changes. The settings entries and the instruction
+section are copies: if the fragment or `instructions/icm.md` changed, repeat step 2
+or 3 by hand.
+
+## Disable
+
+To stop detection and keep the skills, delete the `icm-detect.sh` group from
+`hooks.SessionStart` in `~/.claude/settings.json`. To hide one skill, remove its link
+(`rm ~/.claude/skills/icm-run`). Start a new session afterwards.
+
+## Remove
+
+```sh
+rm ~/.claude/skills/icm-architect ~/.claude/skills/icm-run ~/.claude/hooks/icm-detect.sh
+ls ~/projects/frontier-clean/icm/skills/icm-run/SKILL.md ~/projects/frontier-clean/icm/hooks/icm-detect.sh
+# expect: both source paths still listed; rm without -r removes only the links
+```
+
+Then, by hand:
+
+- In `~/.claude/settings.json`, delete the `icm-detect.sh` group from
+  `hooks.SessionStart` and `"Bash(python3 _tools/*)"` from `permissions.allow`. Leave
+  everything else, then rerun the `json.tool` check from step 2.
+- In `~/.claude/CLAUDE.md`, delete the "## ICM workspaces" heading and the paragraph
+  and bullets under it.
+
+User data: this component keeps no store. Workspaces you built are ordinary
+directories and are not touched by removal; they stay readable, but nothing detects
+them or runs their stages until you set the component up again.
 
 ## If something is off
 
-- The agent says a workspace is not detected: the test is a root `CONTEXT.md` plus a
-  `stages/NN-*` or `stages/NN_*` directory. Run the hook by hand as in step 3.
-- Permission prompts for `_tools/*.py`: the allow rule is `Bash(python3 _tools/*)`,
-  from `icm/config/settings.icm.fragment.json`. Check it is in `permissions.allow` of
-  `~/.claude/settings.json`; if your Claude Code version wants a different form, edit
-  it there.
-- The skill does not appear under `/`: start a new session; skills load at start.
-- The `icm-architect` skill is vendored at a pinned upstream commit (see
-  `skills/icm-architect/VENDOR.md`); re-vendoring needs network and is optional.
+- The agent says a workspace is not detected: run the hook by hand as in step 4 from
+  the workspace root.
+- Permission prompts for `_tools/*.py`: check that `Bash(python3 _tools/*)` is in
+  `permissions.allow` of `~/.claude/settings.json`; if your Claude Code version wants
+  a different form, edit it there.
+- A skill does not appear under `/`: start a new session.
+- The `icm-architect` skill is vendored at a pinned upstream commit; see
+  [VENDOR.md](/icm/skills/icm-architect/VENDOR.md). Re-vendoring needs network and is
+  optional.
+
+## Not verified
+
+Nothing here was run against a real `~/.claude`. The links, the copy of the fragment
+into an absent `settings.json`, the append, the direct hook run, and the removal
+commands were exercised against a scratch home directory. Not exercised at all: the
+hand merge into an existing `settings.json`, Claude Code discovering the linked
+skills, the hook firing at session start, the allow rule suppressing prompts, and
+step 5.

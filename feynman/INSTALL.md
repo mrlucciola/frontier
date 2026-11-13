@@ -1,64 +1,141 @@
-# Install: Feynman skill and concept graph
+# Setup: Feynman skill and concept graph
 
-> Historical setup reference. The `install.py` commands below describe a removed
-> installer. Use [component maintenance instructions](AGENTS.md) for current source
-> checks and treat this guide as input when documenting replacement setup.
+Manual setup for Claude Code, the only provider this component ships configuration
+for. You get the `feynman` skill (answers "how or why does X work" questions and
+persists a card), the `cg` tool that owns the concept graph at `~/.claude/concepts/`,
+a UserPromptSubmit hook that recalls matching cards in any directory, two allow rules
+so `cg` runs without prompts, and a three-line instruction section in
+`~/.claude/CLAUDE.md`. Design: [docs/design.md](/feynman/docs/design.md).
 
-What you get: the `feynman` skill (answers "how or why does X work" questions the
-Feynman way and persists a card), the `cg` tool that owns the concept graph at
-`~/.claude/concepts/`, a UserPromptSubmit hook that recalls matching cards in any
-directory, a three-line instruction section, and two allow rules so `cg` runs without
-prompts. Design: `docs/design.md`.
+The skill and tool are linked from this directory, so the repository must stay in
+place.
 
-Everything this component needs lives in this directory: `skills/`, `tools/`
-(the engine `cg.py` and the hook `recall.sh`, side by side), `config/`,
-`instructions/`, `tests/`, `install.py`.
+| Source in this component | Provider destination | How |
+| --- | --- | --- |
+| `skills/feynman/` | `~/.claude/skills/feynman` | symlink |
+| `tools/concept-graph/` (`cg.py`, `recall.sh`) | `~/.claude/tools/concept-graph` | symlink |
+| `config/settings.feynman.fragment.json` | `~/.claude/settings.json` | merged by hand |
+| `instructions/feynman.md` | `~/.claude/CLAUDE.md` | appended once |
+| card store, created by `cg init` | `~/.claude/concepts/` | user data |
 
-Requirements: macOS or Linux, `python3` 3.9 or newer, `bash`, `git`, Claude Code
-installed. No network is used by the install or at runtime. `cg grade` is the one
-command that calls a model, and only when you run it.
+## Prerequisites
 
-## 1. Clone and install
+- macOS or Linux with `bash`, `git`, and `python3` 3.9 or newer.
+- Claude Code installed.
+- This repository checked out at `~/projects/frontier-clean`. If it lives elsewhere,
+  substitute that path in every command.
 
+Setup uses no network. `cg grade` is the one command that calls a model, and only
+when you run it.
+
+## 1. Link the skill and the tool
+
+Confirm nothing is already at the destinations. `ln -s` onto an existing directory
+would create the link inside it instead of failing.
+
+```sh
+ls -d ~/.claude/skills/feynman ~/.claude/tools/concept-graph
+# expect: "No such file or directory" twice; inspect anything that is listed before going on
 ```
-git clone <this repo> ~/frontier-clean
-python3 ~/frontier-clean/feynman/install.py --dry-run
-python3 ~/frontier-clean/feynman/install.py
+
+```sh
+mkdir -p ~/.claude/skills ~/.claude/tools
+ln -s ~/projects/frontier-clean/feynman/skills/feynman ~/.claude/skills/feynman
+ln -s ~/projects/frontier-clean/feynman/tools/concept-graph ~/.claude/tools/concept-graph
+ls ~/.claude/skills/feynman/SKILL.md ~/.claude/tools/concept-graph/cg.py ~/.claude/tools/concept-graph/recall.sh
+# expect: three paths listed
 ```
 
-The dry run prints every action and changes nothing. The install copies
-`skills/feynman` and `tools/concept-graph` into `~/.claude`, merges the hook and the
-allow rules into `~/.claude/settings.json` (a `settings.json.bak-<timestamp>` is
-written first), appends the "## Recalled concepts" section to `~/.claude/CLAUDE.md`
-(also backed up), and creates `~/.claude/concepts/`. Rerunning is safe: it only
-replaces what it installed and never touches your cards.
+The tool directory is linked because the settings fragment, the skill, and `cg`'s
+own recall output all name `~/.claude/tools/concept-graph/`, not the path inside this
+component. `recall.sh` finds `cg.py` beside itself, so the two stay together.
 
-Prefer symlinks, so `git pull` updates the live files: add `--link`.
+## 2. Create the store
 
-## 2. Check the files and run the tests
-
-```
+```sh
+python3 ~/.claude/tools/concept-graph/cg.py init
+# expect: "ok" followed by the absolute path of ~/.claude/concepts
 python3 ~/.claude/tools/concept-graph/cg.py status
-grep -c "Recalled concepts" ~/.claude/CLAUDE.md
+# expect: four lines, the second starting "cards: 0"
+```
+
+`init` is safe to rerun and never touches existing cards.
+
+## 3. Register the hook and the allow rules
+
+The entries live in the [settings fragment](/feynman/config/settings.feynman.fragment.json).
+
+If `~/.claude/settings.json` does not exist yet, the fragment is a complete settings
+file:
+
+```sh
+cp ~/projects/frontier-clean/feynman/config/settings.feynman.fragment.json ~/.claude/settings.json
+```
+
+Otherwise keep a copy and edit the file by hand, leaving every other key and entry
+as it is:
+
+```sh
+cp ~/.claude/settings.json ~/.claude/settings.json.bak-feynman
+```
+
+- Add this group to the `hooks.UserPromptSubmit` array, creating `hooks` and
+  `UserPromptSubmit` if they are absent:
+
+  ```json
+  {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "\"$HOME/.claude/tools/concept-graph/recall.sh\"",
+        "timeout": 3
+      }
+    ]
+  }
+  ```
+
+- Add `"Bash(python3 ~/.claude/tools/concept-graph/cg.py:*)"` and `"Bash(cg:*)"` to
+  the `permissions.allow` array, creating it if absent.
+
+```sh
+python3 -m json.tool ~/.claude/settings.json /dev/null
 grep -c "concept-graph/recall.sh" ~/.claude/settings.json
-python3 ~/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
-python3 ~/frontier-clean/feynman/tests/test_recall_hook.py
-python3 ~/frontier-clean/feynman/tests/test_install.py
-# expect: "cards: 0", 1, 1, OK, OK, OK
+# expect: no output from the first command (the file parses), then 1
 ```
 
-The tests use temporary directories and never touch `~/.claude/concepts/`.
+## 4. Add the instruction section
 
-## 3. First live test, no agent
+[instructions/feynman.md](/feynman/instructions/feynman.md) is the "## Recalled concepts"
+section. Append it once.
 
-Create one card by hand and watch the hook recall it:
-
+```sh
+grep -c "Recalled concepts" ~/.claude/CLAUDE.md
+# expect: 0 or "No such file or directory"; if it prints 1 the section is already there, skip this step
+printf '\n\n' >> ~/.claude/CLAUDE.md
+cat ~/projects/frontier-clean/feynman/instructions/feynman.md >> ~/.claude/CLAUDE.md
+grep -c "Recalled concepts" ~/.claude/CLAUDE.md
+# expect: 1
 ```
+
+## 5. Verify without an agent
+
+Component checks, which use temporary stores and never touch `~/.claude/concepts/`:
+
+```sh
+python3 -B ~/projects/frontier-clean/feynman/tools/concept-graph/tests/test_cg.py
+python3 -B ~/projects/frontier-clean/feynman/tests/test_recall_hook.py
+# expect: OK, OK
+```
+
+Then create one card in your real store and watch the hook recall it:
+
+```sh
 python3 ~/.claude/tools/concept-graph/cg.py add wal-mode --title "SQLite WAL mode" --alias wal \
   --explain "Writes go to a side file first; readers keep reading the main file until a checkpoint folds the side file in." \
   --analogy "A restaurant order pad: orders pile up on the pad while the kitchen keeps cooking from the last menu." \
   --breaks "The pad is replayed strictly in order; real kitchens reorder tickets." \
   --pitch "WAL lets many readers and one writer work at the same time." --confidence 3
+# expect: added wal-mode
 python3 ~/.claude/tools/concept-graph/cg.py recall how does wal work
 # expect: a block starting "memory: 1 concept (scope: global)" and ending with the guard line
 printf '{"session_id":"demo","cwd":"%s","prompt":"why does WAL let readers continue?"}' "$PWD" | bash ~/.claude/tools/concept-graph/recall.sh
@@ -69,18 +146,19 @@ printf '{"session_id":"demo","cwd":"%s","prompt":"tell me a joke"}' "$PWD" | bas
 # expect: no output
 ```
 
-Remove the demo card when done (or keep it):
+Remove the demo card when done, or keep it:
 
+```sh
+rm ~/.claude/concepts/cards/wal-mode.md
+python3 ~/.claude/tools/concept-graph/cg.py index
+# expect: indexed 0 cards (or the number of cards you have left)
 ```
-rm ~/.claude/concepts/cards/wal-mode.md && python3 ~/.claude/tools/concept-graph/cg.py index
-```
 
-## 4. First live test, with the agent
+## 6. First use with the agent
 
-Start a new session (skills load at session start; the hook and permissions are live
-immediately):
+Start a new session; skills are read at session start.
 
-```
+```sh
 cd ~ && claude
 # paste into the session: /feynman git worktrees
 # expect: the four-step protocol, then a "Card" section listing the cg commands it ran
@@ -90,7 +168,7 @@ python3 ~/.claude/tools/concept-graph/cg.py list
 
 Now a second session, from any other directory, with an ordinary question:
 
-```
+```sh
 cd /tmp && claude
 # paste into the session: how do git worktrees differ from branches?
 # expect: a "memory: 1 concept" block ahead of your prompt (visible in the transcript),
@@ -99,9 +177,9 @@ cd /tmp && claude
 
 Ask the same thing once more in that second session: no second memory block.
 
-## 5. Everyday commands
+## Everyday commands
 
-```
+```sh
 python3 ~/.claude/tools/concept-graph/cg.py list                   # all cards
 python3 ~/.claude/tools/concept-graph/cg.py gaps --due             # gaps to revisit
 python3 ~/.claude/tools/concept-graph/cg.py check                  # mark cards whose code anchors moved
@@ -110,47 +188,78 @@ python3 ~/.claude/tools/concept-graph/cg.py export --format mermaid
 python3 ~/.claude/tools/concept-graph/cg.py grade <slug>           # blind grade by a model, costs one call
 ```
 
-Optional shortcut: put a `cg` wrapper on your PATH; the allow rule `Bash(cg:*)` already
-covers it.
+Optional shortcut, if `~/.local/bin` is on your `PATH`. The allow rule `Bash(cg:*)`
+already covers it.
 
-```
-printf '#!/bin/sh\nexec python3 "$HOME/.claude/tools/concept-graph/cg.py" "$@"\n' > ~/.local/bin/cg && chmod +x ~/.local/bin/cg
-```
-
-## 6. Update
-
-```
-git -C ~/frontier-clean pull
-python3 ~/frontier-clean/feynman/install.py
+```sh
+mkdir -p ~/.local/bin
+ln -s ~/projects/frontier-clean/feynman/tools/concept-graph/cg.py ~/.local/bin/cg
+cg status
+# expect: the same four lines as step 2
 ```
 
-With `--link` installs, the pull alone is enough. Cards are never touched by an update.
+## Update
 
-## 7. Uninstall
-
-```
-python3 ~/frontier-clean/feynman/install.py --uninstall
+```sh
+git -C ~/projects/frontier-clean pull
 ```
 
-Removes the skill, the tool (hook included), its registration and the allow rules.
-Keeps `~/.claude/concepts/` (your cards) and the "## Recalled concepts" section in
-`~/.claude/CLAUDE.md`; delete those by hand if you want them gone.
+The links pick up skill, tool, and hook changes. Cards are never touched. The
+settings entries and the instruction section are copies: if the fragment or
+`instructions/feynman.md` changed, repeat step 3 or 4 by hand.
+
+## Disable
+
+To stop recall and keep the skill and your cards, delete the `recall.sh` group from
+`hooks.UserPromptSubmit` in `~/.claude/settings.json`; the skill's own recall step
+keeps working. To hide the skill, remove its link (`rm ~/.claude/skills/feynman`).
+Start a new session afterwards.
+
+## Remove
+
+```sh
+rm ~/.claude/skills/feynman ~/.claude/tools/concept-graph
+ls ~/projects/frontier-clean/feynman/tools/concept-graph/cg.py ~/.claude/concepts
+# expect: the source file and your store both still listed; rm without -r removes only the links
+```
+
+If you made the shortcut, `rm ~/.local/bin/cg` as well. Then, by hand:
+
+- In `~/.claude/settings.json`, delete the `recall.sh` group from
+  `hooks.UserPromptSubmit` and the two rules from `permissions.allow`. Leave
+  everything else, then rerun the `json.tool` check from step 3.
+- In `~/.claude/CLAUDE.md`, delete the "## Recalled concepts" heading and the
+  paragraph under it.
+
+User data: removal keeps `~/.claude/concepts/` (cards, index, lexicon, write log, and
+per-session recall state). The cards stay readable as markdown and are picked up
+again if you repeat the setup. Deleting that directory is a separate, deliberate step
+and cannot be undone from this repository.
 
 ## If something is off
 
 - `cg` asks for permission every time: the agent must type the command exactly as
   `python3 ~/.claude/tools/concept-graph/cg.py ...`; the skill says so. Check that
-  `permissions.allow` in `~/.claude/settings.json` holds the two rules from
-  `feynman/config/settings.feynman.fragment.json`.
-- No memory block appears: run step 3's `printf | bash recall.sh` line from the same
+  `permissions.allow` in `~/.claude/settings.json` holds the two rules from the
+  fragment.
+- No memory block appears: run step 5's `printf | bash recall.sh` line from the same
   directory. Silence there means no card matched (titles, aliases and slugs match as
-  whole words; check with `cg recall <words>`). Output there but none in the agent means
-  the hook registration is missing from `settings.json`.
+  whole words; check with `cg recall <words>`). Output there but none in the agent
+  means the hook registration is missing from `settings.json`.
 - The block appears on every prompt for the same card: the per-session state lives in
   `~/.claude/concepts/.state/`; the hook needs a `session_id` in its payload, which
   Claude Code provides.
-- A card looks wrong: edit it through `cg write` and `cg set`, not by hand, so the index
-  and lexicon stay in step. If you did edit by hand, run `cg index`.
+- A card looks wrong: edit it through `cg write` and `cg set`, not by hand, so the
+  index and lexicon stay in step. If you did edit by hand, run `cg index`.
 - The skill never fires on ordinary questions: it is meant to fire on "how/why does X
   work" and "explain X" shapes, not on tasks or one-line lookups. `/feynman <topic>`
   always works.
+
+## Not verified
+
+Nothing here was run against a real `~/.claude`. The links, `cg init`, the copy of
+the fragment into an absent `settings.json`, the append, the demo card and hook runs
+in step 5, the `cg` shortcut, and the removal commands were exercised against a
+scratch home directory. Not exercised at all: the hand merge into an existing
+`settings.json`, Claude Code discovering the linked skill, the hook firing on a
+prompt, the allow rules suppressing prompts, and step 6.
