@@ -24,15 +24,16 @@ Use the guide relevant to your change.
 
 | Work | Guide |
 | --- | --- |
-| Component structure, provider integration, setup, and validation | [Contribution standards](docs/contributing.md) |
-| Scoped instructions, discovery, and lifecycle hooks | [Instruction delivery](docs/instruction-delivery.md) |
-| Agent development workflow | [Agent instructions](AGENTS.md) |
+| Component structure, provider integration, setup, and validation | [Contribution standards](/docs/contributing.md) |
+| Scoped instructions, discovery, and lifecycle hooks | [Instruction delivery](/docs/instruction-delivery.md) |
+| Agent development workflow | [Agent instructions](/AGENTS.md) |
 
 ## Components
 
 | Component | Purpose | Development instructions |
 | --- | --- | --- |
-| [ICM](icm/README.md) | Workspace methodology and staged work | [ICM maintenance](icm/AGENTS.md) |
-| [Feynman](feynman/README.md) | Explanations, concept cards, and recall | [Feynman maintenance](feynman/AGENTS.md) |
-| [Quiz](quiz/README.md) | Adaptive questions and learning progress | [Quiz maintenance](quiz/AGENTS.md) |
-| [Session telemetry](session-telemetry/README.md) | Fresh Codex usage and timing observations | [Telemetry maintenance](session-telemetry/AGENTS.md) |
+| [ICM](/icm/README.md) | Workspace methodology and staged work | [ICM maintenance](/icm/AGENTS.md) |
+| [Feynman](/feynman/README.md) | Explanations, concept cards, and recall | [Feynman maintenance](/feynman/AGENTS.md) |
+| [Quiz](/quiz/README.md) | Adaptive questions and learning progress | [Quiz maintenance](/quiz/AGENTS.md) |
+| [Session telemetry](/session-telemetry/README.md) | Fresh Codex usage and timing observations | [Telemetry maintenance](/session-telemetry/AGENTS.md) |
+| [CWF](/cwf/README.md) | Contextual discovery, task continuity, and coordinated work | [CWF maintenance](/cwf/AGENTS.md) |
