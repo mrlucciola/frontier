@@ -1,6 +1,9 @@
 {
+  "archive_closed_after_days": 21,
+  "compact_closed_after_days": 7,
   "created_by": null,
   "findings_required": true,
+  "history_interval_seconds": 900,
   "history_ref": "pm-store",
   "prefix": "fc",
   "spec_version": 2,

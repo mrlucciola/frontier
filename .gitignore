@@ -128,6 +128,7 @@ dist
 # spec/v2/SPEC.md section 1).
 .pm/lock
 .pm/tickets.jsonl
+.pm/history-pending
 
 # repos
 
