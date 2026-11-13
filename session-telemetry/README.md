@@ -2,17 +2,23 @@
 
 `tools/fresh_codex.py` observes one authorized fresh Codex task through its newly
 created thread stream. Measurements require an authenticated host that can launch
-the installed CLI. Read the [qualification record](docs/qualification.md) for
+the installed CLI. Read the [qualification record](/session-telemetry/docs/qualification.md) for
 provenance, component boundaries, and measured limits.
+
+`tools/opencode_session.py` observes one authorized OpenCode turn in a fresh
+session or a session resumed by exact ID. Its invocation, fields, unavailable
+quantities and the session state a run leaves behind are in the
+[OpenCode guide](/session-telemetry/docs/opencode.md). Its rows are never pooled with Codex rows.
 
 ## Read by task
 
 | Work | Guide |
 | --- | --- |
 | Run an authorized fresh observation | Invocation and local setup below |
-| Interpret output or change event semantics | [Observation contract](docs/observations.md) |
-| Reuse measurement evidence | [Qualification record](docs/qualification.md) |
-| Develop or validate the runner | [Maintenance instructions](AGENTS.md) |
+| Run an authorized OpenCode fresh or resumed observation | [OpenCode guide](/session-telemetry/docs/opencode.md) |
+| Interpret output or change event semantics | [Observation contract](/session-telemetry/docs/observations.md) |
+| Reuse measurement evidence | [Qualification record](/session-telemetry/docs/qualification.md) |
+| Develop or validate the runner | [Maintenance instructions](/session-telemetry/AGENTS.md) |
 
 ## Run an observation
 
@@ -24,7 +30,7 @@ python3 ~/projects/frontier-clean/session-telemetry/tools/fresh_codex.py --cwd /
 ```
 
 Exit 0 reports `completed_with_usage`. Score the returned answer separately against
-the task rubric. See the [observation contract](docs/observations.md#lifecycle-and-outcomes)
+the task rubric. See the [observation contract](/session-telemetry/docs/observations.md#lifecycle-and-outcomes)
 for failure outcomes and measurement limits.
 
 ## Local setup, validation and removal
@@ -39,7 +45,7 @@ mkdir -p /private/tmp/authorized-fixture
 python3 ~/projects/frontier-clean/session-telemetry/tools/fresh_codex.py --help
 ```
 
-The component gate is documented in [maintenance instructions](AGENTS.md).
+The component gate is documented in [maintenance instructions](/session-telemetry/AGENTS.md).
 Tests use schema-shaped streams and real local Python pipe subprocesses;
 they never invoke Codex or read session logs. They cover failure/zero/missing
 usage, scope filtering, duplicates, late events, interactive requests, invalid
