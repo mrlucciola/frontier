@@ -1,6 +1,6 @@
 # Instruction discovery and delivery
 
-Keep the [global context thin](../README.md#behavioral-contract). Read this guide
+Keep the [global context thin](/README.md#behavioral-contract). Read this guide
 when changing instruction placement, skill discovery, or hooks.
 
 ## Runtime guidance
@@ -41,5 +41,5 @@ Repository maintenance instructions and runtime skill procedures have different
 entry points. Keep each discoverable from the file an agent uses for that work.
 
 For a proposed optional zsh retrieval helper and its quality and cost evaluation,
-see the [progressive discovery proposal](progressive-discovery-proposal.md).
+see the [progressive discovery proposal](/docs/progressive-discovery-proposal.md).
 It is a design proposal, not an installed component or a runtime requirement.

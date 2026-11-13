@@ -15,9 +15,9 @@ variation and latency does not materially regress. Otherwise simplify it or keep
 the existing Markdown navigation. The current shared guides are short enough that
 an extra command may cost more than it saves.
 
-Follow the existing [behavioral contract](../README.md#behavioral-contract),
-[contribution standards](contributing.md), and
-[instruction delivery guidance](instruction-delivery.md). This proposal does not
+Follow the existing [behavioral contract](/README.md#behavioral-contract),
+[contribution standards](/docs/contributing.md), and
+[instruction delivery guidance](/docs/instruction-delivery.md). This proposal does not
 replace those sources or turn discovery into a mandatory workflow.
 
 ## Design
