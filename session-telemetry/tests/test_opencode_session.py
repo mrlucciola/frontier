@@ -154,7 +154,8 @@ class TurnTests(FixtureCase):
         self.assertEqual(r["stderr_sha256"], hashlib.sha256(b"fixture stderr\n").hexdigest())
         self.assertEqual(r["diagnostics"], {})
         self.assertEqual(r["requested"], {"cwd": str(self.cwd), "model": None, "agent": None})
-        self.assertEqual(self.runs(), [["run", "--standalone", "--format", "json", "--session", SID, PROMPT]])
+        self.assertEqual(self.runs(), [["run", "--standalone", "--format", "json", "--session", SID,
+                                        "authorized", "prompt", "text"]])
         self.assertFalse(any("--auto" in call for call in self.after["calls"]))
         self.assertEqual(self.calls_of("session.permission.list"), [])
         self.assertNotIn(PROMPT, json.dumps(r))
@@ -195,7 +196,8 @@ class TurnTests(FixtureCase):
         self.finish(assistant("msg_a1", tk(1, 1)), add_tokens=tk(1, 1))
         r = self.measure(model="anthropic/claude#high", agent="plan")
         self.assertEqual(self.runs(), [["run", "--standalone", "--format", "json", "--session", SID,
-                                        "--model", "anthropic/claude#high", "--agent", "plan", PROMPT]])
+                                        "--model", "anthropic/claude#high", "--agent", "plan",
+                                        "authorized", "prompt", "text"]])
         self.assertEqual(r["requested"]["model"], "anthropic/claude#high")
         self.assertEqual(r["requested"]["agent"], "plan")
         self.assertEqual(r["configuration"]["session_model"],
@@ -243,6 +245,34 @@ class TurnTests(FixtureCase):
         r = self.measure()
         self.assertEqual(r["outcome"], "completed_with_usage")
         self.assertIsNone(r["configuration"]["location_is_cwd"])
+
+    def test_prompt_reaches_the_session_verbatim(self):
+        prompt = 'Say "yes" or no,\nthen stop: 1900? 2000?'
+        self.finish(assistant("msg_a1", tk(1, 1)), add_tokens=tk(1, 1))
+        r = self.measure(prompt=prompt)
+        self.assertEqual(r["outcome"], "completed_with_usage")
+        self.assertIs(r["prompt_echoed"], True)
+        self.assertEqual(r["user_message_texts"][0]["text_sha256"], hashlib.sha256(prompt.encode()).hexdigest())
+        self.assertEqual(self.runs()[0][6:], prompt.split(" "))
+
+    def test_a_different_user_message_is_invalid_telemetry(self):
+        self.turn(add_tokens=tk(5, 2), add_cost=0.25, echo_prompt=False,
+                  messages=[{"id": "msg_u", "type": "user", "time": {}, "text": f'"{PROMPT}"'},
+                            assistant("msg_a1", tk(5, 2), 0.25), idle()])
+        r = self.measure()
+        self.assertEqual(r["outcome"], "invalid_telemetry")
+        self.assertEqual(r["diagnostics"], {"prompt_not_verbatim": 1})
+        self.assertIs(r["prompt_echoed"], False)
+        self.assertEqual(r["user_message_texts"][0]["text_bytes"], len(PROMPT) + 2)
+        self.assertEqual(r["step_usage_sum"], {"tokens": flat(5, 2), "cost_usd": 0.25})
+
+    def test_prompt_that_cannot_be_passed_word_by_word_never_runs(self):
+        for prompt in ("two  spaces", " leading", "trailing ", "use -x here", "--auto now", ""):
+            with self.subTest(prompt=prompt):
+                self.finish(assistant("msg_a1", tk(1, 1)), add_tokens=tk(1, 1))
+                r = self.measure(prompt=prompt)
+                self.assertEqual(r["outcome"], "unsupported_prompt")
+                self.assertEqual(self.runs(), [])
 
     def test_run_that_creates_no_session(self):
         self.turn(skip_create=True)
@@ -566,9 +596,18 @@ class HelperTests(unittest.TestCase):
             {"id": "m", "text_sha256": hashlib.sha256(b"other").hexdigest(), "text_bytes": 5},
             {"id": "n", "text_sha256": hashlib.sha256(b"").hexdigest(), "text_bytes": 0}])
 
-    def test_reduce_messages_prompt_echo_ignores_outer_whitespace(self):
-        reduced = oc.reduce_messages([{"id": "m", "type": "user", "text": "\nhi \n"}], "hi")
-        self.assertTrue(reduced["prompt_echoed"])
+    def test_reduce_messages_prompt_echo_is_exact(self):
+        for said in ("\nhi \n", '"hi"', "Hi"):
+            with self.subTest(said=said):
+                reduced = oc.reduce_messages([{"id": "m", "type": "user", "text": said}], "hi")
+                self.assertFalse(reduced["prompt_echoed"])
+
+    def test_prompt_words(self):
+        self.assertEqual(oc.prompt_words("a b\nc d"), ["a", "b\nc", "d"])
+        self.assertEqual(oc.prompt_words("one"), ["one"])
+        for bad in ("", " ", "a  b", " a", "a ", "-a", "a -b", "a --auto"):
+            with self.subTest(prompt=bad):
+                self.assertIsNone(oc.prompt_words(bad))
 
     def test_classify(self):
         def reduced(idle_outcomes=(), finishes=()):

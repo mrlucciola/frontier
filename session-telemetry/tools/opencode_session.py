@@ -57,6 +57,18 @@ def totals(session):
     return {"tokens": tokens(session.get("tokens")), "cost_usd": number(session.get("cost"))}
 
 
+def prompt_words(prompt):
+    """The prompt as one argument per word, or None when that cannot carry it.
+
+    OpenCode wraps an argument that contains a space in double quotes, so a
+    one-argument prompt reaches the model quoted. Space-free arguments are joined
+    by single spaces unchanged. Empty words and words that look like options
+    cannot be passed that way.
+    """
+    words = prompt.split(" ")
+    return None if any(not word or word.startswith("-") for word in words) else words
+
+
 def text_digest(text):
     data = text.encode() if isinstance(text, str) else b""
     return hashlib.sha256(data).hexdigest(), len(data)
@@ -232,8 +244,7 @@ def reduce_messages(messages, prompt):
             digest, size = text_digest(said)
             reduced["user_messages"] += 1
             reduced["user_message_texts"].append({"id": message["id"], "text_sha256": digest, "text_bytes": size})
-            if isinstance(said, str) and said.strip() == prompt.strip():
-                reduced["prompt_echoed"] = True
+            reduced["prompt_echoed"] = reduced["prompt_echoed"] or said == prompt
         else:
             reduced["other_message_types"][kind if isinstance(kind, str) else "untyped"] += 1
     reduced["other_message_types"] = dict(reduced["other_message_types"])
@@ -320,10 +331,13 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
     new_messages = []
     session = {}
     configuration = {}
+    words = prompt_words(prompt)
     try:
         configuration = host_configuration(client)
         existing = session_info(client, session_id)
-        if phase == "fresh" and existing is not None:
+        if words is None:
+            failure = "unsupported_prompt"
+        elif phase == "fresh" and existing is not None:
             failure = "session_already_exists"
         elif phase == "resume" and existing is None:
             failure = "session_not_found"
@@ -336,7 +350,7 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
                 argv += ["--model", model]
             if agent:
                 argv += ["--agent", agent]
-            run = run_turn(client, [*argv, prompt], timeout)
+            run = run_turn(client, [*argv, *words], timeout)
             if run["timed_out"]:
                 failure = "timed_out"
             session = session_info(client, session_id)
@@ -371,6 +385,9 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
         location_is_cwd = os.path.realpath(location["directory"]) == os.path.realpath(cwd)
         if not location_is_cwd:
             diagnostics["location_not_cwd"] += 1
+    # A turn whose user message is not the prompt measured a different prompt.
+    if after is not None and not reduced["prompt_echoed"]:
+        diagnostics["prompt_not_verbatim"] += 1
     outcome, evidence = classify(failure, run or {"exit_code": None}, reduced, session, phase_usage, diagnostics)
 
     created = [s["time"]["created"] for s in reduced["steps"] if s["time"]["created"] is not None]
@@ -426,8 +443,8 @@ def main(argv=None):
         parser.error("--phase resume needs the exact --session ID")
     if args.session is not None and not args.session.startswith("ses"):
         parser.error("--session must be an OpenCode session ID (starts with ses)")
-    if not args.prompt.strip() or args.prompt.startswith("-"):
-        parser.error("prompt must be non-empty and must not start with '-'")
+    if prompt_words(args.prompt) is None:
+        parser.error("prompt must be words separated by single spaces, none empty or starting with '-'")
     result = measure(["opencode"], cwd=args.cwd.resolve(), phase=args.phase,
                      session_id=args.session or "ses_" + uuid.uuid4().hex, prompt=args.prompt,
                      model=args.model, agent=args.agent, timeout=args.timeout)

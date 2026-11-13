@@ -42,11 +42,18 @@ scores `agent_messages`, checks the fixture and records corrections separately.
    with `session_already_exists` if it is found; `resume` stops with
    `session_not_found` if it is not. For `resume` it records the session's
    cumulative totals and the IDs of its existing messages.
-3. Runs `opencode run --standalone --format json --session <id> <prompt>` with
-   stdin closed. It never passes `--auto` and never answers a permission
-   request. On timeout it terminates the process group.
+3. Runs `opencode run --standalone --format json --session <id>` followed by
+   the prompt, one argument per word, with stdin closed and `PWD` set to
+   `--cwd`. It never passes `--auto` and never answers a permission request. On
+   timeout it terminates the process group.
 4. Reads the session and its messages back through `opencode api --standalone`
    and reduces only the messages that did not exist before step 3.
+
+The prompt is split on single spaces because OpenCode wraps an argument that
+contains a space in double quotes, which would put the quotes in front of the
+model. A prompt with a doubled, leading or trailing space, or with a word that
+starts with `-`, cannot be passed that way; the runner refuses it as
+`unsupported_prompt` before running anything.
 
 `--standalone` gives every step a private server, so a running background
 service with older configuration cannot serve the turn. Configuration,
@@ -103,14 +110,15 @@ the runner changes none of them.
   stderr is counted and hashed, never printed.
 - `user_message_texts` keeps the SHA-256 and byte length of each user message
   the turn added, beside `prompt_sha256` and `prompt_bytes`. `prompt_echoed` is
-  true when one of them is the prompt, ignoring outer whitespace. It is
-  informational and does not change the outcome.
+  true when one of them is exactly the prompt. When none is, the turn measured
+  a different prompt: the row carries the `prompt_not_verbatim` diagnostic and
+  cannot be `completed_with_usage`.
 
 Outcomes other than `completed_with_usage` exit 1: `failed`, `interrupted`,
 `incomplete`, `process_failed`, `timed_out`, `interactive_request_required`,
 `completed_usage_unavailable`, `completed_usage_partial`, `completed_zero_usage`,
-`invalid_telemetry`, `session_already_exists`, `session_not_found`,
-`session_not_created`, `api_error` and `launch_error`. A failed or timed-out
+`invalid_telemetry`, `unsupported_prompt`, `session_already_exists`,
+`session_not_found`, `session_not_created`, `api_error` and `launch_error`. A failed or timed-out
 turn keeps whatever usage the session recorded; it is not free work.
 
 ## Not available on this surface
@@ -146,7 +154,7 @@ unknown session prints a `SessionNotFoundError` body and exits 1. Fixture tests
 exercise the reducer against schema-shaped data and a fake CLI; they do not
 prove the real route.
 
-One operator-run fresh row and one resume row (2026-11-12, OpenCode 2.0.32,
+Operator-run fresh and resume rows (2026-11-12 and 2026-11-13, OpenCode 2.0.32,
 provider `lai`, model `Qwen3.8-Flash-Next-oQ4e-fp16-mtp`, recorded on ticket
 fc-3868ea) showed:
 
@@ -155,13 +163,16 @@ fc-3868ea) showed:
 - Idle messages carry the outcome. Step times are epoch milliseconds;
   `firstToken` was absent. The session itself reported no agent or model, only
   the steps did. No system or synthetic messages were projected.
-- The fresh session's totals exceeded its one step by 637 input, 7 output and
-  375 reasoning tokens. The resumed turn's delta equalled its step.
-- Both rows reported the session located in the caller's directory, not `--cwd`,
-  and neither user message matched the prompt. The runner now sets `PWD` for its children
-  and marks such a row `location_not_cwd`. Whether that is enough has not been
-  rerun against the client, and the reason the prompt did not match is not
-  known.
+- A fresh session's totals exceeded its one step (by 637 input, 7 output and 375
+  reasoning tokens in one row; by 5, 20 and 372 in another). A resumed turn's
+  delta equalled its step both times.
+- Before the runner set `PWD`, the session was located in the caller's
+  directory. With `PWD` set to `--cwd`, a run launched from another directory
+  reported the session in `--cwd`.
+- With the prompt passed as one argument, the user message was the prompt
+  wrapped in double quotes (the digests match exactly). Passing it one word per
+  argument has passed fixture tests only; it has not been rerun against the
+  client.
 
-Not checked against the client: pagination, tool and skill messages, failed and
-interrupted turns, and permission requests.
+Not checked against the client: word-by-word prompt delivery, pagination, tool
+and skill messages, failed and interrupted turns, and permission requests.

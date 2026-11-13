@@ -6,6 +6,7 @@ A session `run` creates is located at the process's working directory.
 
 next_turn keys (all optional):
   messages      scripted messages appended after the user message that echoes the prompt
+                (message arguments joined by spaces, one holding a space double-quoted)
   echo_prompt   false drops that user message
   add_tokens    schema-shaped TokenUsage added to the session's cumulative tokens
   add_cost      number added to the session's cumulative cost
@@ -87,7 +88,7 @@ def new_session(session_id, model, agent):
 
 
 def run(state, args, path):
-    rest, flags, prompt = args[1:], {}, None
+    rest, flags, words = args[1:], {}, []
     index = 0
     while index < len(rest):
         if rest[index] == "--standalone":
@@ -96,8 +97,10 @@ def run(state, args, path):
             flags[rest[index]] = rest[index + 1]
             index += 2
         else:
-            prompt = rest[index]
+            words.append(rest[index])
             index += 1
+    # As observed on 2.0.32: an argument holding a space arrives in double quotes.
+    prompt = " ".join(f'"{word}"' if " " in word else word for word in words)
     turn = state.get("next_turn", {})
     state.setdefault("runs", []).append({"argv": args, "pid": os.getpid()})
     session_id = flags["--session"]
