@@ -2313,6 +2313,21 @@ class StoreRoutingTest(unittest.TestCase):
         with open(os.path.join(repo, ".pm", "tickets.jsonl")) as f:
             return {r["id"]: r for r in map(json.loads, f)}
 
+    def test_list_all_stores_tags_rows_with_store_and_skips_frozen_on_stderr(self):
+        self.pm(self.a, "claim", self.a_id, "--as", "x")
+        self.pm(self.b, "claim", self.b_id, "--as", "y")
+        out, err = self.pm(self.a, "list", "--status", "claimed", "--all-stores", "--json")
+        rows = json.loads(out)
+        self.assertEqual({r["id"]: r["store"] for r in rows},
+                         {self.a_id: self.a, self.b_id: self.b})
+        single, _ = self.pm(self.a, "list", "--status", "claimed", "--json")
+        (one,) = json.loads(single)
+        self.assertNotIn("store", one)
+        a_row = next(r for r in rows if r["id"] == self.a_id)
+        self.assertEqual({k: v for k, v in a_row.items() if k != "store"}, one)
+        self.assertIn("skipped %s: frozen" % self.c, err)
+        self.assertNotIn(self.c_id, out)
+
     def test_show_routes_to_the_owning_store_without_a_flag(self):
         out, _ = self.pm(self.a, "show", self.b_id)
         self.assertIn(self.b_id, out)

@@ -35,16 +35,16 @@ new code.
 ```
 
 Baseline against the old CLI at `~/frontier/runtime-tools/pm/ticket/src/ticket`,
-frontier `ff71ab3a`:
+frontier `505936d6`:
 
 ```text
-Ran 268 tests in 232.077s
+Ran 269 tests in 241.429s
 OK (skipped=9)
-parity: passed 259, pending 0, failed 0, skipped 9
+parity: passed 260, pending 0, failed 0, skipped 9
 ```
 
-**The old pm is a moving target.** Three upstream commits landed while the
-suite was being prepared. The suite is pinned to `ff71ab3a`; the
+**The old pm is a moving target.** Four upstream commits landed while the
+suite was being prepared. The suite is pinned to `505936d6`; the
 [cut list](/pm/docs/cut-list.md) holds the drift check the integration ticket
 runs before declaring parity. Freezing feature work on the old pm for the
 length of Run 1 removes this risk entirely.

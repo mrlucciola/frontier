@@ -25,14 +25,14 @@ ticket blocks the cutover runbook, so the switch cannot silently turn them off.
 ## Baseline and upstream drift
 
 The old pm is still being changed. The parity suite and spec copies here match
-frontier `ff71ab3a` (2026-11-12T23:32-05:00). The first copy was taken at
-`c86faab0`; three upstream commits landed during that work and were folded in.
+frontier `505936d6` (2026-11-12T23:49-05:00). The first copy was taken at
+`c86faab0`; four upstream commits landed during that work and were folded in.
 
 Before the rewrite is declared at parity, the integration ticket runs this and
 ports every new test on kept surface, with the count table below updated:
 
 ```sh
-git --no-pager -C /Users/matthias/frontier diff --stat ff71ab3a HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
+git --no-pager -C /Users/matthias/frontier diff --stat 505936d6 HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
 ```
 
 Empty output means no drift.
@@ -65,11 +65,11 @@ It passes against the old CLI and is the gate for the new one.
 
 | | Count |
 | --- | --- |
-| Tests in the old suite at `ff71ab3a` | 281 |
+| Tests in the old suite at `505936d6` | 282 |
 | Removed | 13 |
 | Changed | 8 |
 | Skipped as deferred | 9 |
-| Run against the CLI under test | 259 |
+| Run against the CLI under test | 260 |
 
 Removed, with the dropped item each one covered:
 

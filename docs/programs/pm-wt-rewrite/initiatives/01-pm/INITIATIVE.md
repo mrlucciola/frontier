@@ -29,13 +29,13 @@ None.
 
 ## Facts not to re-derive
 
-- **Baseline.** The trimmed suite ran against the old CLI at frontier `ff71ab3a`,
-  sandboxed: `Ran 268 tests in 232.077s`, `OK (skipped=9)`,
-  `parity: passed 259, pending 0, failed 0, skipped 9`. Git repos created under the
+- **Baseline.** The trimmed suite ran against the old CLI at frontier `505936d6`,
+  sandboxed: `Ran 269 tests in 241.429s`, `OK (skipped=9)`,
+  `parity: passed 260, pending 0, failed 0, skipped 9`. Git repos created under the
   suite's temp directories work inside the sandbox.
-- **Upstream moves.** The old pm took three commits during preparation (typed notes,
-  the archived-id refusal, the `history-pending` store entry); all three are in the
-  suite. `pm/docs/cut-list.md` has the drift command. Run it on your first turn and
+- **Upstream moves.** The old pm took four commits during preparation (typed notes,
+  the archived-id refusal, the `history-pending` store entry, `list --all-stores`);
+  all four are in the suite. `list --all-stores` belongs to fc-739601. `pm/docs/cut-list.md` has the drift command. Run it on your first turn and
   again in fc-59011f. New upstream tests on kept surface are ported by you, in a
   ticket of their own, never by a verb worker.
 - **Typed notes are kept surface.** `note --kind`, the kinds `close` and `edit` write,
@@ -65,7 +65,7 @@ None.
   `PM_STORES_FILE=/Users/matthias/frontier/runtime-tools/pm/stores.json`, and set
   `PM_TELEMETRY_DIR=-` so the old CLI writes no telemetry row. Ten stores are
   registered; `~/claude` is frozen. All ten are `spec_version: 2`.
-- **Old source sizes** at `ff71ab3a`, for the line-count note at close: `ticket` 3087,
+- **Old source sizes** at `505936d6`, for the line-count note at close: `ticket` 3114,
   `ticket_core.py` 2783, `gitcommit.py` 220, `gitfault.py` 207, `board.py` 198,
   `overview.py` 165.
 - **`show --field`** is new surface, specified in fc-2b34c9 and tested in
