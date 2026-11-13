@@ -65,7 +65,9 @@ the runner changes none of them.
   `location_is_cwd` says whether the session's reported directory is `--cwd`.
   When it is not, the turn loaded another directory's instructions and files:
   the row carries the `location_not_cwd` diagnostic and cannot be
-  `completed_with_usage`.
+  `completed_with_usage`. `session_info_keys` lists the field names the real
+  Session.Info carried; on 2.0.32 `session_agent` and `session_model` were null
+  in the smoke rows, so read the agent and model from `steps`.
 - `steps` has one entry per assistant message created by this turn, with its
   model, `finish`, `tokens`, `cost_usd`, `time` and any error type or retry
   attempt. `assistant_steps` is their count. It is a count of assistant

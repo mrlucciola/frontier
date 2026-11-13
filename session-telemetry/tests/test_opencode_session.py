@@ -136,6 +136,7 @@ class TurnTests(FixtureCase):
         self.assertEqual(r["configuration"]["session_agent"], "build")
         self.assertEqual(r["configuration"]["location"], {"directory": os.path.realpath(self.cwd)})
         self.assertIs(r["configuration"]["location_is_cwd"], True)
+        self.assertIn("location", r["configuration"]["session_info_keys"])
         self.assertEqual(r["prompt_sha256"], hashlib.sha256(PROMPT.encode()).hexdigest())
         self.assertEqual(r["prompt_bytes"], len(PROMPT))
         self.assertIs(r["prompt_echoed"], True)

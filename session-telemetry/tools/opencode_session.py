@@ -381,7 +381,7 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
             models.append(step["model"])
     configuration.update({"session_agent": session.get("agent"), "session_model": session.get("model"),
                           "location": session.get("location"), "location_is_cwd": location_is_cwd,
-                          "step_models": models})
+                          "session_info_keys": sorted(session), "step_models": models})
     return {
         "surface": SURFACE, "phase": PHASES[phase], "outcome": outcome,
         "completion_evidence": evidence, "failure_detail": failure_detail, "session_id": session_id,
