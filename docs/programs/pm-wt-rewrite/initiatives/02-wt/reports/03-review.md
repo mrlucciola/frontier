@@ -1,0 +1,41 @@
+VERDICT: PARTIAL
+FINDINGS:
+- cli/wt: can I say what it does cold: yes; a line I could delete: no; every refusal names the next step: yes
+- tools/verbs/start.zsh: cold: yes; deletable line: no; refusals name the next step: mostly. The failures it inherits from git.zsh:31 (wt_default_branch) and pm.zsh:67 ("is not a directory") name no command to run.
+- tools/verbs/finish.zsh: cold: no. The file is 459 lines. land arrives through the WT_VERB global the dispatcher sets, `_wt_red_covered` reads its caller's locals, and the route codes 0/1/2 live in teardown.zsh. Deletable line: yes (135, 160, 173, 311, 358, 381). Refusals name the next step: yes.
+- tools/verbs/park.zsh: cold: yes, except the session precedence at 49-51, which has no explanation. Deletable line: yes (82, 244). Refusals name the next step: yes.
+- tools/verbs/status.zsh: cold: yes; deletable line: no; refusals name the next step: yes
+- tools/verbs/prune.zsh: cold: yes; deletable line: no; refusals name the next step: yes
+- tools/verbs/selftest.zsh: cold: yes; deletable line: no; refusals name the next step: yes
+- pm-plugin/pre-done, post-take, orient: cold: yes; deletable line: no; refusals name the next step: yes
+- tools/verbs/finish.zsh:135,160,173: dead code. `(( rc == 70 )) && return 70` and the comment "70 means park is not built" are left over from the staged build. park.zsh exists, and the dispatcher returns 1 when a verb file is missing (cli/wt:34), not 70, so nothing returns 70. That breaks rule 6 and rule 7 (history in source). Fix: delete both checks and the parenthetical in the comment.
+- tools/lib/teardown.zsh:134,4 vs tools/verbs/start.zsh:65: `wt_wip_tip` has one caller (start), and `WT_MASS_DELETE_MIN` has one user (park.zsh:116). start hardcodes the same threshold as `wip_n > 50`, so one concept is written two ways. That breaks rule 2 and rule 6. Fix: move `wt_wip_tip` into start.zsh, and either use `WT_MASS_DELETE_MIN` in start or define the constant in the one verb that uses it.
+- tools/lib/teardown.zsh:107,122,194,216: `wt_stop_remove_failed`, `wt_deferred_line`, `wt_refuse_undeletable` and `wt_merged_route` are each used only by finish and park (two verbs). Rule 2 asks for three, and the only recorded exception is wt_findings_required. Fix: record a second exception in the component docs for "finish/park teardown", or move each one into a verb.
+- tools/verbs/park.zsh:49-51: `pm_session` prefers the environment over `--session`, but `resume_session` prefers `--session` over the environment. start.zsh:7 and finish.zsh:14 let `--session` override the environment. The inversion has no comment and reads like a bug. Fix: add a one-line why comment, or make all verbs use one precedence.
+- tools/verbs/selftest.zsh:97-98: `|| wt_st_fail prune ...` is followed by an unconditional `wt_st_ok "prune with nothing to do"`, so a failing prune prints both FAIL and ok. Fix: use if/else as the other cases do.
+- tools/verbs/park.zsh:244,257: `branch_out` is never read. `kept=1` is set on any `branch -d` failure, but when the remove is not deferred, the tail at 257 still says "worktree and branch removed". Fix: drop `branch_out` (use `git ... >/dev/null 2>&1 || kept=1`) and pick the tail from `kept`.
+- tools/verbs/finish.zsh:358,379,393,442: the `have` parameter of `_wt_finish_close_cmd` is never read. `_wt_finish_teardown` threads it through only to pass it there. Fix: remove the parameter from both signatures and every call site.
+- tools/verbs/finish.zsh:381,311: these locals are declared and never used: `cmds_text` at 381, `t` at 311. Fix: delete them.
+- tools/verbs/finish.zsh:238-252: `_wt_red_covered` reads `matched`, `parent` and `children` from `_wt_red_scan`'s locals through zsh dynamic scoping, which the file does not show or explain. Fix: inline the recursion into `_wt_red_scan` as a loop over an explicit stack, or add a comment naming the caller-scoped arrays it reads.
+- cli/wt:8,12: `wt_usage` and `main` lack `emulate -L zsh`, which breaks the per-function rule. A `#!/bin/zsh` script still sources ~/.zshenv, so the user's options reach the dispatcher before any lib function resets them. Fix: put `emulate -L zsh` first in both.
+- tools/verbs/selftest.zsh:6,7: `wt_st_ok` and `wt_st_fail` lack `emulate -L zsh`. Fix: add it.
+- tools/lib/fail.zsh:31: the fault-report header written into every report contains the ticket id `cl-0c03c7` and the stale path `frontier/runtime-tools/wt`. That breaks rule 7. Fix: say "Machine-appended by `wt`" with no ticket id.
+- tools/lib/fail.zsh:3: the default fault directory is the hardcoded absolute path `/Users/matthias/frontier/docs/backlog/inbox/infra-faults`, which ties the component to one machine (rule 9). Fix: use `$HOME/frontier/...`, or name the dependency in INSTALL.md.
+- tools/verbs/start.zsh:110-114: `$?` is read after `fi` of an if/else whose branches are assignments. It works because if returns the last command's status, but this is the listed `$?` hazard. Fix: capture `rc=$?` inside each branch, or build an args array and run one `add_err=$(git ... "${args[@]}" 2>&1)`.
+- tools/lib/teardown.zsh:32,34,37,205: operator hand-off text contains `rm -rf $wt_path`, `rm -rf $p` and `git worktree remove --force $wt_path` with unquoted paths. wt does not run them, but a path with a space breaks the pasted command. These strings also sit in source next to the AGENTS.md rule "wt never runs" them, with no recorded ruling that handing them over is allowed. Fix: quote with `${(q)wt_path}` / `${(q)p}`, and record the hand-off ruling in wt/AGENTS.md.
+- tools/verbs/finish.zsh:407,420,421,429: the fault key and verb are hardcoded `finish`, so a failure under `wt land` is recorded as verb finish. Fix: pass `$verb` (needs a `verb` parameter on `_wt_finish_teardown`).
+- tools/lib/git.zsh:29-31 and pm.zsh:56,67: these refusals (detached or unknown default branch, `pm get` failed, not a directory) name no next command. Fix: add the remedy, e.g. "check out the default branch in <repo>, then re-run".
+- tools/verbs/park.zsh:142: `export PM_ACTOR=$actor` leaks into every later `wt_pm` call in the process, with no comment saying why. Fix: add `PM_ACTOR=$actor` to the `vars` that `wt_pm` passes for the park call, or add a why comment.
+- tools/verbs/park.zsh:82: `[[ -d $wt_path/.local ]] &&` is redundant, because the `(DN)` glob at 81 is already empty when the directory is missing. Fix: drop the -d test.
+- tools/lib/teardown.zsh:196: the `${4:-finish}` default is never used, since all four callers pass the verb (finish.zsh:91,126; park.zsh:92,288). Fix: `verb=$4`.
+- tools/lib/fail.zsh:79 and finish.zsh:374: these functions end without an explicit `return` and rely on the last command's status. Fix: add `return 1` and `return $?`.
+- Checked and sound:
+  - No local is named after a special parameter (status, path, argv and the rest).
+  - JSON is parsed only in crossrepo.py and findings_required.py.
+  - wt runs no `git branch -D`, `git worktree remove --force` or `rm -rf`; branch deletion is `git branch -d` only (teardown.zsh:297, finish.zsh:412, park.zsh:244,311).
+  - selftest's `rm -r` targets only its own `mktemp -d` scratch.
+  - Paths passed to git and pm are quoted.
+  - Auto-park runs as a separate process (finish.zsh:181), so no globals leak between verbs.
+  - wt_resolve_repos and wt_guard each have three verb callers.
+  - wt_findings_required is the recorded exception.
+RE-VERIFY: /usr/bin/python3 -B /Users/matthias/projects/frontier-clean/.worktrees/fc-8c1f62/wt/tests/run_wt.py --cli /Users/matthias/projects/frontier-clean/.worktrees/fc-8c1f62/wt/cli/wt --pm new (expect `pending 0, failed 0`; AGENTS.md says to run it from the repository root, and I have not checked whether absolute paths work without that), then rg -n 'rc == 70|cl-0c03c7|cmds_text|> 50\b' /Users/matthias/projects/frontier-clean/.worktrees/fc-8c1f62/wt/tools (expect exit 1, no match)

@@ -132,7 +132,14 @@ failed 0`, all auto-park tests green.
 `prompts/03a-integration-selftest.md` (selftest, drop the unbuilt path) done at b4637c3:
 worker's suite `--pm new` (no `--allow-pending`) passed 123, pending 0, skipped 2,
 failed 0; overseer's `zsh wt/cli/wt selftest` printed 11 `ok:` lines and `SELFTEST
-PASSED`. In flight in parallel:
+PASSED`. Overseer's own `--pm new` run (no `--allow-pending`) exit 0. Docs done at
+5b2e29a (check_structure ok, 3 exempted). Readability review `reports/03-review.md`,
+PARTIAL, small findings; fix round `prompts/03c-readability-fixes.md` in flight with
+rulings: the finish/park teardown helpers are a second recorded rule-2 exception
+(recorded in wt/AGENTS.md); `wt_wip_tip` moves to start; one session precedence
+(`--session` wins); fault default via `$HOME`; operator hand-off strings quoted and
+the hand-off recorded. Dropped contract sections routed to fc-03292e; cutover facts
+to fc-10981e. Was in flight in parallel:
 `prompts/03b-integration-docs.md` (README, AGENTS, INSTALL, contract rewrite,
 contributing row), then a read-only readability review of `wt/cli`, `wt/tools`,
 `wt/pm-plugin` against component-principles. Rulings: the suite pins selftest's last
