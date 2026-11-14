@@ -1,0 +1,85 @@
+#!/usr/bin/python3
+"""pm ticket: the repo ticket store."""
+import argparse
+import importlib
+import os
+import sys
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, HERE)
+
+import store  # noqa: E402
+
+VERBS = ("init", "create", "show", "list", "ready", "tree", "summary", "claim",
+         "hold", "release", "close", "reopen", "note", "edit", "dep", "unlink",
+         "reparent", "where", "stores", "history", "validate", "lint", "archive",
+         "board", "overview")
+
+EPILOG = (
+    "exit codes: 0 ok; 1 TicketError refusal (pm: <msg> on stderr) "
+    "or validate/lint found problems (FAIL on stdout); "
+    "2 argparse usage error, validate/lint found no store or could "
+    "not parse it, stores --check found problems, or create's "
+    "duplicate guard wrote nothing; "
+    "3 a mutating command's own store commit failed on a real git error "
+    "(status/add/commit non-zero, or a timeout) -- the row is already "
+    "saved, only the bookkeeping commit did not land; stderr prints git's own "
+    "error and the exact command to commit it by hand. A POLICY skip "
+    "(nothing to commit, an off-branch checkout) stays exit 0 with one "
+    "stderr line. 4 close refused: a ticket labelled tooling "
+    "whose packages the repo's bin/deploy close-check reports "
+    "not deployed current; nothing closed. 70 the verb is not built yet.")
+
+
+def verb_in(argv):
+    """The first word that is neither a global store flag nor its value."""
+    skip = False
+    for word in argv:
+        if skip:
+            skip = False
+        elif word in ("--store", "--repo"):
+            skip = True
+        elif not word.startswith("-"):
+            return word if word in VERBS else None
+    return None
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(prog="pm ticket", description=__doc__,
+                                     epilog=EPILOG)
+    parser.add_argument("--store", dest="repo",
+                        help="repo root holding the .pm store (default: the cwd store)")
+    parser.add_argument("--repo", dest="repo", help=argparse.SUPPRESS)
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    verb = verb_in(argv)
+    module = None
+    if verb:
+        if not os.path.exists(os.path.join(HERE, "verbs", verb + ".py")):
+            store.unbuilt(verb)
+        module = importlib.import_module("verbs." + verb)
+        module.register(sub)
+        # Accepted after the verb too; SUPPRESS keeps an unset flag from
+        # overwriting a global --store with None.
+        verb_parser = sub.choices[verb]
+        verb_parser.add_argument("--store", dest="repo", default=argparse.SUPPRESS,
+                                 help="repo root holding the .pm store")
+        verb_parser.add_argument("--repo", dest="repo", default=argparse.SUPPRESS,
+                                 help=argparse.SUPPRESS)
+    else:
+        for name in VERBS:
+            sub.add_parser(name)
+
+    args = parser.parse_args(argv)
+    if module is None:
+        parser.error(f"no such verb: {args.cmd}")
+    try:
+        module.run(args)
+    except store.TicketError as e:
+        print(f"pm: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

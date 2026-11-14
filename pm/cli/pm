@@ -1,0 +1,12 @@
+#!/usr/bin/python3
+"""pm: dispatch `pm ticket <verb>` and `pm view <verb>` to the component's ticket tool."""
+import os
+import sys
+
+if len(sys.argv) < 3 or sys.argv[1] not in ("ticket", "view"):
+    print("usage: pm ticket <verb> [args]\n       pm view <verb> [args]", file=sys.stderr)
+    sys.exit(2)
+
+component = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+tool = os.path.join(component, "tools", "ticket")
+os.execv("/usr/bin/python3", ["/usr/bin/python3", tool, *sys.argv[2:]])
