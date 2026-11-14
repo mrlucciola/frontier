@@ -108,6 +108,31 @@ class TicketCliTest(unittest.TestCase):
             self.assertIn(exit_, out)
         self.assertTrue(out.splitlines()[0].startswith(tid + " claimed by"))
 
+    def test_take_over_reassigns_claimed_row_and_notes_previous_holder(self):
+        tid = self.make("stale")
+        run(self.store, "claim", tid, "--as", "agent-a", "--session", "sess-old")
+        before = json.loads(run(self.store, "show", tid, "--json"))
+        out = run(self.store, "claim", tid, "--take-over", "--as", "op", "--session", "sess-new")
+        self.assertIn("operator verb", out)
+        self.assertIn("close:", out)
+        after = json.loads(run(self.store, "show", tid, "--json"))
+        self.assertEqual(after["status"], "claimed")
+        self.assertNotEqual(after["assignee"], before["assignee"])
+        self.assertIn("op", after["assignee"])
+        note = after["notes"][-1]
+        self.assertEqual(note["kind"], "provenance")
+        self.assertIn(before["assignee"], note["text"])
+        self.assertIn(before["assignee"].rpartition("#")[2], note["text"])
+        run(self.store, "lint")
+
+    def test_take_over_refuses_unclaimed_reopen_and_self(self):
+        tid = self.make("x")
+        run(self.store, "claim", tid, "--take-over", "--as", "op", expect=1)
+        run(self.store, "claim", tid, "--as", "a", "--session", "s1")
+        run(self.store, "claim", tid, "--take-over", "--reopen", "--as", "op", expect=1)
+        run(self.store, "claim", tid, "--take-over", "--as", "a", "--session", "s1", expect=1)
+        run(self.store, "claim", tid, "--as", "b", "--session", "s2", expect=1)
+
     def test_bulk_close_release_reopen_and_claim(self):
         a, b, c = self.make("a"), self.make("b"), self.make("c")
         run(self.store, "claim", a, b, "--as", "agent-a")
