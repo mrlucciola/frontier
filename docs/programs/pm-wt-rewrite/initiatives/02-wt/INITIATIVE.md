@@ -9,8 +9,8 @@ impacts (transitively blocks):
 blocked-by chain:
   (none)
 epic subtree:
-  fc-30c060  P2  open          wt characterization suite: black-box tests proven green against the old wt
-  fc-122c0d  P2  open          wt core: zsh dispatcher and lib (git, pm, fail, config), verb table
+  fc-30c060  P2  closed        wt characterization suite: black-box tests proven green against the old wt
+  fc-122c0d  P2  claimed       wt core: zsh dispatcher and lib (git, pm, fail, config), verb table [@agent:claude/claude#95c6eaa1]
   fc-8ecb48  P2  open          wt verb: start (take, resume, adopt own ticket, quiet prune)
   fc-249727  P2  open          wt verbs: finish and land (gate, rebase, ff-only merge, teardown, done)
   fc-917232  P2  open          wt verb: park (WIP commit, park or drop, teardown)
@@ -66,7 +66,18 @@ against `.tmp/wt-unbuilt-stub`: `passed 9, pending 114, skipped 2, failed 0`.
 uncovered, so the characterization stop does not apply. From here
 `wt/tests/test_wt_cli.py` is read-only for workers.
 
-Next: fc-122c0d (core), alone, `prompts/01-core.md`.
+fc-30c060 closed by `wt finish` with `--findings fc-f0cc16`.
+
+**fc-122c0d (core), alone, two serial workers on branch `fc-122c0d`:**
+
+1. `prompts/01a-core.md` -- dispatcher, `git` `pm` `fail` `config` libs,
+   `crossrepo.py`. In flight.
+2. `prompts/01b-teardown.md` -- `teardown.zsh` (keep entry, deferred and `STOP.`
+   lines, undeletable paths, merged marker, prune of debt). Overseer split: these are
+   shared by finish, park, prune and start, which meets principle 2's three-verb bar.
+
+Then a read-only check of the lib against component-principles and the old code,
+because five parallel step-2 workers build on it and may not edit it.
 
 ## Owed operator actions
 
@@ -154,6 +165,14 @@ None.
   changed later by fc-f0cc16: `wt start` re-conflicting on an auto-parked rebase
   conflict. Fault rows: one file per root cause, at least one row. `start` twice: state
   only, exit not pinned. The gate prints `.wt/gate` as its label on the new side.
+- **The pairs check is Python.** Ruling (overseer, 2026-11-14): `$GIT_PAIRS_FILE` is
+  JSON and zsh never parses JSON, so the guard is a stdlib helper
+  `wt/tools/lib/crossrepo.py` that `fail.zsh` calls (principle 3). The same goes for
+  reading `findings_required` from `.pm/config.json`. `pm done --dry-run` is not the
+  findings check: it runs `pre-done` plugins too, which would move the after-merge
+  guard refusal to before the merge.
+- **Step-2 workers do not edit `wt/tools/lib/`.** A lib change one of them needs goes
+  to the overseer, who makes it in a fix round, so the five can run in parallel.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
