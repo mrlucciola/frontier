@@ -15,27 +15,26 @@ epic subtree:
   fc-739601  P2  closed        pm read verbs: list ready tree summary
   fc-c10bcf  P2  closed        pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard
   fc-c5e673  P2  closed        pm history verb: status enable disable sync restore, commit modes
-  fc-913d02  P2  claimed       pm checks and views: validate lint archive board overview [@agent:claude/claude#8126bedd held]
-  fc-59011f  P2  open          pm integration: full parity green, golden diff on live stores, component docs, readability review
+  fc-913d02  P2  closed        pm checks and views: validate lint archive board overview
+  fc-59011f  P2  claimed       pm integration: full parity green, golden diff on live stores, component docs, readability review [@agent:claude/claude#8126bedd]
   fc-0817f6  P2  closed        pm parity: port upstream drift 505936d6..1ecfec0a (claim exit lines, lint <id>)
   fc-d659dd  P2  closed        pm parity: port upstream drift 1ecfec0a..7fd60e5c (pilot contract in lint and summary)
   fc-8acbe2  P2  closed        pm parity: port upstream drift 7fd60e5c..03b232d2 (refusal hints, claim --reopen, close --via wt)
   fc-93ef2a  P2  closed        pm parity: port upstream drift 03b232d2..944f3cda (create --blocks/--blocked-by, dep several targets, dep --note)
-  fc-d43216  P2  claimed       pm claim --take-over: port upstream 90f8b81c (operator re-assigns a stale claim) [@agent:claude/claude#8126bedd held]
+  fc-d43216  P2  closed        pm claim --take-over: port upstream 90f8b81c (operator re-assigns a stale claim)
 ```
 
 ## Next batch
 
-fc-913d02 `03e4` (lint) and fc-d43216 (claim --take-over; overseer ported its tests on
-the branch first) running. Merge each after its gate, re-running the full
-`--allow-pending` gate from main after each. Then fc-59011f: `04a` (remove unbuilt,
-pending 0), `04b` (golden diff, read-only, named skips), `04c` (docs), then an opus
-read-only review against the component principles with a fix worker, then close with
-the old-vs-new line counts. Re-run the drift command (pin `90f8b81c` once fc-d43216
-merges) before each merge.
+fc-59011f, serial on its branch: `04a` (remove unbuilt, pending 0; dispatched from main
+a51dc81), `04b` (golden diff, read-only, named skips), `04c` (docs), then an opus
+read-only review of every verb file against the component principles, with a fix
+worker, then close with the old-vs-new line counts. Re-run the drift command (pin
+`90f8b81c`) before the merge.
 
-Main at 2026-11-14 after fc-c10bcf: `parity: passed 175, pending 90, failed 0,
-skipped 9`; unbuilt: archive, lint, validate (all on the fc-913d02 branch).
+Main at a51dc81 (every verb merged): `parity: passed 267, pending 0, failed 0,
+skipped 9`, as measured on the fc-d43216 branch just before its merge; 267 matches the
+cut-list count.
 
 Lesson recorded: a drift port that adds a test for a flag nobody has built breaks
 `failed 0` (fc-93ef2a did, one gate cycle, fixed by fc-c10bcf). Port the test on the
