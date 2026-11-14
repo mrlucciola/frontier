@@ -156,7 +156,7 @@ class OverviewTest(ViewCase):
         text = self.overview()
         self.assertIn("GENERATED", text)
         self.assertIn("do not hand-edit", text)
-        self.assertIn("scripts/overview.py", text)
+        self.assertIn("pm view overview --store", text)
         self.assertIn(self.dir, text)
 
     def test_sections_only_when_non_empty(self):

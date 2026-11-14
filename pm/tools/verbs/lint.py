@@ -169,12 +169,11 @@ def run_dispatch(args):
 
 def run(args):
     if args.id:
-        run_dispatch(args)
-    repo = args.repo
-    root = None if args.workspace else st.find_store(repo)
+        return run_dispatch(args)
+    root = None if args.workspace else st.find_store(args.repo)
+    store = _openable(root) if root else None
     result = validate.validate_one(root) if root else None
     if result and result["exit"] != 2:
-        store = _openable(root)
         if store is not None:
             result["problems"] = sorted(result["problems"] + pilot_problems(store),
                                         key=lambda p: p.sort_key())
@@ -182,15 +181,9 @@ def run(args):
         validate.print_result(args.json, result)
         code = result["exit"]
     else:
-        try:
-            validate.run(args)
-            code = 0
-        except SystemExit as e:
-            code = e.code
-    if code in (0, 1) and not args.workspace and root:
-        store = _openable(root)
-        if store is not None:
-            stream = sys.stderr if args.json else sys.stdout
-            for kind, tid, path in body_path_warnings(store):
-                print(f"WARN {kind} {tid} {path}", file=stream)
+        code = validate.run_code(args)
+    if code in (0, 1) and store is not None:
+        stream = sys.stderr if args.json else sys.stdout
+        for kind, tid, path in body_path_warnings(store):
+            print(f"WARN {kind} {tid} {path}", file=stream)
     sys.exit(code)

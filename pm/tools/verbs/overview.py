@@ -3,8 +3,6 @@ import sys
 
 import store as st
 
-REGEN_COMMAND = "python3 scripts/overview.py"
-
 _COUNT_LABELS = (
     ("total", "Total"),
     ("active", "Active"),
@@ -48,7 +46,7 @@ def render(projection):
         "",
         "> **GENERATED — do not hand-edit.** Any edits made directly to this",
         "> file are lost the next time it is regenerated. Regenerate with:",
-        f"> `{REGEN_COMMAND} --repo {scope['root']}`",
+        f"> `pm view overview --store {scope['root']} --out <file>`",
         ">",
         f"> Generated: `{projection['generated']}` — scope: `{scope['root']}`"
         f" (prefix `{scope['prefix']}`, include_closed=`{scope['include_closed']}`)",

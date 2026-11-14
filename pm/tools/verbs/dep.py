@@ -14,7 +14,7 @@ def register(subparsers):
 
 def run(args):
     with st.locked_store(args.repo,
-                         lambda: f"pm: dep {args.src} {' '.join(args.dst)}"[:120]) as store:
+                         f"pm: dep {args.src} {' '.join(args.dst)}"[:120]) as store:
         _dep(args, store)
 
 

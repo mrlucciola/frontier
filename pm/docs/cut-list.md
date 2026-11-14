@@ -78,6 +78,9 @@ Empty output means no drift.
   - Also changed, a fourth hint naming `fix-labels` (I-10 invalid label): old
     `... pm ticket fix-labels <id> lowercases it, or drops it if still invalid`;
     new `... rewrite it lowercase or remove it`.
+  - I-19 closure_reason set on an unclosed ticket (`edit` has no such flag): old
+    `run: pm ticket edit <id> --closure-reason null`; new `operator: <line>
+    /closure_reason: set it to null by hand`.
 - **Deferred keys stay legal.** They are in the frozen
   [config schema](/pm/docs/spec/v2/config.schema.json), so `validate` still type-checks
   them. They have no effect: every mutating op snapshots history, and closed

@@ -35,18 +35,11 @@ def register(subparsers):
 
 
 def run(args):
-    with st.locked_store(args.repo,
-                         lambda: f"pm: note {args.id}"[:120]) as store:
-        _note(args, store)
-
-
-def _note(args, store):
-    t = store.get(args.id)
-    text = args.text_flag if args.text_flag is not None else args.text
-    if not text:
-        raise TicketError("note requires text: pass it positionally or with --text")
-    if args.kind and store.config.get("spec_version", 1) < 2:
-        raise TicketError("note --kind needs a spec_version 2 store")
-    t["notes"].append(st.make_note(text, args.kind))
-    t["updated"] = st.now()
-    print(f"note added to {t['id']}")
+    with st.locked_verb(args, "note") as store:
+        t = store.get(args.id)
+        text = args.text_flag if args.text_flag is not None else args.text
+        if not text:
+            raise TicketError("note requires text: pass it positionally or with --text")
+        t["notes"].append(st.make_note(text, args.kind))
+        t["updated"] = st.now()
+        print(f"note added to {t['id']}")

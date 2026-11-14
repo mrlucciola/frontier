@@ -33,8 +33,6 @@ def run(args):
               + (f"  ERROR: {e['error']}" if e["error"] else ""))
         if args.check:
             problems.extend(_entry_problems(e, prefixes))
-        elif e["error"]:
-            problems.append(e["error"])
     if not args.check:
         return
     for pfx, owners in sorted(routing.owners_by_prefix(entries).items()):

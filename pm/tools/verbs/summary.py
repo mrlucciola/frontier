@@ -1,4 +1,5 @@
-"""pm ticket summary: the session-start briefing. Reads only; never writes."""
+"""pm ticket summary: the session-start briefing. Reads the store; retries an owed
+history snapshot."""
 import contextlib
 import fcntl
 import json
@@ -123,8 +124,7 @@ def run(args):
                     if store.is_ready(t) and t["priority"] != 4),
                    key=lambda t: (t["priority"], t["created"]))
     obj = {
-        "semaphores": [t for t in active
-                       if t["priority"] == 0 or "semaphore" in t["labels"]],
+        "semaphores": [t for t in active if store.is_semaphore(t)],
         "claimed": [t for t in active if t["status"] == "claimed"],
         "unmerged": [t for t in active if t["status"] == "done-unmerged"],
         "ready": ready[:args.limit],

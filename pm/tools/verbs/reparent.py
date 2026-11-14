@@ -19,9 +19,27 @@ def register(subparsers):
 
 
 def run(args):
-    with st.locked_store(args.repo,
-                         lambda: f"pm: reparent {args.id}"[:120]) as store:
-        _reparent(args, store)
+    with st.locked_verb(args, "reparent") as store:
+        t = store.get(args.id)
+        if args.detach:
+            if args.to_epic is not _KEEP:
+                raise TicketError(f"reparent got both a target epic ({args.to_epic}) "
+                                  "and --none; pass one")
+            t["parent"], t["updated"] = None, st.now()
+            print(f"{t['id']} reparented to (none)")
+            return
+        if args.to_epic is _KEEP:
+            raise TicketError("reparent needs a target epic id, or --none to detach")
+        epic = store.get(args.to_epic)
+        if epic["kind"] != "epic":
+            raise TicketError(f"parent {epic['id']} is not an epic")
+        if epic["id"] == t["id"]:
+            raise TicketError("a ticket cannot be its own parent")
+        if _would_cycle(store, t["id"], epic["id"]):
+            raise TicketError(
+                f"refused: parenting {t['id']} under {epic['id']} would create a cycle")
+        t["parent"], t["updated"] = epic["id"], st.now()
+        print(f"{t['id']} reparented to {epic['id']}")
 
 
 def _would_cycle(store, tid, new_parent):
@@ -36,26 +54,3 @@ def _would_cycle(store, tid, new_parent):
         nxt = store.by_id.get(cur)
         cur = nxt.get("parent") if nxt else None
     return False
-
-
-def _reparent(args, store):
-    t = store.get(args.id)
-    if args.detach:
-        if args.to_epic is not _KEEP:
-            raise TicketError(f"reparent got both a target epic ({args.to_epic}) "
-                              "and --none; pass one")
-        t["parent"], t["updated"] = None, st.now()
-        print(f"{t['id']} reparented to (none)")
-        return
-    if args.to_epic is _KEEP:
-        raise TicketError("reparent needs a target epic id, or --none to detach")
-    epic = store.get(args.to_epic)
-    if epic["kind"] != "epic":
-        raise TicketError(f"parent {epic['id']} is not an epic")
-    if epic["id"] == t["id"]:
-        raise TicketError("a ticket cannot be its own parent")
-    if _would_cycle(store, t["id"], epic["id"]):
-        raise TicketError(
-            f"refused: parenting {t['id']} under {epic['id']} would create a cycle")
-    t["parent"], t["updated"] = epic["id"], st.now()
-    print(f"{t['id']} reparented to {epic['id']}")

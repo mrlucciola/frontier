@@ -194,30 +194,26 @@ class Loaded:
         return False
 
 
-def _relpath(path, root):
-    return os.path.relpath(path, root)
-
-
 def load(root):
     """(Loaded, None, None), or (None, error_path, error_message) for a missing or
     unparsable config or row file, naming the exact file and line."""
     config_path = os.path.join(root, "config.json")
     repo_dir = os.path.dirname(root)
     if not os.path.exists(config_path):
-        return None, _relpath(config_path, repo_dir), "file not found"
+        return None, os.path.relpath(config_path, repo_dir), "file not found"
     try:
         with open(config_path) as f:
             config = json.load(f)
     except json.JSONDecodeError as e:
-        return None, _relpath(config_path, repo_dir), str(e)
+        return None, os.path.relpath(config_path, repo_dir), str(e)
     if not isinstance(config, dict):
-        return None, _relpath(config_path, repo_dir), "not a JSON object"
+        return None, os.path.relpath(config_path, repo_dir), "not a JSON object"
     sv = config.get("spec_version")
     name = st.TICKET_FILE if isinstance(sv, int) and sv >= 2 else OLD_ROW_FILE
     path = os.path.join(root, name)
     if not os.path.exists(path):
         if "spec_version" in config:
-            return None, _relpath(path, repo_dir), "file not found"
+            return None, os.path.relpath(path, repo_dir), "file not found"
         return Loaded(root, config, []), None, None
     rows = []
     with open(path) as f:
@@ -227,7 +223,7 @@ def load(root):
             try:
                 rows.append((lineno, json.loads(line)))
             except json.JSONDecodeError as e:
-                return None, f"{_relpath(path, repo_dir)}:{lineno}", str(e)
+                return None, f"{os.path.relpath(path, repo_dir)}:{lineno}", str(e)
     return Loaded(root, config, rows), None, None
 
 
@@ -391,7 +387,7 @@ def check_row(loaded, lineno, rid, row):
 
     if status != "closed" and row.get("closure_reason") is not None:
         add("I-19", "closure_reason must be null when status is not closed",
-            f"run: pm ticket edit {rid} --closure-reason null")
+            f"operator: {lineno} /closure_reason: set it to null by hand")
 
     problems.extend(_parent_problems(loaded, lineno, rid, row))
     problems.extend(_label_problems(lineno, rid, row))
@@ -752,7 +748,7 @@ def run_workspace(args):
         print_json({"ok": exit_code == 0,
                     "repos": [dict(result_json(r), repo=r["repo"]) for r in results],
                     "workspace": [p.to_json() for p in ws_problems]})
-        sys.exit(exit_code)
+        return exit_code
     for result in results:
         print(f"== {result['repo']} ==")
         print_result(False, result)
@@ -760,17 +756,22 @@ def run_workspace(args):
         print("== workspace ==")
         for i, p in enumerate(ws_problems, 1):
             print(f"{i}. {p.step_text()}")
-    sys.exit(exit_code)
+    return exit_code
 
 
-def run(args):
+def run_code(args):
+    """The validate verb's exit code (0 ok, 1 problems, 2 no store)."""
     if args.workspace:
-        run_workspace(args)
+        return run_workspace(args)
     root = st.find_store(args.repo)
     if not root:
         print_result(args.json, {"exit": 2, "path": None,
                                  "error": "no ticket store found (run: pm ticket init)"})
-        sys.exit(2)
+        return 2
     result = validate_one(root)
     print_result(args.json, result)
-    sys.exit(result["exit"])
+    return result["exit"]
+
+
+def run(args):
+    sys.exit(run_code(args))
