@@ -100,7 +100,8 @@ the store, raised until it is unused. Imported tickets keep their old
 ids. Inside its own store a ticket can be named by the number alone.
 
 `~/.config/pm/stores`, or the file in `$PM_STORES`, maps prefixes to stores, one
-`prefix path` per line, with ` ro` appended for a read-only store. `pm init` adds
+`prefix path` per line, with ` ro` appended for a read-only store. The path is the
+rest of the line and may contain spaces. `pm init` adds
 its line. An id is routed by its prefix from any directory. A prefix may appear on
 more than one line: a read uses the first listed store that has the ticket, and a
 change goes to that store unless it is read-only.
@@ -225,7 +226,8 @@ traceback.
 
 **`--json`** prints one object per line with sorted keys and compact separators:
 `blocked_by blocks body created findings from hold holder id kind labels notes pri
-reason related status title under updated`, every key always present. Here
+reason related status title under updated`, every key always present. An empty
+result prints nothing. Here
 `blocked_by` and `blocks` list every link whatever its status. `--all-stores` adds
 `store`.
 
@@ -288,6 +290,7 @@ served by one line in the repository's `AGENTS.md`, which `pm init` prints.
 
 `pm import`, run in a directory whose `.pm/` has a spec v2 `tickets.jsonl` and no
 events, writes the log and registers the prefix. Old files are left in place.
+Import writes history, so no plugin hook runs for its events.
 
 | Old row | Events |
 | --- | --- |
