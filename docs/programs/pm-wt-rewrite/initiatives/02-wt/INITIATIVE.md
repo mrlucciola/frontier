@@ -57,7 +57,16 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `test_malformed_gate_refuses` pins the old JSON-gate words on both sides. Done:
    `reports/00-review-2.md`, PARTIAL: 10 new-side blockers, 6 weak spots.
 9. `00-characterize-7-review2-fixes.md` -- side-neutral assertions under the rulings
-   below, last gaps. In flight. Then accept: overseer gate re-run on both sides.
+   below, last gaps. Done: fc28c3f.
+
+**fc-30c060 accepted at fc28c3f (overseer, 2026-11-14).** Gate on the overseer's re-run:
+`wt suite: passed 125, pending 0, skipped 0, failed 0` (old wt, old pm). New side
+against `.tmp/wt-unbuilt-stub`: `passed 9, pending 114, skipped 2, failed 0`.
+`docs/check_structure.py`: ok. `wt/docs/uncovered.md` does not exist: nothing
+uncovered, so the characterization stop does not apply. From here
+`wt/tests/test_wt_cli.py` is read-only for workers.
+
+Next: fc-122c0d (core), alone, `prompts/01-core.md`.
 
 ## Owed operator actions
 
