@@ -12,6 +12,7 @@ import shlex
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 import gitcommit
@@ -400,6 +401,88 @@ def locked_store(repo=None, message=None):
         if message:
             commit(root, message() if callable(message) else message, repo,
                    store.extra_commit_paths)
+
+
+def each_id(args):
+    """The bulk ids of a verb, deduped with order kept: a repeated id is one
+    ticket, so it takes one transition and one note."""
+    return list(dict.fromkeys(args.id))
+
+
+@contextlib.contextmanager
+def locked_verb(args, cmd):
+    """`locked_store` for an id-taking verb; the commit subject is
+    `pm: <cmd> <ids>`, cut at 120 characters."""
+    ids = args.id if isinstance(args.id, list) else [args.id]
+    subject = " ".join(["pm:", cmd, *dict.fromkeys(ids)])[:120]
+    with locked_store(getattr(args, "repo", None), subject) as store:
+        yield store
+
+
+HOLD_STALE_SECONDS = 12 * 3600
+
+
+def hold_state_dir():
+    return os.environ.get("PM_HOLD_STATE_DIR") or os.path.join(
+        os.path.expanduser("~"), ".claude", ".tmp", "pm-holds")
+
+
+def touch_session_seen(token):
+    """Heartbeat for a session token; best effort, never raises."""
+    path = os.path.join(hold_state_dir(), f"{token}.seen")
+    try:
+        os.makedirs(hold_state_dir(), exist_ok=True)
+        with open(path, "a"):
+            pass
+        os.utime(path, None)
+    except OSError:
+        pass
+
+
+def hold_is_stale(hold):
+    """True when the holding session's token has no recent heartbeat."""
+    stale_after = float(os.environ.get("PM_HOLD_STALE_SECONDS") or HOLD_STALE_SECONDS)
+    try:
+        mtime = os.path.getmtime(os.path.join(hold_state_dir(), f"{hold['token']}.seen"))
+    except (OSError, KeyError, TypeError):
+        return True
+    return (time.time() - mtime) > stale_after
+
+
+def split_assignee(assignee):
+    """(provider, base, token) of an assignee string of any shape: `human:<name>`,
+    `legacy:<name>[#tok]`, `agent:<provider>/<name>#<tok>`, or a bare name."""
+    def base_tok(s):
+        if "#" in s:
+            base, _, tok = s.rpartition("#")
+            return base, tok
+        return s, None
+    if assignee is None:
+        return None, None, None
+    if assignee.startswith("human:"):
+        return "human", assignee[len("human:"):], None
+    if assignee.startswith("legacy:"):
+        base, tok = base_tok(assignee[len("legacy:"):])
+        return None, base, tok
+    if assignee.startswith("agent:"):
+        provider, _, rest = assignee[len("agent:"):].partition("/")
+        base, tok = base_tok(rest)
+        return provider, base, tok
+    base, tok = base_tok(assignee)
+    return None, base, tok
+
+
+def hold_marker(reason, explicit_session):
+    """The in-flight marker `{token, reason, since}` of the acting session, or
+    TicketError; the token tells the Stop hook whose hold it is."""
+    if not reason or not reason.strip():
+        raise TicketError("hold needs a non-empty reason")
+    tok = session_token(explicit_session)
+    if not tok:
+        raise TicketError("hold needs a session id (--session, PM_SESSION_ID or "
+                          "CLAUDE_CODE_SESSION_ID)")
+    touch_session_seen(tok)
+    return {"token": tok, "reason": reason.strip(), "since": now()}
 
 
 def fmt_line(t):

@@ -355,5 +355,69 @@ class UnbuiltTest(Base):
             self.assertIn(verb, f.read().split())
 
 
+class ClaimReopenHoldTest(Base):
+    ENV = {"PM_AGENT": "claude/w", "PM_SESSION_ID": "sess-1",
+           "PM_HOLD_STATE_DIR": tempfile.mkdtemp()}
+
+    def setUp(self):
+        if not all(built(v) for v in ("claim", "hold", "release")):
+            self.skipTest("unbuilt: claim/hold/release")
+        super().setUp()
+
+    def done_unmerged(self):
+        tid = self.ok("create", "parked work")
+        rows = self.rows()
+        rows[0].update(status="done-unmerged", closed_by="agent:claude/x#00000000",
+                       findings=["none"], findings_absent=True)
+        self.write_rows(rows)
+        return tid
+
+    def test_claim_refuses_done_unmerged_without_reopen(self):
+        tid = self.done_unmerged()
+        r = pm(self.dir, "claim", tid, "--as", "w", env=self.ENV)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"pm: cannot claim a done-unmerged ticket; resume it with "
+                      f"`pm ticket claim {tid} --as <name> --reopen`", r.stderr)
+
+    def test_claim_reopen_takes_done_unmerged_back(self):
+        tid = self.done_unmerged()
+        out = self.ok("claim", tid, "--as", "w", "--reopen", env=self.ENV)
+        self.assertTrue(out.startswith(f"{tid} claimed by agent:claude/w#"))
+        row = self.rows()[0]
+        self.assertEqual(row["status"], "claimed")
+        for key in ("findings", "findings_absent", "closed_by"):
+            self.assertNotIn(key, row)
+
+    def test_claim_reopen_checks_readiness_as_if_open(self):
+        tid = self.done_unmerged()
+        blocker = self.ok("create", "the blocker")
+        rows = self.rows()
+        for r in rows:
+            if r["id"] == blocker:
+                r["edges"].append({"type": "blocks", "to": tid})
+        self.write_rows(rows)
+        r = pm(self.dir, "claim", tid, "--as", "w", "--reopen", env=self.ENV)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"pm: not ready — blocked by: {blocker}", r.stderr)
+
+    def test_hold_on_unclaimed_names_the_verb_that_moves_it_on(self):
+        tid = self.ok("create", "idle")
+        r = pm(self.dir, "hold", tid, "why", env=self.ENV)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"pm: not claimed (status: open); `pm ticket claim {tid} --as "
+                      "<name>` takes it", r.stderr)
+
+    def test_hold_and_release_round_trip(self):
+        tid = self.ok("create", "held work")
+        self.ok("claim", tid, "--as", "w", env=self.ENV)
+        self.assertEqual(self.ok("hold", tid, "waiting", env=self.ENV),
+                         f"{tid} held: waiting")
+        self.assertEqual(self.rows()[0]["hold"]["reason"], "waiting")
+        self.assertEqual(self.ok("release", tid, env=self.ENV), f"{tid} released")
+        row = self.rows()[0]
+        self.assertNotIn("hold", row)
+        self.assertEqual(row["released_by"].split("#")[0], "agent:claude/w")
+
+
 if __name__ == "__main__":
     unittest.main()
