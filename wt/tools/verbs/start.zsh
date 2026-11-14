@@ -70,8 +70,8 @@ wt_verb() {
     fi
   fi
 
-  local status holder sid tok="" mine="" took=0 out rc
-  status=$(wt_pm_get "$store" "$id" status 2>/dev/null)
+  local prior holder sid tok="" mine="" took=0 out rc
+  prior=$(wt_pm_get "$store" "$id" status 2>/dev/null)
   holder=$(wt_pm_get "$store" "$id" holder 2>/dev/null)
   sid=${session:-${CLAUDE_CODE_SESSION_ID:-}}
   if [[ -n $sid ]]; then
@@ -79,8 +79,11 @@ wt_verb() {
     tok=${tok[1,8]}
     mine="$actor#$tok"
   fi
-  if [[ $status == taken && -n $mine && $holder == "$mine" ]]; then
+  if [[ $prior == taken && -n $mine && $holder == "$mine" ]]; then
     print -r -- "adopting existing claim on $id: $holder (same session)"
+  elif [[ $prior == taken ]] && (( ! force )); then
+    wt_say "ticket $id is not claimable (taken, or pm refused): held by $holder, not by $actor in this session. Pick another ticket with \`pm ls ready\`, or ask the holder."
+    return 1
   else
     local -a take_args=(take "$id" --as "$actor")
     (( force )) && take_args+=(--force)
@@ -97,7 +100,7 @@ wt_verb() {
   fi
 
   local default wt_path resume=0 add_err hint
-  default=$(wt_default_branch "$repo") || { _wt_start_undo "$store" "$session" "$id" "$took" "$status"; return 1 }
+  default=$(wt_default_branch "$repo") || { _wt_start_undo "$store" "$session" "$id" "$took" "$prior"; return 1 }
   wt_path=$(wt_worktree_path "$repo" "$id")
 
   wt_prune_debt "$repo" "$default" quiet >/dev/null 2>&1
@@ -117,7 +120,7 @@ wt_verb() {
     if [[ $add_err == *"missing but already registered worktree"* ]]; then
       hint+=" A deferred-teardown registration for $id is still present and this session cannot delete it; run wt prune from a new session, then wt start."
     fi
-    _wt_start_undo "$store" "$session" "$id" "$took" "$status"
+    _wt_start_undo "$store" "$session" "$id" "$took" "$prior"
     if (( resume )); then
       wt_fail flow start-worktree-add-failed "$repo" "$id" start \
         "git worktree add for $id failed: $add_err.$hint" \
