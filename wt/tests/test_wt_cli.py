@@ -392,8 +392,13 @@ class WtCase(unittest.TestCase):
     def git(self, repo, *args, check=True):
         return sh(["git", "-C", repo] + list(args), repo, self.env, check)
 
-    def make_repo(self, name="main-repo", prefix="tk", findings_required=False):
-        """A fresh repo: git init -b main, one commit, a store made through the adapter."""
+    def make_repo(self, name="main-repo", prefix=None, findings_required=False):
+        """A fresh repo: git init -b main, one commit, a store made through the adapter.
+        The default prefix is `tk` for the default name and `tk<name>` otherwise, so two
+        repos in one test never share a prefix (the new pm refuses a shared one)."""
+        if prefix is None:
+            prefix = "tk" if name == "main-repo" else "tk" + "".join(
+                c for c in name if c.isalnum())
         repo = os.path.join(self.root, "repos", name)
         os.mkdir(repo)
         self.git(repo, "init", "-q", "-b", "main")
@@ -1228,14 +1233,23 @@ class FinishTest(StartedCase):
                 f.write("[core]\n")
             return self.finish(repo, ticket)
 
+        unbuilt = []
         for build in (findings_required, gate_fails, dirty, malformed, land_note,
                       conflict, nested):
             with self.subTest(case=build.__name__):
-                result = build()
+                try:
+                    result = build()
+                except Pending as step:
+                    # A Pending inside a subTest is reported as an error; collect it
+                    # and raise it once after the loop (failures stay failures).
+                    unbuilt.append(step)
+                    continue
                 self.assertNotEqual(result.code, 0, result.text)
                 lines = [l for l in result.lines() if l.startswith("wt: ")]
                 self.assertTrue(lines, result.text)
                 self.assertTrue(any(l[len("wt: "):].strip() for l in lines), result.text)
+        if unbuilt:
+            raise unbuilt[0]
 
 
 class ParkTest(StartedCase):
@@ -1880,7 +1894,12 @@ class ResolutionTest(StartedCase):
         self.assertFalse(os.path.exists(self.worktree(a, ticket)))
 
     def test_two_owners_stop_with_a_wt_line(self):
-        """A prefix registered to two stores stops with a `wt:` line; nothing claimed."""
+        """A prefix registered to two stores stops with a `wt:` line; nothing claimed.
+        Old side only: the new pm routes a shared prefix itself (design.md, Ids and the
+        registry), so there it skips."""
+        if SIDE == "new":
+            self.skipTest("the new pm routes a shared prefix itself (design.md, Ids "
+                          "and the registry)")
         a, b = self.two()
         b2 = self.make_repo(name="repo-b2", prefix="bb")
         self.pm.register_store("bb", b)
