@@ -34,7 +34,8 @@ Parts 1, 2a and 2b on branch `fc-30c060`: `WT/tests/run_wt.py`, and in
 `OldPm`/`NewPm` adapters, `AdapterTest`, `StartTest`, `FinishTest` (and any finish class
 2b added), an empty `ParkTest`, and `WT/docs/uncovered.md` if 2b wrote one. Read the
 whole test file first; reuse its helpers (finish's start-and-commit helper, the
-refusal and `STOP.` provocations of 2b) and keep its style: docstring quotes the contract
+refusal and `STOP.` provocations of 2b, the `post-rewrite` hook trick) and keep its
+style: docstring quotes the contract
 phrase; assert exit codes and the first words of wt's own lines; never pm's text. Earlier
 reports: `docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/00-characterize-*.md` in
 the main checkout.
@@ -78,6 +79,33 @@ Each its own test:
 - **failed remove `STOP.`** on park, as for finish (reuse 2b's provocation).
 - **resume after park**: `wt start <id>` from the parked state brings the worktree back
   with the WIP commit, and `wt finish` merges it.
+
+**Deferred teardown through a git shim (overseer ruling: this is not an uncovered
+case).** Part 2b listed it in `uncovered.md` because the throwaway repo has no sandbox
+deny. The old selftest covers it by faking git's reply (`wt_core.py` lines 2523-2541,
+`deferred_remove_git`): on `worktree remove <path>` it deletes the working tree and
+fails with `error: failed to delete '<repo>/.git/worktrees/<id>': Operation not
+permitted` (exit 255); on `worktree prune` it prints the same error and exits 0;
+everything else is real git. Build the same fake as a `git` executable in a per-test
+directory put first on `PATH` for the wt call only (it finds the repo from `-C <dir>` or
+the cwd, and execs `/usr/bin/git` for everything else). That is black-box: it fakes the
+environment, not wt. Add, as their own tests (in a `DeferredTeardownTest` class):
+
+- **finish, deferred**: the deferred line (`worktree for <id> is gone but its leftover
+  registration ...`), then the `OK:` line naming the deferral; ticket `done`; branch
+  kept; registration still listed by `git worktree list` as prunable; a
+  `*-teardown-deferred` row in `$WT_FAULT_REPORT_DIR`; the keep entry
+  (`.git/worktrees/.keep/locked`) present; no `STOP.` line and none of the words
+  `retry`, `re-run`, `--force`, `escalate`, `disable`.
+- **park, deferred**: the same shape for park; ticket `parked`.
+- **zero-delta park, deferred**: released (`open`), as the old selftest's case 40.
+- **prune afterwards** (with real git): `wt prune` clears the registration and deletes
+  the merged branch.
+
+Then remove the deferred-teardown entry from `WT/docs/uncovered.md`. Also move its
+`.vscode` entry (which is not an uncovered case: the test runs here) into the docstring
+of `test_vscode_dir_refuses_before_merge`. If `uncovered.md` is then empty, delete it
+with `git -C <worktree> rm`.
 
 A contract case that cannot run in the sandbox goes in `WT/docs/uncovered.md` (case, why,
 the exact operator-terminal command). If the old wt contradicts the contract, pin what the
