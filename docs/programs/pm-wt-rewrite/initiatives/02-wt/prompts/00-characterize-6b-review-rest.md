@@ -68,7 +68,10 @@ accepted the review; 6a closed the finish, land and teardown findings. This part
 7. **nested repo and `.vscode` variants** (122-126): a nested `.git` dir with only
    `hooks` refuses; `.vscode` refuses `park` too; with six nested repos the line names
    five paths (pin how the old wt caps).
-8. **selftest** (26, 258-259): `wt selftest` exits 0, prints its case lines and a final
+8. **cross-repo guard on park** (left by 6a, which covered `start` and `finish`): a
+   `park` with `--store`/`--repo` into another repo with no declared pair refuses and
+   mutates nothing. Reuse 6a's guard helpers.
+9. **selftest** (26, 258-259): `wt selftest` exits 0, prints its case lines and a final
    line with no failures (pin the first words), and leaves no worktree registration and
    no fault row behind. Do not pin its scratch path; the new wt may differ.
 

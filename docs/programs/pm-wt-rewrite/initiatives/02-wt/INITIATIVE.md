@@ -49,7 +49,9 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `reports/00-review.md`, PARTIAL, about 20 gaps. All accepted. Closed by
    `00-characterize-6a-review-finish.md` (finish, land, teardown, guard, fault rows)
    then `00-characterize-6b-review-rest.md` (sessions, start hint, where failures,
-   refusal words, nested variants, selftest), serial after 6. Then a re-review.
+   refusal words, nested variants, selftest, guard on park), serial after 6. 6a done:
+   f82be24, 111 tests; stub run `passed 9, pending 100, skipped 2, failed 0`. Then a
+   re-review.
 
 ## Owed operator actions
 
@@ -121,6 +123,11 @@ None.
 - **The cross-repo guard is kept.** Ruling (overseer, 2026-11-14): the new wt refuses
   an undeclared cross-repo mutation and reads the pairs from `$GIT_PAIRS_FILE` in the
   old shape, so the suite pins one behavior on both sides.
+- **Fault rows as the old wt writes them (pinned in 6a).** One file per root cause and
+  day, one row appended per occurrence; that file is the "deduplicated report". A
+  non-infra refusal (cross-repo, mass-deletion resume) ends `(reported: <path>)`; an
+  infra one (rebase conflict, `STOP.`, deferred) says `Recorded in <path>. This is
+  infrastructure, not a finding`.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
