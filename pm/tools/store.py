@@ -254,6 +254,22 @@ class Store:
     def children(self, tid):
         return [t for t in self.tickets if t.get("parent") == tid]
 
+    def walk(self, start, step):
+        """Ids reached transitively from `start` by `step(id) -> [id]`, in
+        discovery order, each once. Its own visited set ends a parent cycle."""
+        seen, order, stack = set(), [], [start]
+        while stack:
+            for nxt in step(stack.pop()):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    order.append(nxt)
+                    stack.append(nxt)
+        return order
+
+    def subtree(self, tid):
+        """Ids under `tid` by parent edges, in discovery order."""
+        return self.walk(tid, lambda i: [c["id"] for c in self.children(i)])
+
     def is_ready(self, t):
         import routing
         return (t["kind"] == "task" and t["status"] == "open"

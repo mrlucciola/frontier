@@ -16,16 +16,6 @@ def register(subparsers):
     sp.add_argument("--json", action="store_true")
 
 
-def subtree_ids(store, root):
-    seen, stack = set(), [root]
-    while stack:
-        for c in store.children(stack.pop()):
-            if c["id"] not in seen:
-                seen.add(c["id"])
-                stack.append(c["id"])
-    return seen
-
-
 def scope_filter(store, scope):
     """An existing ticket id scopes to that ticket's subtree (the root itself
     excluded); anything else is a label every kept row must carry. A scope that
@@ -35,7 +25,7 @@ def scope_filter(store, scope):
     except TicketError:
         ref = scope
     if ref in store.by_id:
-        ids = subtree_ids(store, ref)
+        ids = set(store.subtree(ref))
         return lambda t: t["id"] in ids
     if not any(scope in (t.get("labels") or []) for t in store.tickets):
         raise TicketError(f"--scope {scope!r} is neither a ticket id in this store "
