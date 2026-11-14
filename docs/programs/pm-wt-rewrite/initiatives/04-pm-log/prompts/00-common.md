@@ -103,6 +103,10 @@ exit 1.
   `<prefix>-<n>`. An id whose prefix is not this store's calls `unbuilt("routing")`.
   Unknown: refuses `no ticket <id>. Search: pm ls all <words>`.
 - `next_id(s, tickets)`: one more than the ticket count, raised until unused.
+- `is_done(tid, tickets)`: True when that ticket's status is `done`. A `tid` not in
+  `tickets` whose prefix is another store's calls `unbuilt("routing")` until the
+  stores ticket replaces it with a registry lookup; a blocker that cannot be found is
+  not done. Every readiness test and every `blocked by` or `blocks:` line uses it.
 - `change(s, check, actor=None, dry_run=False)`: the one path every mutating verb
   appends through. `check(tickets)` is a pure function: it refuses (via `render`) or
   returns a list of event dicts holding `op`, `id` and the rest. `change` takes an
@@ -115,6 +119,15 @@ exit 1.
 **`pm/tools/registry.py`**: `path()` (`$PM_STORES`, else `~/.config/pm/stores`),
 `read()` (a list of `(prefix, path, ro)`; a missing file is an empty list),
 `add(prefix, path)`. Routing by prefix is a later ticket.
+
+## Shared files in a parallel step
+
+Several branches of one step edit `pm/tools/store.py`, `pm/tools/render.py` and
+`pm/tools/registry.py`, and the overseer rebases them one after another. To keep
+rebases clean: a helper that only your verbs use lives in your verb file
+(component principle 2), not in a shared module; a new shared function goes
+directly after the contract function it belongs with, never at the end of the file;
+do not reformat, reorder or rename anything you did not write.
 
 ## Report
 
