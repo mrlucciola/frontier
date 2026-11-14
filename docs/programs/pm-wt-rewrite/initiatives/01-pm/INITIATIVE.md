@@ -32,12 +32,18 @@ None.
 - **Baseline.** The trimmed suite ran against the old CLI at frontier `505936d6`,
   sandboxed: `Ran 269 tests in 241.429s`, `OK (skipped=9)`,
   `parity: passed 260, pending 0, failed 0, skipped 9`. Git repos created under the
-  suite's temp directories work inside the sandbox.
+  suite's temp directories work inside the sandbox. After fc-0817f6 the suite is
+  pinned to `1ecfec0a` and runs 271 tests: 262 pass, 9 skip.
 - **Upstream moves.** The old pm took four commits during preparation (typed notes,
   the archived-id refusal, the `history-pending` store entry, `list --all-stores`);
   all four are in the suite. `list --all-stores` belongs to fc-739601. `pm/docs/cut-list.md` has the drift command. Run it on your first turn and
   again in fc-59011f. New upstream tests on kept surface are ported by you, in a
   ticket of their own, never by a verb worker.
+- **Drift at first launch (fc-0817f6).** Two upstream tests ported from `1ecfec0a`:
+  `claim` ends with four exit lines (`CLAIM_EXITS` in the old `ticket`; fc-d73327),
+  and `lint <id>` reports missing dispatch headings (fc-913d02). The spec copy is
+  read-only here and lags upstream by SPEC.md section 5 prose only; `cut-list.md`
+  quotes the `lint <id>` rule.
 - **Typed notes are kept surface.** `note --kind`, the kinds `close` and `edit` write,
   and `show` hiding `edit-trail` notes unless `--all-notes` are in the parity suite;
   they are not named in the ticket bodies, which were written before the resync.

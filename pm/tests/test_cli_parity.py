@@ -101,6 +101,13 @@ class TicketCliTest(unittest.TestCase):
         self.assertEqual(json.loads(run(self.store, "list", "--json")), [])
         run(self.store, "lint")
 
+    def test_claim_ends_with_the_four_exits(self):
+        tid = self.make("exits")
+        out = run(self.store, "claim", tid, "--as", "agent-a")
+        for exit_ in ("close:", "close --unmerged:", "release:", "hold:"):
+            self.assertIn(exit_, out)
+        self.assertTrue(out.splitlines()[0].startswith(tid + " claimed by"))
+
     def test_bulk_close_release_reopen_and_claim(self):
         a, b, c = self.make("a"), self.make("b"), self.make("c")
         run(self.store, "claim", a, b, "--as", "agent-a")
@@ -248,6 +255,17 @@ class TicketCliTest(unittest.TestCase):
         self.assertTrue(json.loads(r.stdout)["ok"])
         self.assertEqual(r.stderr.strip().splitlines(), expected)
         self.assertNotIn("WARN", run(self.store, "validate"))
+
+    def test_lint_id_reports_missing_dispatch_headings(self):
+        """cl-888843: `lint <id>` prints `missing: <heading>` and exits 1, or
+        `dispatchable` and exits 0; it never touches create or claim."""
+        full = self.make("full", "--new", "--body", "Done: x\nWrites: y\nRead first: z\nDo not: w")
+        short = self.make("short", "--new", "--body", "Done: x\nWrites: y\nRead first: z")
+        alias = self.make("alias", "--new", "--body", "Gate: x\nFiles: y\nInputs: z\nNot in scope: w\nTier: t")
+        self.assertEqual(run(self.store, "lint", full).strip(), "dispatchable")
+        self.assertEqual(run(self.store, "lint", alias).strip(), "dispatchable")
+        self.assertEqual(run(self.store, "lint", short, expect=1).strip(), "missing: Do not")
+        run(self.store, "claim", short, "--as", "tester")
 
     def test_lint_flags_local_dump_paths_even_when_they_exist(self):
         """fr-d98ada: a body that points at the repo's .local/ dump gets one

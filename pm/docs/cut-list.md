@@ -24,15 +24,25 @@ ticket blocks the cutover runbook, so the switch cannot silently turn them off.
 
 ## Baseline and upstream drift
 
-The old pm is still being changed. The parity suite and spec copies here match
-frontier `505936d6` (2026-11-12T23:49-05:00). The first copy was taken at
-`c86faab0`; four upstream commits landed during that work and were folded in.
+The old pm is still being changed. The parity suite matches frontier `1ecfec0a`
+(2026-11-13T04:10-05:00). The first copy was taken at `c86faab0`; four upstream
+commits landed during that work and were folded in at `505936d6`, and two more
+tests were ported at `1ecfec0a`: `test_claim_ends_with_the_four_exits` (claim
+prints the four exit lines) and `test_lint_id_reports_missing_dispatch_headings`
+(`lint <id>`).
+
+The spec copies here still match `505936d6`. The one upstream change after it is
+prose in SPEC.md section 5, not format: `lint <id>` reports each missing dispatch
+heading, `Done`|`Gate`, `Writes`|`Files`, `Read first`|`Inputs`,
+`Do not`|`Not in scope`, matched as a line starting `<name>:` case-insensitively,
+as `missing: <canonical heading>` and exit 1, else `dispatchable` and exit 0; an
+unknown id exits 1. The ported test pins that behavior.
 
 Before the rewrite is declared at parity, the integration ticket runs this and
 ports every new test on kept surface, with the count table below updated:
 
 ```sh
-git --no-pager -C /Users/matthias/frontier diff --stat 505936d6 HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
+git --no-pager -C /Users/matthias/frontier diff --stat 1ecfec0a HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
 ```
 
 Empty output means no drift.
@@ -65,11 +75,11 @@ It passes against the old CLI and is the gate for the new one.
 
 | | Count |
 | --- | --- |
-| Tests in the old suite at `505936d6` | 282 |
+| Tests in the old suite at `1ecfec0a` | 284 |
 | Removed | 13 |
 | Changed | 8 |
 | Skipped as deferred | 9 |
-| Run against the CLI under test | 260 |
+| Run against the CLI under test | 262 |
 
 Removed, with the dropped item each one covered:
 
