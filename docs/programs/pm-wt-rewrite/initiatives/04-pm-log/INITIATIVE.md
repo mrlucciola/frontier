@@ -62,6 +62,19 @@ None.
 None yet. One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
 `pm/docs/design.md`: the file, what changed, why.
 
+## Unbuilt stubs and their owners
+
+Every `store.unbuilt(<name>)` call left in built code, and the ticket that removes it.
+fc-d6c61c checks this list is empty before it removes the mechanism.
+
+| Stub | Where | Removed by |
+| --- | --- | --- |
+| `routing` | `store.ticket`, `store.is_done` | fc-e2d8c9 |
+| `link`, `duplicate` | `verbs/new.py` | fc-8b871a |
+| `json` | `verbs/show.py` | fc-ef483a |
+| `backup` | `verbs/init.py`, inside a git checkout | fc-3f4bfa |
+| `plugins` | `cli/pm` `no_verb`, when the plugins directory is not empty | fc-a731f4 |
+
 ## Facts not to re-derive
 
 - **The transcripts have never passed.** No implementation existed when they were
