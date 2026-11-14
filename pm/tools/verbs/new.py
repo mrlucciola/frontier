@@ -11,7 +11,6 @@ from datetime import datetime
 
 import render
 import store
-from store import now
 
 DUP_THRESHOLD = 3
 DUP_STRONG_WEIGHT = 3
@@ -54,7 +53,7 @@ def find_duplicates(tickets, title, body, now_ts=None):
     rare_max = max(DUP_RARE_MIN_DF, int(len(rows) * DUP_RARE_FRACTION))
     idf = lambda k: math.log(1 + total / df[k])
     new_w = sum(idf(k) for k in new)
-    now_dt = datetime.strptime(now_ts or now(), "%Y-%m-%dT%H:%M:%SZ")
+    now_dt = datetime.strptime(now_ts or store.now(), "%Y-%m-%dT%H:%M:%SZ")
     out = []
     for t, toks in rows:
         if t["status"] == "done":
@@ -132,6 +131,9 @@ def run(argv):
             links.append({"op": "link", "id": event["id"], "rel": "blocked-by",
                           "to": store.ticket(s, tickets, args.blocked_by)["id"]})
         if args.blocks:
+            if store.home(s, args.blocks) is not s:
+                render.refuse("%s is in another store. File without --blocks, then: "
+                              "pm link <new id> blocks %s" % (args.blocks, args.blocks))
             links.append({"op": "link", "id": store.ticket(s, tickets, args.blocks)["id"],
                           "rel": "blocked-by", "to": event["id"]})
         events = [event]

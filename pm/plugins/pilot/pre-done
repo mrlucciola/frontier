@@ -13,6 +13,12 @@ notes = []
 for t in pilot.open_pilots():
     if t["id"] == tid:
         notes = t["notes"]
-if not (pilot.has_note(notes, "measured:") and pilot.has_note(notes, "ruling:")):
+
+
+def has_note(prefix):
+    return any((n.get("text") or "").startswith(prefix) for n in notes)
+
+
+if not (has_note("measured:") and has_note("ruling:")):
     print('pilot: %s needs a note starting "measured:" and one starting "ruling:" before it is done.' % tid)
     sys.exit(1)

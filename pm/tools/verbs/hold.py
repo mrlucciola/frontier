@@ -25,7 +25,7 @@ def run(argv):
                           % (t["id"], t["status"], t["id"]))
         if not who.yours(t["holder"]):
             holder = who.actor_of(t["holder"])
-            render.refuse("%s is taken by %s, not yours. Only %s holds it."
+            render.refuse("%s is taken by %s, not yours. Only %s holds it. Yours: pm ls mine"
                           % (t["id"], holder, holder))
         return [{"op": "hold", "id": t["id"], "text": args.text}]
 

@@ -10,7 +10,6 @@ import render
 import store
 
 NAME = re.compile(r"^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$")
-RESERVED = ("ts", "by", "op", "id")
 
 
 def run(argv):
@@ -28,7 +27,7 @@ def run(argv):
         key, eq, value = pair.partition("=")
         if not eq or not key:
             render.usage_error(__doc__, "%s is not key=value." % pair)
-        if key in RESERVED:
+        if key in store.KEY_ORDER:
             render.refuse("%s is reserved. Use another key." % key)
         data[key] = value
     s = store.home_of(store.require(), [args.id])

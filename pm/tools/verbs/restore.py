@@ -4,6 +4,7 @@ Bring the log back from its git backup. Inside a git checkout every change store
 log as one blob at refs/pm/log; restore writes that blob back when the log is missing
 or has fewer events than the backup, and refuses when there is nothing to gain.
 """
+import fcntl
 import os
 
 import render
@@ -39,6 +40,16 @@ def run(argv):
     tmp = s.log + ".restore"
     with open(tmp, "wb") as f:
         f.write(blob)
-    os.replace(tmp, s.log)
+    try:
+        fd = os.open(s.log, os.O_RDWR)
+    except OSError:
+        fd = None
+    try:
+        if fd is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        os.replace(tmp, s.log)
+    finally:
+        if fd is not None:
+            os.close(fd)
     print("restored %d event%s from refs/pm/log" % (saved, "" if saved == 1 else "s"))
     return 0

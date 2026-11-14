@@ -21,8 +21,10 @@ def run(argv):
         if t["status"] == "open":
             render.refuse("%s is open already." % t["id"])
         if t["status"] == "taken":
-            render.refuse("%s is taken by %s. Only done or parked tickets reopen."
-                          % (t["id"], who.actor_of(t["holder"])))
+            force = "" if who.yours(t["holder"]) else " --force"
+            render.refuse("%s is taken by %s. Only done or parked tickets reopen. "
+                          "Give it back first: pm drop %s%s"
+                          % (t["id"], who.actor_of(t["holder"]), t["id"], force))
         return [{"op": "reopen", "id": t["id"]}]
 
     events = store.change(s, check)

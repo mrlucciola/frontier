@@ -26,21 +26,15 @@ def parser(doc):
     return _Parser(doc)
 
 
-def _open_blockers(t, tickets):
-    import store
-    if t["status"] == "done":
-        return []
-    return [b for b in t["blocked_by"] if not store.is_done(b, tickets)]
-
-
 def line(t, tickets):
+    import store
     import who
     out = "%s  P%s  %s  %s" % (t["id"], t["pri"], t["status"], t["title"])
     if t["kind"] == "epic":
         out += " [epic]"
     if t["status"] == "taken" and t["holder"]:
         out += "  @%s" % who.actor_of(t["holder"])
-    blockers = _open_blockers(t, tickets)
+    blockers = [] if t["status"] == "done" else store.open_blockers(t, tickets)
     if blockers:
         out += "  blocked by %s" % ", ".join(blockers)
     return out
@@ -64,8 +58,7 @@ def show(t, tickets, all_notes=False):
         parent = tickets.get(t["under"])
         out.append("under: %s%s" % (t["under"], " " + parent["title"] if parent else ""))
     if t["status"] != "done":
-        waiting = [b for b in t["blocks"] if not store.is_done(b, tickets)]
-        waiting += [b for b in store.blocked_elsewhere(t["id"], tickets) if b not in waiting]
+        waiting = store.blocked_elsewhere(t["id"], tickets)
         if waiting:
             out.append("blocks: %s" % ", ".join(waiting))
     if t["related"]:

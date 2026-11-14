@@ -10,10 +10,6 @@ import store
 import who
 
 
-def _rank(t):
-    return t["pri"]
-
-
 def _section(name, rows, tickets, more):
     out = [name + ":"] + ["  " + render.line(t, tickets) for t in rows[:5]]
     if len(rows) > 5:
@@ -26,10 +22,10 @@ def run(argv):
     p.parse_args(argv)
     s = store.require()
     tickets = store.replay(store.read(s))
-    ordered = sorted(tickets.values(), key=_rank)
+    ordered = sorted(tickets.values(), key=lambda t: t["pri"])
     yours = [t for t in ordered if t["status"] == "taken" and who.yours(t["holder"])]
     ready = [t for t in ordered if t["status"] == "open" and t["kind"] != "epic"
-             and all(store.is_done(b, tickets) for b in t["blocked_by"])]
+             and not store.open_blockers(t, tickets)]
     parked = [t for t in ordered if t["status"] == "parked"]
     out = []
     if yours:

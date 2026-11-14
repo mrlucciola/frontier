@@ -21,8 +21,7 @@ def _matches(t, tickets, statuses, narrow, free):
         return False
     for kind, value in narrow:
         if kind == "ready":
-            if t["status"] != "open" or t["kind"] == "epic" or not all(
-                    store.is_done(b, tickets) for b in t["blocked_by"]):
+            if t["status"] != "open" or t["kind"] == "epic" or store.open_blockers(t, tickets):
                 return False
         elif kind == "mine":
             if t["status"] != "taken" or not who.yours(t["holder"]):
@@ -87,7 +86,8 @@ def run(argv):
     rows.sort(key=lambda t: t["pri"])
     shown = rows[:args.n] if args.n else rows
     if not rows:
-        print("nothing matches.")
+        if not args.json:
+            print("nothing matches.")
         return 0
     for t in shown:
         if args.json:

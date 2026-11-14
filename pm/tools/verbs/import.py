@@ -53,8 +53,8 @@ def _rows(path):
     return rows
 
 
-def _new(row, ts, by="import"):
-    event = {"ts": ts, "by": by, "op": "new", "id": row["id"],
+def _new(row, ts):
+    event = {"ts": ts, "by": "import", "op": "new", "id": row["id"],
              "title": row.get("title") or ""}
     if row.get("body"):
         event["body"] = row["body"]
@@ -170,7 +170,7 @@ def run(argv):
     result = {}
 
     def check(tickets):
-        if tickets or os.path.getsize(s.log) > 0:
+        if tickets or (os.path.exists(s.log) and os.path.getsize(s.log) > 0):
             render.refuse("this store already has events. Import only fills an empty log.")
         events, counts, skipped = _plan(rows)
         result["counts"], result["skipped"] = counts, skipped
@@ -179,7 +179,7 @@ def run(argv):
     for prefix, path, _ in registry.read():
         if prefix == s.prefix and os.path.realpath(path) != os.path.realpath(s.root):
             render.refuse("prefix %s belongs to %s. Choose another." % (prefix, path))
-    store.change(s, check)
+    store.change(s, check, hooks=False)
     if not any(pre == s.prefix and os.path.realpath(path) == os.path.realpath(s.root)
                for pre, path, _ in registry.read()):
         registry.add(s.prefix, s.root)

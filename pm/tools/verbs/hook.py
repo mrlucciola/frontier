@@ -32,6 +32,7 @@ def _stdin():
 
 
 def _orient(cwd):
+    # A subprocess: orient must find the store from cwd and read the session id set in run.
     try:
         out = subprocess.run(["/usr/bin/python3", os.path.join(COMPONENT, "cli", "pm")],
                              cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,

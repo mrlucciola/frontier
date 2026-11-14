@@ -12,10 +12,6 @@ import store
 import who
 
 
-def _blockers(t, tickets):
-    return [b for b in t["blocked_by"] if not store.is_done(b, tickets)]
-
-
 def run(argv):
     p = render.parser(__doc__)
     p.add_argument("ids", nargs="*")
@@ -32,7 +28,7 @@ def run(argv):
         else:
             ready = [t for t in tickets.values()
                      if t["status"] == "open" and t["kind"] != "epic"
-                     and not _blockers(t, tickets)]
+                     and not store.open_blockers(t, tickets)]
             if not ready:
                 render.refuse("nothing is ready. Everything open: pm ls open")
             targets = [min(ready, key=lambda t: t["pri"])]
@@ -53,7 +49,7 @@ def run(argv):
                                   % (t["id"], who.actor_of(t["holder"])))
                 event["from"] = t["holder"]
             else:
-                blockers = _blockers(t, tickets)
+                blockers = store.open_blockers(t, tickets)
                 if blockers and not args.force:
                     render.refuse("%s is blocked by %s. Pick another: pm ls ready"
                                   % (t["id"], ", ".join(blockers)))

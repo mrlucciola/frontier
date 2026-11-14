@@ -35,9 +35,5 @@ def review_problem(t):
 
 
 def overdue(t):
-    problem = review_problem(t)
-    return problem is not None and problem.endswith("is past")
-
-
-def has_note(notes, prefix):
-    return any((n.get("text") or "").startswith(prefix) for n in notes)
+    m = REVIEW_BY.search(t["body"])
+    return bool(m and re.match(r"^\d{4}-\d{2}-\d{2}$", m.group(1)) and m.group(1) < today())

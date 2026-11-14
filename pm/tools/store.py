@@ -295,6 +295,10 @@ def is_done(tid, tickets):
     return False
 
 
+def open_blockers(t, tickets):
+    return [b for b in t["blocked_by"] if not is_done(b, tickets)]
+
+
 def blocked_elsewhere(tid, tickets):
     out = []
     pools = [tickets]
@@ -400,6 +404,7 @@ def _flush_post():
 
 
 def _post(s, filled, tickets):
+    # Held until exit so hook output prints after the verb's own result.
     atexit.register(_flush_post)
     for event in filled:
         for path in plugins.with_file("post-" + str(event["op"])):
@@ -419,13 +424,15 @@ def _same(a, b):
     return bare(a) == bare(b)
 
 
-def change(s, check, actor=None, dry_run=False):
+def change(s, check, actor=None, dry_run=False, hooks=True):
+    """Append what check returns. check may run twice (once for pre hooks outside the
+    lock, once under it), so it must be pure. hooks=False skips every plugin hook."""
     frozen = registry.read_only_path(s.root)
     if frozen is not None:
         render.refuse("store %s is read-only (%s)." % (s.prefix, frozen))
     before = replay(read(s))
     checked = None
-    if plugins.any_pre():
+    if hooks and plugins.any_pre():
         checked = _fill(check(before), actor)
         if not _pre(s, checked, before):
             checked = None
@@ -443,6 +450,6 @@ def change(s, check, actor=None, dry_run=False):
             _backup(s)
     finally:
         os.close(fd)
-    if written:
+    if written and hooks:
         _post(s, filled, tickets)
     return filled

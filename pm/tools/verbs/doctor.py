@@ -46,21 +46,21 @@ def run(argv):
             continue
         event = _event(text)
         if event is None:
-            problems.append("line %d is not an event; pm skips it. Delete the line by hand." % n)
+            problems.append((n, "line %d is not an event; pm skips it. Delete the line by hand." % n))
             continue
         count += 1
         if event["op"] == "new":
             known.add(event["id"])
         elif event["id"] not in known and event["op"] in store.OPS:
-            problems.append("line %d is an event for unknown ticket %s." % (n, event["id"]))
+            problems.append((n, "line %d is an event for unknown ticket %s." % (n, event["id"])))
         if event["op"] == "link" and isinstance(event.get("to"), str):
             links.append((n, event["to"]))
     for n, to in links:
         if not _exists(s, to, known):
-            problems.append("line %d links to %s, which cannot be found." % (n, to))
-    problems.sort(key=lambda p: int(p.split()[1]))
+            problems.append((n, "line %d links to %s, which cannot be found." % (n, to)))
+    problems.sort(key=lambda p: p[0])
     if problems:
-        print("\n".join(problems))
+        print("\n".join(text for _, text in problems))
     else:
         print("ok: %s, %s, %s" % (s.prefix, _plural(len(known), "ticket"), _plural(count, "event")))
     if store.in_checkout(s.root):

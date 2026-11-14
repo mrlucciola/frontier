@@ -14,9 +14,12 @@ def read():
         return []
     out = []
     for line in lines:
-        words = line.split()
-        if len(words) >= 2:
-            out.append((words[0], words[1], words[2:3] == ["ro"]))
+        words = line.strip().split(None, 1)
+        if len(words) == 2:
+            rest, ro = words[1], False
+            if rest.endswith(" ro") and rest[:-3].strip():
+                rest, ro = rest[:-3].strip(), True
+            out.append((words[0], rest, ro))
     return out
 
 

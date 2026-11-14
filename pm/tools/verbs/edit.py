@@ -40,7 +40,7 @@ def run(argv):
 
     def check(tickets):
         t = store.ticket(s, tickets, args.id)
-        target.append(t["id"])
+        target[:] = [t["id"]]
         event = {"op": "edit", "id": t["id"]}
         if args.title is not None:
             event["title"] = args.title
@@ -64,5 +64,5 @@ def run(argv):
         return [event]
 
     store.change(s, check)
-    print("%s edited: %s" % (target[-1], ", ".join(fields)))
+    print("%s edited: %s" % (target[0], ", ".join(fields)))
     return 0

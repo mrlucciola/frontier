@@ -79,7 +79,6 @@ def help_verb(word):
 
 
 def no_verb(word):
-    import store
     names = [v[0] for v in VERBS] + list(ALIASES)
     close = difflib.get_close_matches(word, names, n=1)
     hint = " Closest: %s." % close[0] if close else ""
@@ -117,6 +116,8 @@ if __name__ == "__main__":
         sys.exit(main(sys.argv[1:]))
     except SystemExit:
         raise
-    except BaseException as e:
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except Exception as e:
         sys.stderr.write("pm: internal error: %s: %s\n" % (type(e).__name__, e))
         sys.exit(1)

@@ -14,7 +14,7 @@ def run(argv):
     p.add_argument("--notes", action="store_true")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
     tickets = store.replay(store.read(s))
     t = store.ticket(s, tickets, args.id)
     if args.json:

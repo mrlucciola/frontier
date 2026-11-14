@@ -4,13 +4,10 @@ Add a note to a ticket. Without an id the note goes to the one ticket this sessi
 holds. A first word that is a number or an id names the ticket, not the text. -k
 tags the note as a decision, a finding or a measurement.
 """
-import re
-
 import render
 import store
 
 KINDS = ("decision", "finding", "measurement")
-_ID_WORD = re.compile(r"^(\d+|[a-z][a-z0-9]{0,7}-[A-Za-z0-9]+)$")
 
 
 def run(argv):
@@ -22,7 +19,7 @@ def run(argv):
         render.usage_error(__doc__, "a note kind is one of: %s." % ", ".join(KINDS))
     words = args.words
     word = None
-    if len(words) >= 2 and _ID_WORD.match(words[0]):
+    if len(words) >= 2 and (words[0].isdigit() or store.ID_RE.match(words[0])):
         word, words = words[0], words[1:]
     if len(words) != 1 or not words[0].strip():
         render.usage_error(__doc__, "note needs text.")
@@ -33,12 +30,12 @@ def run(argv):
 
     def check(tickets):
         t = store.ticket(s, tickets, word)
-        target.append(t["id"])
+        target[:] = [t["id"]]
         event = {"op": "note", "id": t["id"], "text": text}
         if args.kind:
             event["kind"] = args.kind
         return [event]
 
     store.change(s, check)
-    print("%s noted" % target[-1])
+    print("%s noted" % target[0])
     return 0

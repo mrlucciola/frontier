@@ -16,7 +16,7 @@ def run(argv):
     args = p.parse_args(argv)
     if args.n < 0:
         render.usage_error(__doc__, "-n must be 0 or more.")
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
     t = store.ticket(s, store.replay(store.read(s)), args.id)
     try:
         with open(s.log, encoding="utf-8", errors="replace") as f:

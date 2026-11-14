@@ -90,10 +90,15 @@ def orient_text(s):
     env = dict(os.environ, PM_STORE=s.root)
     for path in with_file("orient"):
         try:
-            _code, text = run_hook(path, env)
+            out = subprocess.run([path], env=env, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, universal_newlines=True,
+                                 errors="replace")
         except OSError as e:
             sys.stderr.write("pm: warning: %s\n" % could_not_run(path, e))
             continue
-        if text.strip():
+        text = out.stdout
+        if out.returncode != 0 or out.stderr:
+            sys.stderr.write("pm: warning: plugin %s orient failed.\n" % name_of(path))
+        if out.returncode == 0 and text.strip():
             parts.append(text.rstrip("\n"))
     return "\n".join(parts)
