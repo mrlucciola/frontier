@@ -27,8 +27,10 @@ fc-dac416, alone, as four serial workers on its branch: `prompts/01-core-a-move.
 `01-core-b-dispatcher.md`, `01-core-c-store.md`, `01-core-d-render.md`, all under
 the rules of `prompts/00-common.md`. Everything else is blocked behind it.
 
-After fc-dac416: all five step-2 tickets at once is five workers; dispatch four
-(fc-195118, fc-ef483a, fc-8b871a, fc-e2d8c9), then fc-3f4bfa as the first finishes.
+After fc-dac416: prompts `02a` to `02d` (fc-195118, fc-ef483a, fc-8b871a, fc-e2d8c9)
+at once, then `02e` (fc-3f4bfa) once fc-e2d8c9 is merged, since it adds the
+`backup:` line to `doctor.py`. Merge in the order they report, running the full
+`--allow-pending` gate from the main checkout after each.
 
 ## Decisions
 
@@ -42,6 +44,14 @@ After fc-dac416: all five step-2 tickets at once is five workers; dispatch four
   `find_duplicates` from the start and calls `store.unbuilt("duplicate")` only on a
   match or `--new`, so transcript 11 stays pending and no other `new` is affected.
   fc-8b871a writes the refusal.
+- **`ls --all-stores` moves to fc-ef483a** from fc-e2d8c9 (2026-11-14): `ls.py` is
+  fc-ef483a's file, and listing every registered store needs only `registry.read()`
+  from core, so the two run in parallel.
+- **`store.is_done()` joins the contract** (2026-11-14): one readiness test that
+  routing later extends, so fc-ef483a's `ls ready` and fc-e2d8c9's lookup meet in one
+  function instead of a merge-order dependency.
+- **Notes carry `kind`, not `tag`** (2026-11-14): transcript 20's `--json` pins the
+  key; the contract was amended while worker 01c ran and it was told.
 
 ## Owed operator actions
 
