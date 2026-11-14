@@ -35,7 +35,8 @@ it. Do only that.
 
 - The 01-core-a report, then `pm/tools/store.py` (find its commit function and the
   write path that calls it).
-- `pm/docs/cut-list.md`, the "Dropped" row and the paragraph under it on gitfault.
+- `pm/docs/cut-list.md`, "What the cuts change": the bullet on the dropped
+  infra-fault report.
 - Old source, read-only, at `/Users/matthias/frontier/runtime-tools/pm/ticket/src/`:
   `gitcommit.py` (220 lines, read whole), `gitfault.py` 25-115 and 165-207 (skip
   117-163, the report writer, which is dropped), `ticket_core.py` 2142-2222
