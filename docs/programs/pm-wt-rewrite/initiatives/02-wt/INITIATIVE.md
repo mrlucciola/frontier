@@ -124,7 +124,20 @@ in the worker-brief shape; the artifacts were verified on disk instead.
 fc-8ecb48 closed after round 2 (9fccaab): overseer re-run StartTest passed 17, pending 1
 (on park), failed 0; full suite exit 0.
 
-Batch B, three parallel workers: fc-917232 (`02c-park.md`, bc6fad5) and fc-249727
+**Step 2 closed.** fc-917232 and fc-249727 merged; after rebasing finish onto main with
+park, the full new-side suite printed `passed 122, pending 1 (selftest), skipped 2,
+failed 0`, all auto-park tests green.
+
+**fc-8c1f62 (integration)**, serial on branch `fc-8c1f62`:
+`prompts/03a-integration-selftest.md` (selftest, drop the unbuilt path) in flight, then
+`prompts/03b-integration-docs.md` (README, AGENTS, INSTALL, contract rewrite,
+contributing row), then a read-only readability review of `wt/cli`, `wt/tools`,
+`wt/pm-plugin` against component-principles. Rulings: the suite pins selftest's last
+line `SELFTEST PASSED`, which wins over the ticket's "prints its OK: line"; selftest
+removes its own `mktemp -d` scratch with `rm -r`, the one recorded exception to "never
+`rm -rf`"; selftest drives the sibling `pm/cli/pm`.
+
+Batch B (history), three parallel workers: fc-917232 (`02c-park.md`, bc6fad5) and fc-249727
 (`02b-finish.md`, a1114c7) reported and are in a fix round each. Ruling (overseer,
 2026-11-14): with `--findings none`, no `--note` and `findings_required`, finish and
 park pass only when the ticket already has a note, read from `pm show <id>` text (a
