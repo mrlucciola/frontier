@@ -54,8 +54,10 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    done: c85a178, 123 tests; stub run `passed 9, pending 112, skipped 2, failed 0`.
 8. Re-review in flight (qa-engineer, read-only): coverage again, plus every assertion
    a correct new wt could not pass (old-pm or JSON-config words). Known one:
-   `test_malformed_gate_refuses` pins the old JSON-gate words on both sides. Its body
-   goes to `reports/00-review-2.md`; one fix round follows.
+   `test_malformed_gate_refuses` pins the old JSON-gate words on both sides. Done:
+   `reports/00-review-2.md`, PARTIAL: 10 new-side blockers, 6 weak spots.
+9. `00-characterize-7-review2-fixes.md` -- side-neutral assertions under the rulings
+   below, last gaps. In flight. Then accept: overseer gate re-run on both sides.
 
 ## Owed operator actions
 
@@ -136,6 +138,13 @@ None.
   already closed is NOT torn down by the old `finish` (its preflight `pm ticket where
   --mutate` refuses; exit 1, worktree and branch kept), against contract.md:198-200.
   The old `selftest` leaves three `wt-selftest-*pairs*.json` files in `$TMPDIR`.
+- **Rulings on old wt vs contract (overseer, 2026-11-14, part 7).** Where the old wt
+  contradicts the contract, a test pins the old wt on the old side and the contract on
+  the new side, with a docstring starting `Old wt deviates from the contract:`. Applied
+  to the stale worktree of a closed ticket (contract.md:198-200). Kept on both sides,
+  changed later by fc-f0cc16: `wt start` re-conflicting on an auto-parked rebase
+  conflict. Fault rows: one file per root cause, at least one row. `start` twice: state
+  only, exit not pinned. The gate prints `.wt/gate` as its label on the new side.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
