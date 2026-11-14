@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+"""pm: the ticket log's command line. Routes a verb to its file under tools/verbs/."""
+import ast
+import difflib
+import importlib.util
+import os
+import sys
+
+COMPONENT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+TOOLS = os.path.join(COMPONENT, "tools")
+VERBS_DIR = os.path.join(TOOLS, "verbs")
+sys.path.insert(0, TOOLS)
+
+HEADER = """pm keeps this repo's tickets in .pm/. Bare `pm` shows what you hold and what is ready.
+Leave out [id] to mean the ticket you hold. One verb in detail: pm help <verb>
+"""
+
+VERBS = [
+    ("take", "take [id]", "take the top ready ticket, or the one named, and print it"),
+    ("note", 'note [id] "text"', "add a note"),
+    ("done", 'done [id] -m "text"', "finish it"),
+    ("park", 'park [id] -m "text"', "stop with work unfinished and say what it waits on"),
+    ("drop", "drop [id]", "give it back untouched"),
+    ("hold", 'hold [id] -m "text"', "keep it across a pause"),
+    ("new", 'new "title"', "file a ticket and print its id"),
+    ("edit", "edit id", "change title, body, priority, labels or epic"),
+    ("link", "link a blocks b", "order two tickets; or: link a related b"),
+    ("unlink", "unlink a b", "remove the links between two tickets"),
+    ("reopen", "reopen id", "make a done or parked ticket open again"),
+    ("show", "show [id]", "one ticket with its links and notes"),
+    ("ls", "ls [words]", "list: ready mine open taken parked done all epics under:id label:x, or text"),
+    ("get", "get id field", "print one field per line, for scripts"),
+    ("log", "log [id]", "print the raw events"),
+    ("emit", "emit id ns.name k=v", "record a plugin event"),
+    ("init", "init prefix", "start a store in this directory"),
+    ("stores", "stores", "list every store on this machine"),
+    ("doctor", "doctor", "check this store"),
+    ("restore", "restore", "bring back a lost log from its git backup"),
+    ("import", "import", "fill a new log from an old tickets.jsonl"),
+    ("hook", "hook event", "print what an agent harness should inject"),
+]
+
+ALIASES = {
+    "claim": "take",
+    "release": "drop",
+    "close": "done",
+    "create": "new",
+    "list": "ls",
+    "dep": "link",
+}
+
+
+def verb_path(verb):
+    return os.path.join(VERBS_DIR, verb + ".py")
+
+
+def help_all():
+    out = [HEADER]
+    for _, usage, summary in VERBS:
+        out.append("  %s%s" % (usage.ljust(22), summary))
+    sys.stdout.write("\n".join(out) + "\n")
+    return 0
+
+
+def help_verb(word):
+    import store
+    verb = ALIASES.get(word, word)
+    if verb not in [v[0] for v in VERBS]:
+        return no_verb(word)
+    path = verb_path(verb)
+    if not os.path.isfile(path):
+        store.unbuilt(verb)
+    with open(path) as f:
+        doc = ast.get_docstring(ast.parse(f.read()), clean=False) or ""
+    sys.stdout.write(doc.strip("\n") + "\n")
+    return 0
+
+
+def no_verb(word):
+    names = [v[0] for v in VERBS] + list(ALIASES)
+    close = difflib.get_close_matches(word, names, n=1)
+    hint = " Closest: %s." % close[0] if close else ""
+    sys.stderr.write('pm: no verb "%s".%s All verbs: pm help\n' % (word, hint))
+    return 2
+
+
+def run_verb(verb, argv):
+    import store
+    path = verb_path(verb)
+    if not os.path.isfile(path):
+        store.unbuilt(verb)
+    spec = importlib.util.spec_from_file_location("pm_verb_" + verb, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.run(argv)
+
+
+def main(argv):
+    if not argv:
+        return run_verb("orient", [])
+    word, rest = argv[0], argv[1:]
+    if word == "help":
+        return help_verb(rest[0]) if rest else help_all()
+    verb = ALIASES.get(word, word)
+    if verb not in [v[0] for v in VERBS]:
+        return no_verb(word)
+    return run_verb(verb, rest)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except SystemExit:
+        raise
+    except BaseException as e:
+        sys.stderr.write("pm: internal error: %s: %s\n" % (type(e).__name__, e))
+        sys.exit(1)
