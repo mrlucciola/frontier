@@ -419,5 +419,128 @@ class ClaimReopenHoldTest(Base):
         self.assertEqual(row["released_by"].split("#")[0], "agent:claude/w")
 
 
+class CloseReopenTest(Base):
+    ENV = {"PM_AGENT": "claude/w", "PM_SESSION_ID": "sess-1"}
+
+    def setUp(self):
+        if not all(built(v) for v in ("close", "reopen")):
+            self.skipTest("unbuilt: close/reopen")
+        super().setUp()
+
+    def test_direct_close_refused_while_worktree_exists(self):
+        tid = self.ok("create", "wt work")
+        os.makedirs(os.path.join(self.dir, ".worktrees", tid))
+        r = pm(self.dir, "close", tid, "--findings", "none")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"pm: {tid} has a worktree at ", r.stderr)
+        self.assertIn(f"run `wt finish {tid}` to merge and close", r.stderr)
+        self.assertEqual(self.ok("close", tid, "--via", "wt", "--findings", "none"),
+                         f"{tid} -> closed")
+
+    def test_already_closed_refusal_precedes_worktree_refusal(self):
+        tid = self.ok("create", "twice")
+        self.ok("close", tid, "--findings", "none")
+        os.makedirs(os.path.join(self.dir, ".worktrees", tid))
+        r = pm(self.dir, "close", tid, "--findings", "none")
+        self.assertIn(f"pm: already closed; `pm ticket reopen {tid}` reopens it", r.stderr)
+
+    def test_close_unmerged_writes_park_note_and_closed_by(self):
+        tid = self.ok("create", "parked")
+        out = self.ok("close", tid, "--unmerged", "--note", "branch x", "--findings",
+                      "none", env=self.ENV)
+        self.assertEqual(out, f"{tid} -> done-unmerged")
+        row = self.rows()[0]
+        self.assertEqual(row["notes"][-1]["kind"], "park")
+        self.assertTrue(row["closed_by"].startswith("agent:claude/w#"))
+        self.assertEqual(row["findings"], ["none"])
+
+    def test_close_without_findings_warns_then_phase_2_refuses(self):
+        tid = self.ok("create", "unattested")
+        r = pm(self.dir, "close", tid)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pm: no --findings:", r.stderr)
+        self.assertTrue(self.rows()[0]["findings_absent"])
+        tid2 = self.ok("create", "strict")
+        cfg = os.path.join(self.dir, ".pm", "config.json")
+        with open(cfg) as f:
+            conf = json.load(f)
+        conf["findings_required"] = True
+        with open(cfg, "w") as f:
+            json.dump(conf, f)
+        r = pm(self.dir, "close", tid2)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("pm: no --findings:", r.stderr)
+        r = pm(self.dir, "close", tid2, "--findings", "none")
+        self.assertIn("needs a non-empty --note or an existing note", r.stderr)
+
+    def test_close_is_all_or_nothing(self):
+        a, b = self.ok("create", "a"), self.ok("create", "b")
+        self.ok("close", b, "--findings", "none")
+        r = pm(self.dir, "close", a, b, "--findings", "none")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual({x["id"]: x["status"] for x in self.rows()},
+                         {a: "open", b: "closed"})
+
+    def test_epic_with_open_children(self):
+        epic = self.ok("create", "the epic", "--kind", "epic")
+        child = self.ok("create", "kid", "--parent", epic)
+        r = pm(self.dir, "close", epic, "--findings", "none")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{epic} has open children:", r.stderr)
+        self.ok("close", epic, "--detach", "--findings", "none")
+        rows = {x["id"]: x for x in self.rows()}
+        self.assertIsNone(rows[child]["parent"])
+        self.assertEqual(rows[child]["notes"][-1]["kind"], "edit-trail")
+
+    def test_findings_unknown_id_refused(self):
+        tid = self.ok("create", "x")
+        r = pm(self.dir, "close", tid, "--findings", "tt-nope00")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("--findings", r.stderr)
+
+    def test_deploy_check_exit_4_and_override(self):
+        tid = self.ok("create", "tool", "--label", "tooling")
+        bindir = os.path.join(self.dir, "bin")
+        os.makedirs(bindir)
+        deploy = os.path.join(bindir, "deploy")
+        with open(deploy, "w") as f:
+            f.write("#!/bin/sh\necho stale\nexit 1\n")
+        os.chmod(deploy, 0o755)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env["GIT_CONFIG_GLOBAL"] = os.devnull
+        def git(*a):
+            r = subprocess.run(["git", "-C", self.dir, *a], capture_output=True,
+                               text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        git("init", "-q", "-b", "main")
+        git("add", "bin/deploy")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
+            "commit", "-q", "-m", f"{tid}: add deploy")
+        r = pm(self.dir, "close", tid, "--findings", "none")
+        self.assertEqual(r.returncode, 4, r.stderr)
+        self.assertIn("pm: nothing closed.", r.stderr)
+        self.assertEqual(self.rows()[0]["status"], "open")
+        self.ok("close", tid, "--findings", "none", "--no-deploy-check", "why")
+        self.assertEqual(self.rows()[0]["notes"][-1],
+                         {**self.rows()[0]["notes"][-1], "kind": "finding",
+                          "text": "deploy check skipped: why"})
+
+    def test_reopen_clears_attribution_and_refuses_claimed(self):
+        tid = self.ok("create", "r")
+        self.ok("close", tid, "--findings", "none", env=self.ENV)
+        self.assertEqual(self.ok("reopen", tid), f"{tid} reopened")
+        row = self.rows()[0]
+        for key in ("findings", "findings_absent", "closed_by", "hold"):
+            self.assertNotIn(key, row)
+        r = pm(self.dir, "reopen", tid)
+        self.assertIn(f"pm: already open; `pm ticket claim {tid} --as <name>` takes it",
+                      r.stderr)
+        self.ok("claim", tid, "--as", "w")
+        r = pm(self.dir, "reopen", tid)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{tid} is claimed by ", r.stderr)
+        self.assertIn(f"`pm ticket release {tid}` first, then reopen", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
