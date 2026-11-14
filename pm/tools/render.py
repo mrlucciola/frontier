@@ -65,6 +65,7 @@ def show(t, tickets, all_notes=False):
         out.append("under: %s%s" % (t["under"], " " + parent["title"] if parent else ""))
     if t["status"] != "done":
         waiting = [b for b in t["blocks"] if not store.is_done(b, tickets)]
+        waiting += [b for b in store.blocked_elsewhere(t["id"], tickets) if b not in waiting]
         if waiting:
             out.append("blocks: %s" % ", ".join(waiting))
     if t["related"]:

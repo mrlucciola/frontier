@@ -20,6 +20,26 @@ def read():
     return out
 
 
+def stores(prefix):
+    return [(p, ro) for pre, p, ro in read() if pre == prefix]
+
+
+def known():
+    seen = []
+    for pre, _, _ in read():
+        if pre not in seen:
+            seen.append(pre)
+    return seen
+
+
+def read_only_path(store_path):
+    here = os.path.realpath(store_path)
+    for _, p, ro in read():
+        if ro and os.path.realpath(p) == here:
+            return p
+    return None
+
+
 def add(prefix, store_path):
     target = path()
     os.makedirs(os.path.dirname(target) or ".", exist_ok=True)

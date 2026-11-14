@@ -6,6 +6,7 @@ import re
 import sys
 import time
 
+import registry
 import render
 import who
 
@@ -201,10 +202,35 @@ def ticket(s, tickets, word):
         word = "%s-%s" % (s.prefix, word)
     m = ID_RE.match(word)
     if m and m.group(1) != s.prefix:
-        unbuilt("routing")
-    if word not in tickets:
-        render.refuse("no ticket %s. Search: pm ls all <words>" % word)
-    return tickets[word]
+        if not registry.stores(m.group(1)):
+            render.refuse("no store has prefix %s. Known: %s"
+                          % (m.group(1), ", ".join(registry.known())))
+        found = locate(m.group(1), word)
+        if found:
+            return found[1]
+    elif word in tickets:
+        return tickets[word]
+    render.refuse("no ticket %s. Search: pm ls all <words>" % word)
+
+
+def locate(prefix, tid):
+    for path, _ in registry.stores(prefix):
+        other = Store(path)
+        if not os.path.isfile(other.log):
+            continue
+        t = replay(read(other)).get(tid)
+        if t is not None:
+            return other, t
+    return None
+
+
+def home(s, tid):
+    m = ID_RE.match(tid or "")
+    if m and m.group(1) != s.prefix:
+        found = locate(m.group(1), tid)
+        if found:
+            return found[0]
+    return s
 
 
 def next_id(s, tickets):
@@ -219,9 +245,27 @@ def is_done(tid, tickets):
     if t is not None:
         return t["status"] == "done"
     m = ID_RE.match(tid or "")
-    if m and m.group(1) not in {x.split("-")[0] for x in tickets}:
-        unbuilt("routing")
+    if m:
+        found = locate(m.group(1), tid)
+        if found:
+            return found[1]["status"] == "done"
     return False
+
+
+def blocked_elsewhere(tid, tickets):
+    out = []
+    pools = [tickets]
+    for pre in registry.known():
+        for path, _ in registry.stores(pre):
+            other = Store(path)
+            if os.path.isfile(other.log):
+                pools.append(replay(read(other)))
+    for pool in pools:
+        for t in pool.values():
+            if (tid in t["blocked_by"] and t["status"] != "done"
+                    and t["id"] not in out):
+                out.append(t["id"])
+    return out
 
 
 def _line(event):
@@ -232,6 +276,9 @@ def _line(event):
 
 
 def change(s, check, actor=None, dry_run=False):
+    frozen = registry.read_only_path(s.root)
+    if frozen is not None:
+        render.refuse("store %s is read-only (%s)." % (s.prefix, frozen))
     fd = os.open(s.log, os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
