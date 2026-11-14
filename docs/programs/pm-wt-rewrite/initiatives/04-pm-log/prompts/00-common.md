@@ -91,8 +91,13 @@ exit 1.
   `--json` key of the design (`blocked_by blocks body created findings from hold
   holder id kind labels notes pri reason related status title under updated`) plus
   `events`, the raw events of that ticket including plugin ops. `holder` is the `by`
-  of the take; `notes` is a list of `{"ts", "by", "tag", "text"}` built per the
-  design's note-line rule; `blocks` is computed from other tickets' `blocked-by` links.
+  of the take; `notes` is a list of `{"ts", "by", "kind", "text"}` built per the
+  design's note-line rule, where `kind` is the note's `-k` kind, or `done`, `parked`,
+  `dropped` for the text given to those verbs, or `took over from <actor>` for a
+  forced take, and null for a plain note (render prints it as the tag); `blocks` is
+  computed from other tickets' `blocked-by` links. Defaults: `kind` `task`, `pri` 2,
+  `body` `""`, lists empty, the rest null. `created` is the `new` event's `ts`,
+  `updated` the `ts` of the ticket's latest event. Transcript 20 pins the shape.
 - `ticket(s, tickets, word)`: resolves `word` to a ticket dict. `None` means the one
   ticket this session holds (refusals as transcript 12). A bare number is
   `<prefix>-<n>`. An id whose prefix is not this store's calls `unbuilt("routing")`.
