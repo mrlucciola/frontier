@@ -8,17 +8,26 @@ import fcntl
 import hashlib
 import json
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime, timezone
 
+import gitcommit
+
 STORE_DIR = ".pm"
 TICKET_FILE = "tickets.jsonl"
+HISTORY_PENDING = "history-pending"
 UNBUILT_EXIT = 70
+GIT_COMMIT_FAILED_EXIT = 3
 
 
 class TicketError(Exception):
     """A refusal: the entry prints `pm: <message>` on stderr and exits 1."""
+
+
+class GitCommitFailed(Exception):
+    """The store's own git commit failed; the row is saved. The entry exits 3."""
 
 
 def unbuilt(name):
@@ -264,9 +273,45 @@ def locked_store(repo=None, message=None):
 
 
 def commit(root, message):
-    """Record the saved store in git. A store outside a git work tree is left alone."""
+    """Record the saved store in git; the row is saved either way.
+
+    A policy skip prints one stderr line and the by-hand command, and returns. A
+    git failure prints the same plus git's own output, then raises
+    GitCommitFailed (exit 3); on a `history_ref` store it only marks the snapshot
+    owed, so the next write catches up.
+    """
+    skipped = gitcommit.commit_store(root, message)
+    if not skipped:
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(root, HISTORY_PENDING))
+        return
+    print(f"pm: store saved, commit skipped: {skipped}", file=sys.stderr)
+    fault = isinstance(skipped, gitcommit.GitFault)
+    if fault and skipped.stderr_tail:
+        print(skipped.stderr_tail, file=sys.stderr)
     repo = os.path.dirname(os.path.abspath(root))
-    inside = _git(repo, "rev-parse", "--is-inside-work-tree")
-    if inside.returncode == 0 and inside.stdout.strip() == "true":
-        # gitcommit.py replaces this body; until it exists a commit is unbuilt.
-        unbuilt("gitcommit")
+    rel = os.path.join(os.path.basename(root), TICKET_FILE)
+    ref = _history_ref(root)
+    if ref:
+        print(f"pm: the row above is saved but NOT yet recorded on {ref}; the next "
+              "pm write or summary that can commit records it, or run: "
+              "pm ticket history sync", file=sys.stderr)
+        if fault:
+            with contextlib.suppress(OSError), \
+                    open(os.path.join(root, HISTORY_PENDING), "w") as f:
+                f.write(f"{skipped}\n")
+        return
+    print("pm: the row above is saved but NOT committed; commit it by hand: "
+          f"git -C {shlex.quote(repo)} add -- {shlex.quote(rel)} && git -C "
+          f"{shlex.quote(repo)} commit -q -o -m {shlex.quote(message)} -- "
+          f"{shlex.quote(rel)}", file=sys.stderr)
+    if fault:
+        raise GitCommitFailed(skipped)
+
+
+def _history_ref(root):
+    try:
+        with open(os.path.join(root, "config.json")) as f:
+            return json.load(f).get("history_ref")
+    except (OSError, ValueError):
+        return None

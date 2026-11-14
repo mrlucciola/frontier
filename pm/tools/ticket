@@ -78,6 +78,8 @@ def main(argv):
     except store.TicketError as e:
         print(f"pm: {e}", file=sys.stderr)
         return 1
+    except store.GitCommitFailed:
+        return store.GIT_COMMIT_FAILED_EXIT
     return 0
 
 
