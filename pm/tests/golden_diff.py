@@ -1,7 +1,12 @@
 #!/usr/bin/python3
 """Golden diff: old pm ticket CLI vs the new one on the live stores (read-only).
 
-Exit 0 all same, 1 any DIFF, 2 any SKIP (unless 0/1 already by DIFF).
+Exit 0 all same, 1 any DIFF, 2 any unruled SKIP (unless 1 already by DIFF).
+
+`summary` catches up an owed history snapshot, which writes, so it is skipped on a
+store holding `.pm/history-pending`. A `deferred` marker comes from
+`history_interval_seconds`, a feature the rewrite defers (pm/docs/cut-list.md), so
+that skip is ruled and does not fail the run; the store's other verbs are compared.
 """
 import json
 import os
@@ -39,23 +44,33 @@ def readable(repo):
 def main():
     with open(REGISTRY) as f:
         stores = [os.path.expanduser(s["path"]) for s in json.load(f)["stores"]]
-    counts = dict(stores=0, comparisons=0, same=0, DIFF=0, SKIP=0)
+    counts = dict(stores=0, comparisons=0, same=0, DIFF=0, SKIP=0, ruled=0)
     for repo in stores:
         try:
             if not readable(repo):
                 print(f"SKIP {repo}: repo or .pm not readable")
                 counts["SKIP"] += 1
                 continue
-            if os.path.exists(os.path.join(repo, ".pm", "history-pending")):
-                print(f"SKIP {repo}: .pm/history-pending exists (summary would commit)")
-                counts["SKIP"] += 1
-                continue
+            marker = os.path.join(repo, ".pm", "history-pending")
+            pending = None
+            if os.path.exists(marker):
+                with open(marker) as f:
+                    pending = f.read().strip()
         except OSError as e:
             print(f"SKIP {repo}: {e}")
             counts["SKIP"] += 1
             continue
         counts["stores"] += 1
-        cases = [["summary"], ["ready"], ["list"], ["stores", "--check"]]
+        cases = [["ready"], ["list"], ["stores", "--check"]]
+        if pending is None:
+            cases.insert(0, ["summary"])
+        elif pending.startswith("deferred"):
+            print(f"SKIP {repo} summary: deferred history marker; "
+                  "history_interval_seconds is deferred (ruled)")
+            counts["ruled"] += 1
+        else:
+            print(f"SKIP {repo} summary: .pm/history-pending fault marker (summary would commit)")
+            counts["SKIP"] += 1
         rc, out = run(OLD, repo, ["list", "--json"])
         ids = []
         if rc == 0:
@@ -86,7 +101,7 @@ def main():
                 else:
                     print(f"DIFF {label}: {first_diff(old[1], new[1])}")
     print("golden_diff: stores {stores}, comparisons {comparisons}, same {same}, "
-          "DIFF {DIFF}, SKIP {SKIP}".format(**counts))
+          "DIFF {DIFF}, SKIP {SKIP}, ruled skips {ruled}".format(**counts))
     if counts["DIFF"]:
         return 1
     return 2 if counts["SKIP"] else 0
