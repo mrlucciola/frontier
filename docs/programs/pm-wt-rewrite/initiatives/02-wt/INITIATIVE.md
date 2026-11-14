@@ -25,12 +25,16 @@ fc-30c060, alone, in four serial worker parts on branch `fc-30c060` (fc-2a6562 c
 2026-11-14; transcripts passed 25, failed 0 on the overseer's re-run):
 
 1. `prompts/00-characterize-1-start.md` -- runner, two-sided adapter, repo fixture,
-   `start`. In flight.
-2. `00-characterize-2-finish.md` -- `finish` and `land`. Written after part 1 reports,
-   against the adapter it actually landed.
-3. `00-characterize-3-park.md` -- `park`.
-4. `00-characterize-4-status.md` -- `status`, `prune`, `pending` (old side only), store
-   and repo resolution.
+   `start`. Done: 29e8a2a, overseer re-run passed 20, failed 0.
+2. `00-characterize-2a-finish-gate.md` -- `finish` and `land`: gate, known red, findings,
+   notes, dirty refusal, land. In flight.
+3. `00-characterize-2b-finish-merge.md` -- rebase-conflict auto-park, ff-only retry,
+   refusal after the merge, merged marker, nested-repo and `.vscode` refusals, failed
+   remove `STOP.`, deferred teardown.
+4. `00-characterize-3-park.md` -- `park`.
+5. `00-characterize-4-status.md` -- `status`, `prune`, `pending` (old side only), store
+   and repo resolution, plus `start` leftovers: quiet prune, re-run with the worktree
+   present.
 
 Then a read-only reviewer maps the suite to `wt/docs/contract.md` section by section.
 
@@ -72,6 +76,15 @@ None.
   unless `$WT_FAULT_REPORT_DIR` is set (`src/faultreport.py:37`). Ruling (overseer,
   2026-11-14): the new wt honors the same variable name, so the suite sets one
   variable for both sides.
+- **Malformed gate on the new side.** Ruling (overseer, 2026-11-14): a `.wt/gate` that
+  exists but is not executable refuses `finish` and `land`, as a non-list `gate` does
+  on the old side. The adapter's `set_gate(malformed=...)` writes one.
+- **Adoption needs actor and token (for fc-8ecb48).** The new pm calls a ticket "yours"
+  when the tokens match, whatever the actor. The contract refuses a different actor
+  with the same session (`StartTest.test_refuses_foreign_claim_other_actor`), so the
+  new `start` compares the actor as well as the token before adopting.
+- **`PM_AGENT=claude/worker` in the suite's env.** Without it the old pm writes
+  `human:<actor>` claims, which `start` never adopts. The new pm ignores it.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
