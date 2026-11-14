@@ -124,8 +124,14 @@ in the worker-brief shape; the artifacts were verified on disk instead.
 fc-8ecb48 closed after round 2 (9fccaab): overseer re-run StartTest passed 17, pending 1
 (on park), failed 0; full suite exit 0.
 
-Batch B, three parallel workers: fc-917232 (`02c-park.md`) and fc-249727
-(`02b-finish.md`) in flight; fc-983ff4 (`02d-status-prune.md`) closed at 74077a7
+Batch B, three parallel workers: fc-917232 (`02c-park.md`, bc6fad5) and fc-249727
+(`02b-finish.md`, a1114c7) reported and are in a fix round each. Ruling (overseer,
+2026-11-14): with `--findings none`, no `--note` and `findings_required`, finish and
+park pass only when the ticket already has a note, read from `pm show <id>` text (a
+`notes:` or `notes (last` heading), never from `pm log` JSON; finish had matched JSON in
+zsh, park refused without looking. Accepted: park records `--findings` on its
+`wt.park` emit (pm park takes only `-m`); a fallback `-m` on `pm done` when findings is
+`none` and no note was given; land's "To keep working: `wt start <id>`" wording. fc-983ff4 (`02d-status-prune.md`) closed at 74077a7
 (overseer re-run of its tests: passed 9, pending 4 on park/finish/selftest, failed 0). Merge park before finish, then
 re-run finish's auto-park tests on main.
 
