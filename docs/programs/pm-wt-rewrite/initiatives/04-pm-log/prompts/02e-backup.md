@@ -15,7 +15,9 @@ in-session as a subagent with the same model.
 `docs/programs/pm-wt-rewrite/initiatives/04-pm-log/prompts/02e-backup.md`
 
 Ticket **fc-3f4bfa**, the fifth step-2 worker. The core and fc-e2d8c9 (routing and
-`doctor`) are merged; other step-2 branches may be in flight. Read and obey
+`doctor`) are merged, with every other step-2 ticket. fc-f3c2bd runs in parallel and
+edits the mutating verb files and `get.py`; your write set is `store.py`, `init.py`,
+`doctor.py` and the new `restore.py`. Read and obey
 `docs/programs/pm-wt-rewrite/initiatives/04-pm-log/prompts/00-common.md` first,
 especially "Module contract" and "Shared files in a parallel step".
 

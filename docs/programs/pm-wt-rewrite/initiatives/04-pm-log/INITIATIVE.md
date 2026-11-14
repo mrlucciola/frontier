@@ -58,8 +58,12 @@ None.
 
 ## Gate changes
 
-None yet. One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
+One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
 `pm/docs/design.md`: the file, what changed, why.
+
+- `pm/docs/design.md` "Output", bare `pm`: the parked section's overflow line is
+  `+N more: pm ls parked`, not `pm ls ready`, which pointed at the wrong list
+  (raised by worker 02b; no transcript pins it).
 
 ## Unbuilt stubs and their owners
 
@@ -68,11 +72,12 @@ fc-d6c61c checks this list is empty before it removes the mechanism.
 
 | Stub | Where | Removed by |
 | --- | --- | --- |
-| `routing` | `store.ticket`, `store.is_done` | fc-e2d8c9 |
-| `link`, `duplicate` | `verbs/new.py` | fc-8b871a |
-| `json` | `verbs/show.py` | fc-ef483a |
+| `routing` | `store.ticket`, `store.is_done` | fc-e2d8c9 (removed) |
+| `link`, `duplicate` | `verbs/new.py` | fc-8b871a (removed) |
+| `json` | `verbs/show.py` | fc-ef483a (removed) |
 | `backup` | `verbs/init.py`, inside a git checkout | fc-3f4bfa |
 | `plugins` | `cli/pm` `no_verb`, when the plugins directory is not empty | fc-a731f4 |
+| `plugins` | `verbs/orient.py`, when the plugins directory is not empty | fc-a731f4 |
 
 ## Facts not to re-derive
 

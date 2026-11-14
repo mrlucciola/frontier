@@ -208,7 +208,7 @@ a takeover adds no line. The last five are shown under `notes:`; with more, the 
 
 **Bare `pm`** prints up to three sections, each only when it has entries:
 `yours:`, `ready:` and `parked:`, entries indented two spaces. `ready` and `parked`
-show five and then `+N more: pm ls ready`. Plugin `orient` lines follow. With
+show five and then `+N more: pm ls ready` or `+N more: pm ls parked`. Plugin `orient` lines follow. With
 nothing to show it prints one line that says how to file work.
 
 **`ls`** prints one line per ticket. A capped list ends `+N more: add -n 0`. An
