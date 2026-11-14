@@ -50,6 +50,13 @@ None.
   `ValidateTest.test_archive_year_filename_follows_spec_version` imported the old
   `ticket_core`, so no rewrite could pass it. After fc-2b34c9 merges the suite runs
   270 tests, 261 against the CLI and 9 skipped; it was the only internal import.
+- **Core review rulings** (2026-11-13, `reports/01-review.md`, fixes in
+  `prompts/01-core-e`): refusal texts the old CLI printed stay byte-identical, so the
+  golden diff in fc-59011f stays clean; `store` imports `routing` only inside
+  `locked_store`, so the module-level import goes one way only (`routing` imports
+  `store`); the entry routes ids before a verb opens a store; `fmt_line`,
+  `claim_veto` and `edge_target` live in `store.py`; `Store` gains an extra-commit-paths
+  list for the archive index; top-level `allow_abbrev=False`.
 - **Reverse cross-store blockers in text `show`** (2026-11-13): until fc-459fe0, `show`
   calls `store.unbuilt("routing")` only when the registry file lists a store; the
   suite's default registry is empty, so ordinary `show` is not pending.

@@ -63,14 +63,20 @@ and `stores` verbs. Do only your part.
    default instead, unless a parity test asserts the old text; list each such text in
    DID.
 2. `pm/tools/ticket`: route id-taking verbs before `run`, as `route_args` does, for
-   every verb in `ROUTED_VERBS` except `dep` and `unlink` (fc-c10bcf routes edges).
-   A verb whose file does not exist is still `unbuilt` first.
+   every verb in `ROUTED_VERBS` except `dep` and `unlink` (fc-c10bcf routes edges):
+   normalise `<prefix>/<id>` to the bare id and set `args.repo` to the owning repo,
+   so a verb opens the right store and never has to route after opening one (overseer
+   ruling on review `reports/01-review.md`). A verb whose file does not exist is
+   still `unbuilt` first.
 3. `pm/tools/store.py`, additive plus the call sites: `locked_store` refuses a frozen
-   store; readiness counts unsatisfied cross-store blockers; every
-   `store.unbuilt("routing")` is replaced. Change no existing signature; if you must,
-   stop and report it.
+   store by calling routing's frozen check through a function-level `import routing`
+   (overseer ruling: `routing.py` may import `store` at module level; `store` imports
+   `routing` only inside the function, so there is no import cycle at load time).
+   Readiness counts unsatisfied cross-store blockers. Every `store.unbuilt("routing")`
+   is replaced. Change no existing signature; if you must, stop and report it.
 4. `pm/tools/verbs/show.py`: its `routing` call sites use `routing.py` (cross-store
-   blockers, the reverse "blocks (other stores)" line, a foreign-prefix id).
+   blockers, the reverse "blocks (other stores)" line). Its own after-open check for
+   another store's id goes away, since the entry routed before `run`.
 
 Not yours: `where.py`, `stores.py` (next worker); `dep`/`unlink` edge routing and
 `create --discovered-from` across stores (fc-c10bcf); `close --findings` routing
