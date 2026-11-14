@@ -44,7 +44,9 @@ byte for byte); `pm/tools/store.py`, `render.py`, `who.py` as core left them.
 - Several ids are all or nothing: check every id before one `change` appends.
 - `--dry-run` runs every check, appends nothing, prints `ok: <id> can be <taken|dropped|done>`.
 - `done`: `-m`, `--findings none|id,...` (with `findings_required`; `none` needs `-m`
-  or an earlier note; each id must exist), `--reason`, the epic rule, and the `next:`
+  or an earlier note; each id must exist; the `done` event stores `findings` as the
+  string `"none"` or a list of ids, which `render.show` already prints), `--reason`,
+  the epic rule, and the `next:`
   line when the last child of an epic is done (transcript 10).
 - Refusal texts exactly as the transcripts print them.
 
