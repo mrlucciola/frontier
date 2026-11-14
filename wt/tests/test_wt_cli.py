@@ -148,6 +148,14 @@ class PmAdapter:
         side the ticket must have been filed with labels=("tooling",)."""
         raise NotImplementedError
 
+    def register_store(self, prefix, repo):
+        """Add the store of `repo` to this side's private registry."""
+        raise NotImplementedError
+
+    def blockers(self, repo, ticket):
+        """Ids linked as blocking `ticket`, whatever their status."""
+        raise NotImplementedError
+
 
 class OldPm(PmAdapter):
     def _pm(self, repo, *args, session=None, check=True):
@@ -216,6 +224,17 @@ class OldPm(PmAdapter):
             f.write("#!/bin/sh\necho 'package not deployed current'\nexit 1\n")
         os.chmod(tool, 0o755)
         self._commit_paths(repo, ["bin/deploy"], "deploy close-check stub")
+
+    def register_store(self, prefix, repo):
+        path = self.env["PM_STORES_FILE"]
+        with open(path) as f:
+            data = json.load(f)
+        data["stores"].append({"path": repo})
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def blockers(self, repo, ticket):
+        return list(self._show(repo, ticket).get("blocked_by") or [])
 
 
 class NewPm(PmAdapter):
@@ -294,6 +313,14 @@ class NewPm(PmAdapter):
         with open(hook, "w") as f:
             f.write("#!/bin/sh\necho 'guard: not yet'\nexit 1\n")
         os.chmod(hook, os.stat(hook).st_mode | stat.S_IXUSR)
+
+    def register_store(self, prefix, repo):
+        with open(self.env["PM_STORES"], "a") as f:
+            f.write("%s %s\n" % (prefix, repo))
+
+    def blockers(self, repo, ticket):
+        value = json.loads(self._pm(repo, "show", ticket, "--json").stdout)["blocked_by"]
+        return [v if isinstance(v, str) else v.get("id") for v in value or []]
 
 
 # ------------------------------------------------------------------- the base
@@ -484,6 +511,21 @@ class AdapterTest(WtCase):
             done = sh(["pm", "done", ticket], repo, self.call_env("s1"), check=False)
         self.assertNotEqual(done.returncode, 0)
         self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def test_register_store_and_blockers(self):
+        repo = self.make_repo()
+        self.pm.register_store("tk", repo)
+        first = self.pm.file_ticket(repo, "one")
+        second = self.pm.file_ticket(repo, "two")
+        self.assertEqual(self.pm.blockers(repo, second), [])
+        self.pm.block(repo, second, first)
+        self.assertEqual(self.pm.blockers(repo, second), [first])
+        other = self.make_repo(name="elsewhere", prefix="zz")
+        self.pm.register_store("zz", other)
+        far = self.pm.file_ticket(other, "far")
+        where = sh(["pm", "ticket", "where", far] if SIDE == "old"
+                   else ["pm", "get", far, "store"], repo, self.env)
+        self.assertIn(other, where.stdout)
 
 
 # ---------------------------------------------------------------------- start
@@ -1584,12 +1626,348 @@ class DeferredTeardownTest(StartedCase):
         self.assertFalse(self.branch_exists(repo, ticket))
 
 
-class StatusPruneTest(WtCase):
-    pass
+class StatusPruneTest(StartedCase):
+    shim_dir = DeferredTeardownTest.shim_dir
+    prunable = DeferredTeardownTest.prunable
+
+    def registered(self, repo, wt_path):
+        return os.path.realpath(wt_path) in [
+            os.path.realpath(l[len("worktree "):])
+            for l in self.git(repo, "worktree", "list", "--porcelain").stdout.splitlines()
+            if l.startswith("worktree ")]
+
+    def status_line(self, result, wt_path):
+        rows = [l for l in result.lines() if l.startswith(wt_path + "  ")]
+        self.assertEqual(len(rows), 1, result.text)
+        return rows[0]
+
+    def stale(self, repo, name, commit=False):
+        """A ticket started by wt whose worktree directory is then deleted by test code
+        (not wt): the registration stays. Returns (ticket, wt_path)."""
+        ticket = self.pm.file_ticket(repo, name)
+        self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada", session="s1").code, 0)
+        wt_path = self.worktree(repo, ticket)
+        if commit:
+            self.commit_file(wt_path, "%s.txt" % ticket, "x\n", "%s: work" % ticket)
+        shutil.rmtree(wt_path)
+        return ticket, wt_path
+
+    def test_status_lists_worktrees_with_ticket_status(self):
+        """`status` lists live worktrees joined against their tickets; a worktree with
+        no ticket behind it shows as FOREIGN/ORPHAN. Old wt line shape:
+        `<path>  <branch>  <pm status>` (the old pm's words)."""
+        repo, ticket, wt_path = self.started()
+        self.git(repo, "worktree", "add", "-q", "-b", "stray",
+                 os.path.join(repo, ".worktrees", "stray"))
+        result = self.wt(repo, "status")
+        self.assertEqual(result.code, 0, result.text)
+        mine = self.status_line(result, wt_path)
+        words = {"taken", "claimed"}
+        self.assertTrue(mine.startswith("%s  %s  " % (wt_path, ticket)), mine)
+        self.assertIn(mine.split("  ", 2)[2].split(" ")[0], words, mine)
+        orphan = self.status_line(result, os.path.join(repo, ".worktrees", "stray"))
+        self.assertTrue(orphan.startswith("%s  stray  FOREIGN/ORPHAN" %
+                                          os.path.join(repo, ".worktrees", "stray")), orphan)
+        self.assertFalse(any(l.startswith(repo + "  ") for l in result.lines()), result.text)
+
+    def test_status_with_no_worktrees(self):
+        """`status` with only the main checkout prints one line."""
+        repo = self.make_repo()
+        result = self.wt(repo, "status")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertEqual(result.out.strip(), "no worktrees besides the main checkout")
+
+    def test_status_after_park_does_not_list_the_ticket(self):
+        """`park` ... the worktree directory is gone at once: a just-parked ticket is
+        not listed by status."""
+        repo, ticket, wt_path = self.started()
+        self.assertEqual(self.wt(repo, "park", ticket, "--findings", "none",
+                                 session="s1").code, 0)
+        result = self.wt(repo, "status")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertNotIn(ticket, result.text)
+        self.assertEqual(result.out.strip(), "no worktrees besides the main checkout")
+
+    def test_status_labels_deferred_teardown(self):
+        """A registration whose directory is gone is labelled `deferred-teardown`."""
+        repo = self.make_repo()
+        ticket, wt_path = self.stale(repo, "gone")
+        self.assertTrue(self.prunable(repo, wt_path))
+        result = self.wt(repo, "status")
+        self.assertEqual(result.code, 0, result.text)
+        row = self.status_line(result, wt_path)
+        self.assertTrue(row.startswith("%s  %s  deferred-teardown" % (wt_path, ticket)), row)
+
+    def test_park_waits_on_ticket_id_records_a_dependency_and_note(self):
+        """`park --waits-on <ticket-id>`: the contract names only the free-text form.
+        Old wt records BOTH the note (`waits-on <id>`) and a pm dependency of the parked
+        ticket on the blocker; wt prints no extra line for it."""
+        repo, ticket, wt_path = self.started()
+        blocker = self.pm.file_ticket(repo, "blocker")
+        result = self.wt(repo, "park", ticket, "--waits-on", blocker, "--findings", "none",
+                         session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "OK: %s parked -- " % ticket)
+        self.assertEqual(self.pm.status(repo, ticket), "parked")
+        self.assertEqual(self.pm.blockers(repo, ticket), [blocker])
+        self.assertTrue(any("waits-on %s;" % blocker in n
+                            for n in self.pm.notes(repo, ticket)), self.pm.notes(repo, ticket))
+        self.assertFalse(result.has_line("wt: "), result.text)
+
+    def test_pending_lists_done_unmerged_with_cleared_blockers(self):
+        """`pending` lists `done-unmerged` tickets. Old wt: one line `<id>  P<n>
+        <clean|CONFLICT>  <title>`; a ticket whose blocker is still open is not listed;
+        once the blocker is closed it is."""
+        if SIDE == "new":
+            self.skipTest("dropped for pm ls parked")
+        repo, ticket, wt_path = self.started()
+        blocker = self.pm.file_ticket(repo, "the blocker")
+        self.assertEqual(self.wt(repo, "park", ticket, "--waits-on", blocker, "--findings",
+                                 "none", session="s1").code, 0)
+        waiting = self.wt(repo, "pending")
+        self.assertEqual(waiting.code, 0, waiting.text)
+        self.assertEqual(waiting.out.strip(),
+                         "no done-unmerged tickets with cleared blockers")
+        self.pm.take(repo, blocker, "ada", session="s1")
+        sh(["pm", "ticket", "close", blocker, "--findings", "none"], repo,
+           self.call_env("s1"))
+        self.assertEqual(self.pm.status(repo, blocker), "done")
+        cleared = self.wt(repo, "pending")
+        self.assertEqual(cleared.code, 0, cleared.text)
+        rows = [l for l in cleared.lines() if l.startswith(ticket + "  ")]
+        self.assertEqual(len(rows), 1, cleared.text)
+        self.assertRegex(rows[0], r"^%s  P\d  clean  work$" % ticket)
+        # Old pm: a closed blocker no longer shows in `blocked_by`.
+        self.assertEqual(self.pm.blockers(repo, ticket), [])
+
+    def test_prune_clears_registration_keeps_keep_entry_and_unmerged_branch(self):
+        """`prune` clears a registration whose directory is gone and keeps the `.keep`
+        entry; it deletes the branch of a cleared registration only when it is an
+        ancestor of main (`OK: wt prune -- N registration(s) cleared, M remain, K
+        branch(es) deleted: <ids>`), and keeps an unmerged branch."""
+        repo = self.make_repo()
+        merged = self.pm.file_ticket(repo, "merged")
+        unmerged = self.pm.file_ticket(repo, "unmerged")
+        paths = []
+        for ticket in (merged, unmerged):
+            self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada",
+                                     session="s1").code, 0)
+            paths.append(self.worktree(repo, ticket))
+        self.commit_file(paths[1], "u.txt", "x\n", "%s: work" % unmerged)
+        merged_path, unmerged_path = paths
+        shutil.rmtree(merged_path)
+        shutil.rmtree(unmerged_path)
+        result = self.wt(repo, "prune")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertEqual(result.out.strip(), "OK: wt prune -- 2 registration(s) cleared, "
+                         "0 remain, 1 branch(es) deleted: %s" % merged)
+        self.assertFalse(self.registered(repo, merged_path))
+        self.assertFalse(self.registered(repo, unmerged_path))
+        self.assertFalse(self.branch_exists(repo, merged))
+        self.assertTrue(self.branch_exists(repo, unmerged))
+        self.assertTrue(os.path.exists(os.path.join(repo, ".git", "worktrees", ".keep",
+                                                    "locked")))
+
+    def test_prune_keeps_a_branch_a_worktree_holds(self):
+        """`prune` deletes a branch only when no worktree holds it: a merged-marker
+        branch checked out in a live worktree stays."""
+        repo, ticket, wt_path = self.started()
+        self.git(repo, "update-ref", "refs/wt/merged/%s" % ticket, "refs/heads/main")
+        self.git(repo, "branch", "-f", "-q", "stale-marked", "main")
+        self.git(repo, "update-ref", "refs/wt/merged/stale-marked", "refs/heads/main")
+        self.git(repo, "branch", "-f", "-q", "plain-merged", "main")
+        result = self.wt(repo, "prune")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(self.branch_exists(repo, ticket))
+        self.assertTrue(os.path.isdir(wt_path))
+        self.assertFalse(self.branch_exists(repo, "stale-marked"))
+        self.assertTrue(self.branch_exists(repo, "plain-merged"))
+
+    def test_prune_prints_remaining_registrations(self):
+        """`prune` when the sandbox still denies the delete (git shim): the `wt: N
+        deferred-teardown registration(s) remain` line, then `OK: wt prune -- 0
+        registration(s) cleared, 1 remain, 0 branch(es) deleted`."""
+        repo, ticket, wt_path = self.started()
+        shim = self.shim_dir()
+        self.assertEqual(self.wt(repo, "finish", ticket, "--findings", "none",
+                                 session="s1", path_first=shim).code, 0)
+        result = self.wt(repo, "prune", path_first=shim)
+        self.assertEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: 1 deferred-teardown registration(s) remain")
+        self.assertIn("OK: wt prune -- 0 registration(s) cleared, 1 remain, "
+                      "0 branch(es) deleted", result.out)
+        self.assertTrue(self.prunable(repo, wt_path))
+
+    def test_start_runs_prune_quietly(self):
+        """A stale registration is gone after an unrelated `wt start`, and start prints
+        no prune output."""
+        repo = self.make_repo()
+        gone, gone_path = self.stale(repo, "gone")
+        other = self.pm.file_ticket(repo, "other")
+        result = self.wt(repo, "start", other, "--as", "ada", session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertFalse(self.registered(repo, gone_path))
+        self.assertFalse([l for l in result.lines()
+                          if "prune" in l.lower() or "registration" in l.lower()
+                          or "deferred" in l.lower()], result.text)
+        self.assertFalse(result.has_line("wt: "), result.text)
+
+    def test_start_twice_from_the_same_session(self):
+        """Not stated by the contract. Old wt: the second `start` of a live worktree
+        adopts the claim, then fails in `git worktree add` (`already exists`): exit 1,
+        a `wt: git worktree add for <id> failed` line, a fault row, no `OK:`; the
+        worktree and the claim are untouched."""
+        repo, ticket, wt_path = self.started()
+        tip = self.git(wt_path, "rev-parse", "HEAD").stdout.strip()
+        again = self.wt(repo, "start", ticket, "--as", "ada", session="s1")
+        self.assertNotEqual(again.code, 0, again.text)
+        self.assert_wt_line(again, "adopting existing claim on %s" % ticket)
+        self.assert_wt_line(again, "wt: git worktree add for %s failed" % ticket)
+        self.assertFalse(again.has_line("OK: "), again.text)
+        self.assertEqual(self.git(wt_path, "rev-parse", "HEAD").stdout.strip(), tip)
+        self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def test_selftest_exits_zero(self):
+        """`selftest` exits 0; its scratch is under $HOME/.claude/.tmp (the private
+        HOME here)."""
+        repo = self.make_repo()
+        result = self.wt(repo, "selftest")
+        self.assertEqual(result.code, 0, result.text[-2000:])
 
 
-class ResolutionTest(WtCase):
-    pass
+class ResolutionTest(StartedCase):
+    SUBS = ["add", "commit", "worktree", "branch", "merge", "rebase", "update-ref",
+            "switch", "reset", "tag", "stash", "restore", "rm", "mv", "fetch", "pull"]
+
+    def pair(self, source, *targets):
+        """Declare git-pairs pairs source -> each target in the private pairs file: wt
+        refuses a cross-repo mutation the pairs file does not declare (an old-wt rule
+        outside this ticket's verbs), and every case here crosses repos."""
+        path = self.env["GIT_PAIRS_FILE"]
+        with open(path) as f:
+            data = json.load(f)
+        data["pairs"].append({"source": source, "targets": list(targets),
+                              "git": self.SUBS})
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def two(self, a_prefix="aa", b_prefix="bb"):
+        a = self.make_repo(name="repo-a", prefix=a_prefix)
+        b = self.make_repo(name="repo-b", prefix=b_prefix)
+        self.pair(a, b)
+        self.pair(b, a)
+        return a, b
+
+    def test_unregistered_prefix_uses_cwd_repo(self):
+        """Without `--store`, an unregistered prefix: the store is the cwd repo."""
+        repo = self.make_repo()
+        ticket = self.pm.file_ticket(repo, "here")
+        result = self.wt(repo, "start", ticket, "--as", "ada", session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(os.path.isdir(self.worktree(repo, ticket)))
+        self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def test_registered_prefix_from_another_repo(self):
+        """A prefix registered to repo B, `start` run with cwd in repo A: the ticket is
+        taken in B and the worktree is `B/.worktrees/<id>`."""
+        a, b = self.two()
+        self.pm.register_store("bb", b)
+        ticket = self.pm.file_ticket(b, "there")
+        result = self.wt(a, "start", ticket, "--as", "ada", session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertEqual(self.pm.status(b, ticket), "taken")
+        self.assertTrue(os.path.isdir(self.worktree(b, ticket)))
+        self.assertFalse(os.path.exists(self.worktree(a, ticket)))
+
+    def test_two_owners_stop_with_a_wt_line(self):
+        """A prefix registered to two stores stops with a `wt:` line; nothing claimed."""
+        a, b = self.two()
+        b2 = self.make_repo(name="repo-b2", prefix="bb")
+        self.pm.register_store("bb", b)
+        self.pm.register_store("bb", b2)
+        ticket = self.pm.file_ticket(b, "ambiguous")
+        result = self.wt(a, "start", ticket, "--as", "ada", session="s1")
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assertTrue(result.has_line("wt: "), result.text)
+        self.assertEqual(self.pm.status(b, ticket), "open")
+        self.assertFalse(os.path.exists(self.worktree(b, ticket)))
+        self.assertFalse(os.path.exists(self.worktree(a, ticket)))
+
+    def test_store_flag_overrides_lookup_and_sets_the_target(self):
+        """`--store <path>` names the repo whose store holds the ticket for an
+        unregistered store; the worktree target defaults to that store's repo."""
+        a, s = self.two("aa", "ss")
+        ticket = self.pm.file_ticket(s, "via flag")
+        result = self.wt(a, "start", ticket, "--as", "ada", "--store", s, session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertEqual(self.pm.status(s, ticket), "taken")
+        self.assertTrue(os.path.isdir(self.worktree(s, ticket)))
+        self.assertFalse(os.path.exists(self.worktree(a, ticket)))
+
+    def test_repo_flag_overrides_the_target_independently(self):
+        """`--repo <path>` overrides the worktree target; the ticket stays in the
+        `--store` repo."""
+        a, s = self.two("aa", "ss")
+        ticket = self.pm.file_ticket(s, "split")
+        result = self.wt(a, "start", ticket, "--as", "ada", "--store", s, "--repo", a,
+                         session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertEqual(self.pm.status(s, ticket), "taken")
+        self.assertTrue(os.path.isdir(self.worktree(a, ticket)))
+        self.assertFalse(os.path.exists(self.worktree(s, ticket)))
+
+    def split_started(self):
+        a, s = self.two("aa", "ss")
+        ticket = self.pm.file_ticket(s, "split")
+        elsewhere = self.make_repo(name="cwd-only", prefix="cc")
+        self.pair(elsewhere, a, s)
+        self.assertEqual(self.wt(elsewhere, "start", ticket, "--as", "ada", "--store", s,
+                                 "--repo", a, session="s1").code, 0)
+        wt_path = self.worktree(a, ticket)
+        self.commit_file(wt_path, "work.txt", "work\n", "%s: work" % ticket)
+        return elsewhere, a, s, ticket, wt_path
+
+    def test_finish_takes_store_and_repo_flags(self):
+        """The same flags on `finish`: merged into the `--repo` repo's default branch,
+        ticket closed in the `--store` repo."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        result = self.wt(elsewhere, "finish", ticket, "--findings", "none", "--store", s,
+                         "--repo", a, session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(os.path.isfile(os.path.join(a, "work.txt")))
+        self.assertFalse(os.path.exists(wt_path))
+        self.assertEqual(self.pm.status(s, ticket), "done")
+
+    def test_park_takes_store_and_repo_flags(self):
+        """The same flags on `park`: branch kept in the `--repo` repo, ticket parked in
+        the `--store` repo."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        result = self.wt(elsewhere, "park", ticket, "--findings", "none", "--store", s,
+                         "--repo", a, session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(self.branch_exists(a, ticket))
+        self.assertFalse(os.path.exists(wt_path))
+        self.assertEqual(self.pm.status(s, ticket), "parked")
+
+    def test_status_takes_store_and_repo_flags(self):
+        """The same flags on `status`: worktrees of `--repo`, joined against the
+        `--store` repo's tickets."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        result = self.wt(elsewhere, "status", "--store", s, "--repo", a)
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(any(l.startswith("%s  %s  " % (wt_path, ticket)) and
+                            "FOREIGN" not in l for l in result.lines()), result.text)
+
+    def test_prune_takes_a_repo_flag(self):
+        """The same flags on `prune`: clears the stale registration in the `--repo`
+        repo while cwd is another repo."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        shutil.rmtree(wt_path)
+        result = self.wt(elsewhere, "prune", "--store", s, "--repo", a)
+        self.assertEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "OK: wt prune -- 1 registration(s) cleared")
+        self.assertNotIn(os.path.realpath(wt_path),
+                         self.git(a, "worktree", "list", "--porcelain").stdout)
 
 
 if __name__ == "__main__":
