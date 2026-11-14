@@ -37,9 +37,15 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `uncovered.md` deleted, nothing uncovered.
 5. `00-characterize-4-status.md` -- `status`, `prune`, `pending` (old side only), store
    and repo resolution, plus `start` leftovers: quiet prune, re-run with the worktree
-   present, `park --waits-on <ticket-id>`. In flight.
-
-Then a read-only reviewer maps the suite to `wt/docs/contract.md` section by section.
+   present, `park --waits-on <ticket-id>`. Done: 8cbfd20, overseer re-run passed 95,
+   failed 0.
+6. `00-characterize-5-newside-fixes.md` -- the overseer's new-side check (the suite on
+   `--pm new` against `.tmp/wt-unbuilt-stub`, which answers every verb exit 70) printed
+   `passed 9, pending 83, skipped 1, failed 8`: a subtest table reusing prefix `tk`
+   (the new `pm init` registers prefixes) and a `Pending` inside `subTest`, plus the
+   two-owners case. In flight.
+7. Read-only reviewer (qa-engineer, opus) maps the suite to `wt/docs/contract.md`
+   section by section, in parallel with 6; its body goes to `reports/00-review.md`.
 
 ## Owed operator actions
 
@@ -99,6 +105,15 @@ None.
   dropped the registration, and `wt finish` says `nothing to finish` with the ticket
   still taken. The `--force` in the `STOP.` line's operator-run cleanup matches the
   contract's per-shape handoff; it is not a contradiction.
+- **Two owners is old-side only.** Ruling (overseer, 2026-11-14): the new pm routes a
+  shared prefix itself (design.md, "Ids and the registry"), so the two-owners refusal
+  test skips on the new side. The new side's gate expects exactly two skips: that and
+  `pending`.
+- **More pins from part 4, for the acceptance ruling.** `wt start` twice from the same
+  session: the old wt adopts, then fails in `git worktree add` (exit 1, fault row).
+  Every cross-repo call (`--store`/`--repo` to another repo, a prefix registered
+  elsewhere) is refused unless `GIT_PAIRS_FILE` declares the pair; the suite declares
+  pairs. The contract's resolution section does not mention it.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
