@@ -21,7 +21,18 @@ epic subtree:
 
 ## Next batch
 
-fc-30c060, alone, once fc-2a6562 is closed.
+fc-30c060, alone, in four serial worker parts on branch `fc-30c060` (fc-2a6562 closed
+2026-11-14; transcripts passed 25, failed 0 on the overseer's re-run):
+
+1. `prompts/00-characterize-1-start.md` -- runner, two-sided adapter, repo fixture,
+   `start`. In flight.
+2. `00-characterize-2-finish.md` -- `finish` and `land`. Written after part 1 reports,
+   against the adapter it actually landed.
+3. `00-characterize-3-park.md` -- `park`.
+4. `00-characterize-4-status.md` -- `status`, `prune`, `pending` (old side only), store
+   and repo resolution.
+
+Then a read-only reviewer maps the suite to `wt/docs/contract.md` section by section.
 
 ## Owed operator actions
 
@@ -57,9 +68,12 @@ None.
   `Operation not permitted` depending on when the sandbox was last rebuilt. The contract
   treats that as deferred teardown, not a failure. A characterization test accepts both
   the clean and the deferred `OK:` line where the contract allows both.
-- **Fault reports.** The old wt appends to `~/frontier/docs/backlog/inbox/infra-faults/`.
-  Tests point `$WT_FAULT_DIR` at a temporary directory once the new wt honors it;
-  against the old wt, a test that provokes a fault row first checks whether the old
-  code has an override, and is listed in `wt/docs/uncovered.md` if it has none.
+- **Fault reports.** The old wt appends to `~/frontier/docs/backlog/inbox/infra-faults/`
+  unless `$WT_FAULT_REPORT_DIR` is set (`src/faultreport.py:37`). Ruling (overseer,
+  2026-11-14): the new wt honors the same variable name, so the suite sets one
+  variable for both sides.
+- **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
+  registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
+  `PM_STORES`, `PM_PLUGINS`.
 - **Structure check.** `docs/contributing.md` carries an `A-RUN` exemption row for wt
   until tests exist. fc-8c1f62 deletes the row.
