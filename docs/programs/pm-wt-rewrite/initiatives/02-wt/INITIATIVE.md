@@ -33,10 +33,11 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    remove `STOP.`, the `findings()` reader 2a lacked. Done: 3a4b9fe, overseer re-run
    passed 51, failed 0.
 4. `00-characterize-3-park.md` -- `park`, plus deferred teardown through a PATH `git`
-   shim (ruling below). In flight.
+   shim (ruling below). Done: 85d68fa, overseer re-run passed 73, failed 0;
+   `uncovered.md` deleted, nothing uncovered.
 5. `00-characterize-4-status.md` -- `status`, `prune`, `pending` (old side only), store
    and repo resolution, plus `start` leftovers: quiet prune, re-run with the worktree
-   present.
+   present, `park --waits-on <ticket-id>`. In flight.
 
 Then a read-only reviewer maps the suite to `wt/docs/contract.md` section by section.
 

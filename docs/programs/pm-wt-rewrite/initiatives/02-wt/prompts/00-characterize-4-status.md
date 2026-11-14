@@ -32,8 +32,11 @@ side, `PM_STORES` on the new).
 
 Parts 1 to 3 on branch `fc-30c060`: `WT/tests/run_wt.py`, and in `WT/tests/test_wt_cli.py`
 the isolated env, `WtCase.wt()`, `make_repo()`, the `OldPm`/`NewPm` adapters,
-`AdapterTest`, `StartTest`, the finish classes, `ParkTest`, and empty `StatusPruneTest`
-and `ResolutionTest`; maybe `WT/docs/uncovered.md`. Read the whole test file first; reuse
+`AdapterTest`, `StartTest`, the `StartedCase` base (start-and-commit helpers),
+`FinishTest`, `ParkTest`, `DeferredTeardownTest` (a `git` shim first on `PATH` via
+`wt(..., path_first=...)`), and empty `StatusPruneTest` and `ResolutionTest`. There is no
+`WT/docs/uncovered.md`: nothing is uncovered so far; create it only for a case of yours
+that truly cannot run (a `git` shim is how the suite fakes sandbox denials -- prefer it). Read the whole test file first; reuse
 its helpers and keep its style: docstring quotes the contract phrase; assert exit codes
 and the first words of wt's own lines; never pm's text. Earlier reports:
 `docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/00-characterize-*.md` in the main
@@ -65,8 +68,13 @@ file at `PM_STORES`, design.md "Ids and the registry"). Add one `AdapterTest` fo
 - **status labels a deferred-teardown entry** `deferred-teardown`: a registration whose
   directory is gone. Build it by deleting a worktree directory in the throwaway repo with
   `shutil.rmtree` (test code, not wt) while its registration stays.
+- **`park --waits-on <ticket-id>`** (gap left by part 3, which tested only the free-text
+  form): pin what the old wt records (a pm dependency on the blocker, a note, or both),
+  asserting only wt's lines and the adapter's view (status, `block`-style links if the
+  adapter can read them; add a reader if needed, on both sides).
 - **pending** (old side only; `self.skipTest` on the new side with the reason "dropped
-  for pm ls parked"): lists `done-unmerged` tickets; pin how cleared blockers show.
+  for pm ls parked"): lists `done-unmerged` tickets; pin how cleared blockers show,
+  using a ticket parked with `--waits-on <blocker id>` whose blocker is then closed.
 - **prune**: clears a registration whose directory is gone, keeps the `.keep` entry,
   deletes a branch only when it is an ancestor of `main` and no worktree holds it, keeps
   an unmerged branch. Pin the remaining-registrations line shape if you can provoke it;
