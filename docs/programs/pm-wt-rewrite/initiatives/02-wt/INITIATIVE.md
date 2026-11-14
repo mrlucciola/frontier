@@ -110,12 +110,11 @@ finish. `finish` auto-parks through `wt park <id> --auto` as a subprocess (inter
 
 ## Owed operator actions
 
-1. **Delete the 01b worker's scratch in the fc-122c0d worktree** (2026-11-14). `wt
-   finish fc-122c0d` refused, nothing merged: the worktree's `.tmp/` holds a nested git
-   repo and a `.vscode` dir the sandbox cannot delete. Commands:
-   `rm -rf /Users/matthias/projects/frontier-clean/.worktrees/fc-122c0d/.tmp/t2-moved/.vscode /Users/matthias/projects/frontier-clean/.worktrees/fc-122c0d/.tmp/t2-moved/sub /Users/matthias/projects/frontier-clean/.worktrees/fc-122c0d/.tmp/td-repo`.
-   Blocks: `wt finish fc-122c0d`, then all of step 2 (pm refuses to take fc-8ecb48 and
-   fc-347c67 while fc-122c0d is open). The overseer runs the finish after.
+None. (The fc-122c0d scratch cleanup was done by the operator on 2026-11-14; `wt
+finish fc-122c0d` then merged and closed it.)
+
+Batch A in flight: fc-8ecb48 (`prompts/02a-start.md`) and fc-347c67
+(`prompts/02e-pm-plugin.md`), each in its own worktree.
 
 ## Facts not to re-derive
 
