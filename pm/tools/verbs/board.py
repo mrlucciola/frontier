@@ -103,6 +103,6 @@ def render(projection, group_by, color):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     projection = st.project(store, include_closed=args.include_closed)
     print(render(projection, args.group_by, args.color))

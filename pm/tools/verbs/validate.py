@@ -766,7 +766,7 @@ def run_workspace(args):
 def run(args):
     if args.workspace:
         run_workspace(args)
-    root = st.find_store(getattr(args, "repo", None))
+    root = st.find_store(args.repo)
     if not root:
         print_result(args.json, {"exit": 2, "path": None,
                                  "error": "no ticket store found (run: pm ticket init)"})

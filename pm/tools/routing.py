@@ -223,10 +223,7 @@ def resolve_store(ref, explicit=None, cwd=None, read=False, _ctx=None):
        that has it.
     Raises TicketError on a collision or when nothing owns the prefix."""
     if explicit:
-        root = st.find_store(explicit)
-        if not root:
-            raise TicketError("no ticket store found (run: pm ticket init)")
-        return Resolved(root, "live")
+        return Resolved(st.store_root(explicit), "live")
     prefix = ref_prefix(ref)
     if prefix is None:
         raise TicketError(f"cannot read a ticket prefix from {ref!r}")

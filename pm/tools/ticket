@@ -45,13 +45,13 @@ def verb_in(argv):
     return None
 
 
-#: Id-taking verbs routed by prefix: verb -> (id attribute, mutates). `dep` and
-#: `unlink` route their edges themselves (fc-c10bcf).
+#: Id-taking verbs routed by prefix: verb -> mutates. Each takes its ids in `args.id`.
+#: `dep` and `unlink` route their edges themselves.
 ROUTED_VERBS = {
-    "show": ("id", False), "tree": ("id", False),
-    "claim": ("id", True), "hold": ("id", True), "release": ("id", True),
-    "close": ("id", True), "reopen": ("id", True), "note": ("id", True),
-    "edit": ("id", True), "reparent": ("id", True),
+    "show": False, "tree": False,
+    "claim": True, "hold": True, "release": True,
+    "close": True, "reopen": True, "note": True,
+    "edit": True, "reparent": True,
 }
 
 
@@ -62,7 +62,7 @@ def route_edge(args):
     multi = isinstance(args.dst, list)
     args.dst = [store.local_id(d) for d in args.dst] if multi \
         else store.local_id(args.dst)
-    if getattr(args, "repo", None):
+    if args.repo:
         return
     by = args.src
     if args.cmd == "dep" and args.type == "blocks":
@@ -83,14 +83,12 @@ def route_args(args):
     owning repo, so a verb opens the right store the first time."""
     if args.cmd in ("dep", "unlink"):
         return route_edge(args)
-    spec = ROUTED_VERBS.get(args.cmd)
-    if not spec:
+    if args.cmd not in ROUTED_VERBS:
         return
-    attr, mutate = spec
-    raw = getattr(args, attr)
+    raw = args.id
     ids = [store.local_id(i) for i in (raw if isinstance(raw, list) else [raw])]
-    setattr(args, attr, ids if isinstance(raw, list) else ids[0])
-    repo = routing.route_ids(ids, explicit=getattr(args, "repo", None), mutate=mutate)
+    args.id = ids if isinstance(raw, list) else ids[0]
+    repo = routing.route_ids(ids, explicit=args.repo, mutate=ROUTED_VERBS[args.cmd])
     if repo:
         args.repo = repo
 

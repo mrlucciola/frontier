@@ -16,7 +16,7 @@ def register(subparsers):
 
 
 def run(args):
-    with st.locked_store(getattr(args, "repo", None),
+    with st.locked_store(args.repo,
                          lambda: f"pm: edit {args.id}"[:120]) as store:
         _edit(args, store)
 

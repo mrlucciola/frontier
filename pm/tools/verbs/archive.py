@@ -1,7 +1,7 @@
 """pm ticket archive: move closed rows to archive/tickets-<yyyy>.jsonl."""
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import gitcommit
 import store as st
@@ -18,23 +18,6 @@ def register(subparsers):
                     help="optional filter: only rows last updated before this date "
                          "(alone, selects every such closed row)")
     sp.add_argument("--dry-run", action="store_true")
-
-
-def hint(store):
-    """The summary's one-line nudge to archive, or None."""
-    size = os.path.getsize(store.ticket_path) if os.path.exists(store.ticket_path) else 0
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ")
-    old_closed = any(t.get("status") == "closed" and t.get("updated", "") < cutoff
-                     for t in store.tickets)
-    reasons = []
-    if size > 1_000_000:
-        reasons.append(f"{os.path.basename(store.ticket_path)} is {size} bytes (> 1 MB)")
-    if old_closed:
-        reasons.append("closed rows older than 90 days")
-    if not reasons:
-        return None
-    return "hint: " + "; ".join(reasons) + " -- consider `pm ticket archive <id> [<id> ...]`"
 
 
 def year_filename(year):
@@ -173,7 +156,7 @@ def index_is_ignored(store):
     if not os.path.exists(os.path.join(repo_dir, ".git")):
         return True
     try:
-        return gitcommit._git(repo_dir, "check-ignore", "-q", "--", INDEX_REL).returncode == 0
+        return gitcommit.git(repo_dir, "check-ignore", "-q", "--", INDEX_REL).returncode == 0
     except Exception:
         return True
 
@@ -189,11 +172,11 @@ def show_plan(rows, apply):
 
 def run(args):
     if args.dry_run:
-        store = st.open_store(getattr(args, "repo", None))
+        store = st.open_store(args.repo)
         show_plan(select(store, args.ids, args.closed_before), apply=False)
         return
     moved = []
-    with st.locked_store(getattr(args, "repo", None),
+    with st.locked_store(args.repo,
                          message=lambda: f"pm: archive {len(moved)}") as store:
         rows = select(store, args.ids, args.closed_before)
         moved.extend(rows)

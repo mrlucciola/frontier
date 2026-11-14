@@ -53,7 +53,7 @@ def _worktree_main(gitfile):
     if not os.path.isabs(gitdir):
         gitdir = os.path.join(os.path.dirname(os.path.abspath(gitfile)), gitdir)
     try:
-        r = gitcommit._git(gitdir, "rev-parse", "--git-common-dir")
+        r = gitcommit.git(gitdir, "rev-parse", "--git-common-dir")
     except (OSError, subprocess.TimeoutExpired):
         return None
     common = r.stdout.strip()
@@ -275,7 +275,6 @@ class Store:
 
 
 TITLE_MAX = 200
-LABEL_MAX = 80
 ID_RE = re.compile(r"^[a-z][a-z0-9]{1,7}-[0-9a-f]{6,11}$")
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9:_./-]*$")
 
@@ -320,17 +319,6 @@ def title_problem(title):
     return None
 
 
-def label_problem(label):
-    """Why `label` is not a valid row label, else None."""
-    if not isinstance(label, str):
-        return f"label {label!r} is not a string"
-    if not LABEL_RE.match(label):
-        return f"label {label!r} does not match {LABEL_RE.pattern}"
-    if len(label) > LABEL_MAX:
-        return f"label {label!r} is {len(label)} chars; the limit is {LABEL_MAX}"
-    return None
-
-
 def make_note(text, kind=None, ts=None):
     """A note row; `kind` is omitted when None."""
     note = {"ts": ts or now(), "text": text}
@@ -366,6 +354,16 @@ def session_assignee(name, explicit=None):
     if provider and tok:
         return f"agent:{provider}/{name}#{tok}"
     return f"human:{name}"
+
+
+def acting_identity(session):
+    """The identity a claim by this session would carry, or None without a
+    session token (a bare name says nothing about which session acted)."""
+    if not session_token(session):
+        return None
+    name = (os.environ.get("PM_AGENT") or "").partition("/")[2] \
+        or _agent_provider() or "pm"
+    return session_assignee(name, session)
 
 
 def owned_prefixes(config):
@@ -416,7 +414,7 @@ def is_remote_ref(store, raw):
     return pfx != store.config.get("prefix") and tid not in store.by_id
 
 
-def _located(repo):
+def store_root(repo):
     root = find_store(repo)
     if not root:
         raise TicketError("no ticket store found (run: pm ticket init)")
@@ -425,7 +423,7 @@ def _located(repo):
 
 def open_store(repo=None):
     """Load the store read-only."""
-    return Store(_located(repo))
+    return Store(store_root(repo))
 
 
 @contextlib.contextmanager
@@ -436,7 +434,7 @@ def locked_store(repo=None, message=None):
     is a string, or a callable run after the op so it can name minted ids.
     """
     import routing
-    root = _located(repo)
+    root = store_root(repo)
     routing.refuse_if_frozen(root)
     with open(os.path.join(root, "lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -460,7 +458,7 @@ def locked_verb(args, cmd):
     `pm: <cmd> <ids>`, cut at 120 characters."""
     ids = args.id if isinstance(args.id, list) else [args.id]
     subject = " ".join(["pm:", cmd, *dict.fromkeys(ids)])[:120]
-    with locked_store(getattr(args, "repo", None), subject) as store:
+    with locked_store(args.repo, subject) as store:
         yield store
 
 

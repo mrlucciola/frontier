@@ -92,7 +92,7 @@ def render(projection):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     text = render(st.project(store, include_closed=args.include_closed))
     if args.out:
         with open(args.out, "w") as f:

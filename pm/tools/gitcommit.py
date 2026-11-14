@@ -112,7 +112,7 @@ def on_failure(proc, already_warned=False):
 
 # --- mechanics ---
 
-def _clean_git_env():
+def clean_env():
     """Every GIT_* var dropped except the two naming a config file. A caller run
     from inside a git hook has GIT_DIR and friends set for the real commit, and
     those override `-C repo_dir`."""
@@ -121,13 +121,13 @@ def _clean_git_env():
             if not k.startswith("GIT_") or k in safe}
 
 
-def _git(repo_dir, *argv, timeout=COMMIT_TIMEOUT, input=None):
+def git(repo_dir, *argv, timeout=COMMIT_TIMEOUT, input=None):
     return subprocess.run(["git", "-C", repo_dir, *argv], capture_output=True,
-                          text=True, timeout=timeout, env=_clean_git_env(),
+                          text=True, timeout=timeout, env=clean_env(),
                           input=input)
 
 
-def _fault(result, step, warned, fallback=None):
+def fault(result, step, warned, fallback=None):
     on_failure(result, already_warned=warned)
     tail = result.stderr.strip() or result.stdout.strip()
     lines = tail.splitlines()
@@ -147,17 +147,17 @@ def commit_paths(repo_dir, rel_paths, message):
         if not os.path.exists(os.path.join(repo_dir, ".git")):
             return None
         warned = guard_env()
-        status = _git(repo_dir, "status", "--porcelain", "--", *rel_paths)
+        status = git(repo_dir, "status", "--porcelain", "--", *rel_paths)
         if status.returncode != 0:
-            return _fault(status, "status", warned, "git status failed")
+            return fault(status, "status", warned, "git status failed")
         if not status.stdout.strip():
             return None
-        add = _git(repo_dir, "add", "--", *rel_paths)
+        add = git(repo_dir, "add", "--", *rel_paths)
         if add.returncode != 0:
-            return _fault(add, "add", warned, "git add failed")
-        r = _git(repo_dir, "commit", "-q", "-o", "-m", message, "--", *rel_paths)
+            return fault(add, "add", warned, "git add failed")
+        r = git(repo_dir, "commit", "-q", "-o", "-m", message, "--", *rel_paths)
         if r.returncode != 0:
-            return _fault(r, "commit", warned)
+            return fault(r, "commit", warned)
         return None
     except subprocess.TimeoutExpired:
         return _timeout_fault()
@@ -176,21 +176,21 @@ def commit_blob_to_ref(repo_dir, rel_path, ref, message):
         if not os.path.exists(os.path.join(repo_dir, ".git")):
             return None
         warned = guard_env()
-        r = _git(repo_dir, "hash-object", "-w", "--no-filters", "--", rel_path)
+        r = git(repo_dir, "hash-object", "-w", "--no-filters", "--", rel_path)
         if r.returncode != 0:
-            return _fault(r, "hash-object", warned)
+            return fault(r, "hash-object", warned)
         blob = r.stdout.strip()
-        r = _git(repo_dir, "rev-parse", "-q", "--verify", f"{ref}^{{commit}}")
+        r = git(repo_dir, "rev-parse", "-q", "--verify", f"{ref}^{{commit}}")
         tip = r.stdout.strip() if r.returncode == 0 else ""
         if tip:
-            r = _git(repo_dir, "rev-parse", "-q", "--verify", f"{ref}:{entry}")
+            r = git(repo_dir, "rev-parse", "-q", "--verify", f"{ref}:{entry}")
             if r.returncode == 0 and r.stdout.strip() == blob:
                 return None
-        r = _git(repo_dir, "mktree", input=f"100644 blob {blob}\t{entry}\n")
+        r = git(repo_dir, "mktree", input=f"100644 blob {blob}\t{entry}\n")
         if r.returncode != 0:
-            return _fault(r, "mktree", warned)
+            return fault(r, "mktree", warned)
         tree = r.stdout.strip()
-        r = _git(repo_dir, "config", "--bool", "commit.gpgsign")
+        r = git(repo_dir, "config", "--bool", "commit.gpgsign")
         sign = r.returncode == 0 and r.stdout.strip() == "true"
         argv = ["commit-tree", tree]
         if tip:
@@ -198,13 +198,13 @@ def commit_blob_to_ref(repo_dir, rel_path, ref, message):
         if sign:
             argv.append("-S")
         argv += ["-m", message]
-        r = _git(repo_dir, *argv)
+        r = git(repo_dir, *argv)
         if r.returncode != 0:
-            return _fault(r, "commit-tree", warned)
+            return fault(r, "commit-tree", warned)
         commit = r.stdout.strip()
-        r = _git(repo_dir, "update-ref", "-m", message, ref, commit, tip or NULL_OID)
+        r = git(repo_dir, "update-ref", "-m", message, ref, commit, tip or NULL_OID)
         if r.returncode != 0:
-            return _fault(r, "update-ref", warned)
+            return fault(r, "update-ref", warned)
         return None
     except subprocess.TimeoutExpired:
         return _timeout_fault()
@@ -214,15 +214,15 @@ def commit_blob_to_ref(repo_dir, rel_path, ref, message):
 
 # --- store commit policy ---
 
-def _default_branch(repo_dir):
-    r = _git(repo_dir, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+def default_branch(repo_dir):
+    r = git(repo_dir, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
     if r.returncode == 0:
         return r.stdout.strip().split("/", 1)[-1]
-    r = _git(repo_dir, "config", "--get", "init.defaultBranch")
+    r = git(repo_dir, "config", "--get", "init.defaultBranch")
     if r.returncode == 0 and r.stdout.strip():
         return r.stdout.strip()
     for name in ("main", "master"):
-        if _git(repo_dir, "rev-parse", "--verify", "-q",
+        if git(repo_dir, "rev-parse", "--verify", "-q",
                 f"refs/heads/{name}").returncode == 0:
             return name
     return None
@@ -230,11 +230,11 @@ def _default_branch(repo_dir):
 
 def _off_default_branch(repo_dir, warned):
     """A reason when the checkout is not on its default branch (or is detached)."""
-    branch = _git(repo_dir, "branch", "--show-current")
+    branch = git(repo_dir, "branch", "--show-current")
     if branch.returncode != 0:
         on_failure(branch, already_warned=warned)
     current = branch.stdout.strip()
-    default = _default_branch(repo_dir)
+    default = default_branch(repo_dir)
     if not current or (default and current != default):
         return (f"{repo_dir} is on {current or 'a detached HEAD'}, "
                 f"not {default or 'its default branch'} (cl-111ef6)")
@@ -270,9 +270,9 @@ def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=(),
         if not os.path.exists(os.path.join(repo_dir, ".git")):
             return None
         warned = guard_env()
-        status = _git(repo_dir, "status", "--porcelain", "--", rel)
+        status = git(repo_dir, "status", "--porcelain", "--", rel)
         if status.returncode != 0:
-            return _fault(status, "status", warned, "git status failed")
+            return fault(status, "status", warned, "git status failed")
         if not status.stdout.strip():
             return None
         off = _off_default_branch(repo_dir, warned)
@@ -285,7 +285,7 @@ def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=(),
     paths = [rel, *extra_paths]
     cfg_rel = os.path.join(os.path.basename(root), "config.json")
     try:
-        cfg = _git(repo_dir, "status", "--porcelain", "--", cfg_rel)
+        cfg = git(repo_dir, "status", "--porcelain", "--", cfg_rel)
         if cfg.stdout.startswith("??"):
             paths.append(cfg_rel)
     except (subprocess.TimeoutExpired, OSError):

@@ -41,9 +41,7 @@ class Ctx:
     """One store and its repo, with the paths every sub-verb needs."""
 
     def __init__(self, args):
-        self.root = st.find_store(getattr(args, "repo", None))
-        if not self.root:
-            raise TicketError("no ticket store found (run: pm ticket init)")
+        self.root = st.store_root(args.repo)
         with open(os.path.join(self.root, "config.json")) as f:
             self.cfg = json.load(f)
         self.repo = os.path.dirname(os.path.abspath(self.root))
@@ -86,25 +84,25 @@ def raise_fault(fault):
 
 def git(ctx, *argv, ok=(0,), input=None):
     """Run git in the repo; a result code outside `ok` is a fault."""
-    r = gitcommit._git(ctx.repo, *argv, input=input)
+    r = gitcommit.git(ctx.repo, *argv, input=input)
     if r.returncode not in ok:
-        raise_fault(gitcommit._fault(r, argv[0], False))
+        raise_fault(gitcommit.fault(r, argv[0], False))
     return r
 
 
 def probe(ctx, *argv):
     """Run git and return its exit code; a probe never faults."""
-    return gitcommit._git(ctx.repo, *argv).returncode
+    return gitcommit.git(ctx.repo, *argv).returncode
 
 
 def blobs(ctx):
     """(working blob oid or None, pm-store tip entry oid or None); reads only."""
     work = None
     if os.path.exists(ctx.path):
-        r = gitcommit._git(ctx.repo, "hash-object", "--no-filters", "--", ctx.rel)
+        r = gitcommit.git(ctx.repo, "hash-object", "--no-filters", "--", ctx.rel)
         if r.returncode == 0:
             work = r.stdout.strip()
-    r = gitcommit._git(ctx.repo, "rev-parse", "-q", "--verify",
+    r = gitcommit.git(ctx.repo, "rev-parse", "-q", "--verify",
                        f"{HISTORY_BRANCH_REF}:{ctx.entry}")
     return work, (r.stdout.strip() if r.returncode == 0 else None)
 
@@ -130,7 +128,7 @@ def precheck(ctx):
     if not ctx.has_git:
         raise TicketError(f"{ctx.repo} is not a git repository")
     branch = git(ctx, "branch", "--show-current").stdout.strip()
-    default = gitcommit._default_branch(ctx.repo)
+    default = gitcommit.default_branch(ctx.repo)
     if not branch or (default and branch != default):
         raise TicketError(
             f"{ctx.repo} is on {branch or 'a detached HEAD'}, not "
@@ -222,10 +220,11 @@ def do_sync(ctx):
 def do_restore(ctx):
     require_key(ctx)
     with flocked(ctx.root):
+        # Raw bytes: gitcommit.git decodes stdout as text, which would corrupt the blob.
         r = subprocess.run(
             ["git", "-C", ctx.repo, "cat-file", "blob",
              f"{HISTORY_BRANCH_REF}:{ctx.entry}"],
-            capture_output=True, env=gitcommit._clean_git_env(),
+            capture_output=True, env=gitcommit.clean_env(),
             timeout=gitcommit.COMMIT_TIMEOUT)
         if r.returncode != 0:
             raise TicketError(
@@ -267,7 +266,7 @@ def do_enable(ctx):
                  f"{HISTORY_BRANCH_REF}^{{commit}}") == 0:
             message = "pm: history sync"
         else:
-            short = gitcommit._git(ctx.repo, "rev-parse", "--short", "HEAD")
+            short = gitcommit.git(ctx.repo, "rev-parse", "--short", "HEAD")
             message = ("pm: seed pm-store from "
                        + (short.stdout.strip() if short.returncode == 0
                           else "an unborn HEAD"))

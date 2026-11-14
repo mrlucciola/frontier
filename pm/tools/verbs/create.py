@@ -9,6 +9,7 @@ import store as st
 from store import TicketError, now, priority_type
 
 KINDS = ("task", "epic")
+LABEL_MAX = 80
 
 # Duplicate guard. A token is rare when at most DUP_RARE_MIN_DF rows,
 # or DUP_RARE_FRACTION of the store, hold it. Floor: DUP_THRESHOLD shared rare
@@ -105,19 +106,30 @@ def find_duplicates(tickets, title, body, now_ts=None):
     return out[:DUP_MAX_CANDIDATES]
 
 
+def label_problem(label):
+    """Why `label` is not a valid row label, else None."""
+    if not isinstance(label, str):
+        return f"label {label!r} is not a string"
+    if not st.LABEL_RE.match(label):
+        return f"label {label!r} does not match {st.LABEL_RE.pattern}"
+    if len(label) > LABEL_MAX:
+        return f"label {label!r} is {len(label)} chars; the limit is {LABEL_MAX}"
+    return None
+
+
 def run(args):
     problem = st.title_problem(args.title)
     if problem:
         raise TicketError(problem)
     minted = []
     subject = lambda: " ".join(["pm: create", *minted])[:120]
-    with st.locked_store(getattr(args, "repo", None), subject) as store:
+    with st.locked_store(args.repo, subject) as store:
         _create(args, store, minted)
 
 
 def _create(args, store, minted):
     for label in args.label or []:
-        problem = st.label_problem(label)
+        problem = label_problem(label)
         if problem:
             raise TicketError(f"{problem}; nothing written")
     if args.parent:

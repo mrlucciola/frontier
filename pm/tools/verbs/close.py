@@ -6,7 +6,6 @@ import sys
 import gitcommit
 import store as st
 from store import TicketError, make_note, now
-from verbs.release import acting_identity
 
 NO_FINDINGS_TEXT = ("no --findings: this close attests nothing about what was not done, not "
                     "proven, or found elsewhere; pass --findings none or the ids")
@@ -59,9 +58,8 @@ def refuse_if_worktree(store, tid, via):
 
 def ticket_paths(repo, tid):
     """Repo-relative paths touched by commits whose subject starts `<tid>:`."""
-    r = subprocess.run(["git", "-C", repo, "log", "--format=", "--name-only",
-                        f"--grep=^{tid}:"], capture_output=True, text=True,
-                       timeout=60, env=gitcommit._clean_git_env())
+    r = gitcommit.git(repo, "log", "--format=", "--name-only", f"--grep=^{tid}:",
+                      timeout=60)
     if r.returncode != 0:
         return None
     return sorted({ln.strip() for ln in r.stdout.splitlines() if ln.strip()})
@@ -75,7 +73,7 @@ def deploy_check(args):
     Runs outside the store lock."""
     if args.unmerged:
         return
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     repo = os.path.dirname(os.path.abspath(store.root))
     tool = os.path.join(repo, "bin", "deploy")
     if not (os.path.isfile(tool) and os.access(tool, os.X_OK)):
@@ -147,7 +145,7 @@ def run(args):
                 c["updated"] = now()
                 c["notes"].append(make_note(f"detached from {t['id']} on close",
                                             "edit-trail"))
-        actor = acting_identity(args)
+        actor = st.acting_identity(args.session)
         for tid in ids:
             t = store.get(tid)
             t["status"] = "done-unmerged" if args.unmerged else "closed"

@@ -43,7 +43,7 @@ def write_gitignore(repo_dir):
 
 
 def run(args):
-    store_arg = getattr(args, "repo", None)
+    store_arg = args.repo
     if store_arg and args.dir and os.path.abspath(store_arg) != os.path.abspath(args.dir):
         raise TicketError("init: --store and --dir name different repo roots; pass one")
     repo_dir = os.path.abspath(store_arg or args.dir or ".")

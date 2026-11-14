@@ -17,7 +17,7 @@ _spec.loader.exec_module(gitcommit)
 
 def _git(path, *argv):
     r = subprocess.run(["git", "-C", path, *argv], capture_output=True,
-                       text=True, env=gitcommit._clean_git_env())
+                       text=True, env=gitcommit.clean_env())
     assert r.returncode == 0, f"git {' '.join(argv)}: {r.stderr}"
     return r
 
@@ -96,7 +96,7 @@ class CommitBlobToRefTest(unittest.TestCase):
     def count(self):
         r = subprocess.run(["git", "-C", self.repo, "rev-list", "--count", REF],
                            capture_output=True, text=True,
-                           env=gitcommit._clean_git_env())
+                           env=gitcommit.clean_env())
         return int(r.stdout) if r.returncode == 0 else 0
 
     def test_root_commit_then_skip_if_equal_then_child(self):
@@ -118,7 +118,7 @@ class CommitBlobToRefTest(unittest.TestCase):
     def test_moved_ref_fails_update_ref_as_gitfault(self):
         self.assertIsNone(gitcommit.commit_blob_to_ref(self.repo, self.rel, REF, "pm: a"))
         self.write("two\n")
-        real = gitcommit._git
+        real = gitcommit.git
 
         def racing(repo_dir, *argv, **kw):
             if argv[0] == "update-ref":
@@ -129,7 +129,7 @@ class CommitBlobToRefTest(unittest.TestCase):
                 self.moved = other
             return real(repo_dir, *argv, **kw)
 
-        with unittest.mock.patch.object(gitcommit, "_git", racing):
+        with unittest.mock.patch.object(gitcommit, "git", racing):
             fault = gitcommit.commit_blob_to_ref(self.repo, self.rel, REF, "pm: b")
         self.assertIsInstance(fault, gitcommit.GitFault)
         self.assertEqual(_git(self.repo, "rev-parse", REF).stdout.strip(), self.moved)

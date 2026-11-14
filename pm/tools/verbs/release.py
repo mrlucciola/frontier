@@ -1,6 +1,4 @@
 """pm ticket release: give claimed ticket(s) back to open."""
-import os
-
 import store as st
 from store import now
 
@@ -13,16 +11,6 @@ def register(subparsers):
                                       "$CLAUDE_CODE_SESSION_ID)")
 
 
-def acting_identity(args):
-    """The identity a claim by this session would carry, or None without a
-    session token (a bare name says nothing about which session acted)."""
-    if not st.session_token(args.session):
-        return None
-    name = (os.environ.get("PM_AGENT") or "").partition("/")[2] \
-        or st._agent_provider() or "pm"
-    return st.session_assignee(name, args.session)
-
-
 def run(args):
     with st.locked_verb(args, "release") as store:
         # A stray assignee at any status also passes the guard: release is the
@@ -31,7 +19,7 @@ def run(args):
         ids = st.each_id(args)
         for tid in ids:
             st.refuse_if_unclaimed(store.get(tid))
-        actor = acting_identity(args)
+        actor = st.acting_identity(args.session)
         for tid in ids:
             t = store.get(tid)
             t["assignee"], t["updated"] = None, now()

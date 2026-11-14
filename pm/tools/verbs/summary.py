@@ -5,14 +5,12 @@ import json
 import os
 import re
 import subprocess
-import time
 from datetime import datetime, timedelta, timezone
 
 import gitcommit
 import routing
 import store as st
 
-HOLD_STALE_SECONDS = 12 * 3600
 PILOT_LABEL = "pilot"
 REVIEW_BY_RE = re.compile(r"^\s*review_by:[ \t]*(\S*)", re.M)
 ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}$")
@@ -22,18 +20,6 @@ def register(subparsers):
     sp = subparsers.add_parser("summary", help="session-start briefing")
     sp.add_argument("--limit", type=int, default=5)
     sp.add_argument("--json", action="store_true")
-
-
-def hold_is_stale(hold):
-    """True when the holding session's token has no recent heartbeat file."""
-    state_dir = os.environ.get("PM_HOLD_STATE_DIR") or os.path.join(
-        os.path.expanduser("~"), ".claude", ".tmp", "pm-holds")
-    stale_after = float(os.environ.get("PM_HOLD_STALE_SECONDS") or HOLD_STALE_SECONDS)
-    try:
-        mtime = os.path.getmtime(os.path.join(state_dir, f"{hold['token']}.seen"))
-    except (OSError, KeyError, TypeError):
-        return True
-    return (time.time() - mtime) > stale_after
 
 
 def review_by(body):
@@ -81,10 +67,10 @@ def history_behind(repo_dir, rel, ref):
     entry = os.path.basename(rel)
     work = None
     if os.path.exists(os.path.join(repo_dir, rel)):
-        r = gitcommit._git(repo_dir, "hash-object", "--no-filters", "--", rel)
+        r = gitcommit.git(repo_dir, "hash-object", "--no-filters", "--", rel)
         if r.returncode == 0:
             work = r.stdout.strip()
-    r = gitcommit._git(repo_dir, "rev-parse", "-q", "--verify", f"refs/heads/{ref}:{entry}")
+    r = gitcommit.git(repo_dir, "rev-parse", "-q", "--verify", f"refs/heads/{ref}:{entry}")
     tip = r.stdout.strip() if r.returncode == 0 else None
     return work is not None and work != tip
 
@@ -117,8 +103,7 @@ def store_dirty_line(store):
         return ("note: ticket history is behind the working file; "
                 "run: pm ticket history sync") if behind else None
     try:
-        r = subprocess.run(["git", "-C", repo_dir, "status", "--porcelain", "--", rel],
-                           capture_output=True, text=True, timeout=10)
+        r = gitcommit.git(repo_dir, "status", "--porcelain", "--", rel, timeout=10)
     except (OSError, subprocess.TimeoutExpired):
         return None
     if r.returncode != 0:
@@ -132,7 +117,7 @@ def store_dirty_line(store):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     active = [t for t in store.tickets if t["status"] != "closed"]
     ready = sorted((t for t in store.tickets
                     if store.is_ready(t) and t["priority"] != 4),
@@ -152,7 +137,7 @@ def run(args):
     if notice:
         print(notice)
         return
-    stale = [t for t in obj["claimed"] if t.get("hold") and hold_is_stale(t["hold"])]
+    stale = [t for t in obj["claimed"] if t.get("hold") and st.hold_is_stale(t["hold"])]
     lines = [f"ticket store: {obj['open_total']} active tickets"]
     for label, ts in (("SEMAPHORES (read before starting work)", obj["semaphores"]),
                       ("in-flight (claimed)", obj["claimed"]),

@@ -34,7 +34,7 @@ def scope_filter(store, scope):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     if args.limit is not None and args.limit < 1:
         raise TicketError("--limit must be at least 1")
     keep = scope_filter(store, args.scope) if args.scope else (lambda t: True)

@@ -51,7 +51,7 @@ def run(args):
     if args.all_stores:
         ts = all_store_rows(args.status, args.label)
     else:
-        ts = rows_of(st.open_store(getattr(args, "repo", None)), args.status, args.label)
+        ts = rows_of(st.open_store(args.repo), args.status, args.label)
     if args.json:
         print(json.dumps(ts, ensure_ascii=False, indent=2, sort_keys=True))
     else:

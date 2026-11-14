@@ -32,7 +32,7 @@ def blocks_of(store, tid):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     tid = st.local_id(args.id)
     root = row_of(store, tid)
     if root is None and tid in store.archived_ids():

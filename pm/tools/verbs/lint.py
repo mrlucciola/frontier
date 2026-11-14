@@ -155,7 +155,7 @@ def _openable(root):
 
 
 def run_dispatch(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     t = store.by_id.get(args.id)
     if t is None:
         raise TicketError(f"no such ticket: {args.id}; {st.NO_SUCH_TICKET_HINT}")
@@ -170,7 +170,7 @@ def run_dispatch(args):
 def run(args):
     if args.id:
         run_dispatch(args)
-    repo = getattr(args, "repo", None)
+    repo = args.repo
     root = None if args.workspace else st.find_store(repo)
     result = validate.validate_one(root) if root else None
     if result and result["exit"] != 2:

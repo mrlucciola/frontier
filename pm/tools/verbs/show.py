@@ -36,7 +36,7 @@ def field_text(value):
 
 
 def run(args):
-    store = st.open_store(getattr(args, "repo", None))
+    store = st.open_store(args.repo)
     t = store.read(st.local_id(args.id))
     archive_path = t.get("archive_path")
     obj = dict(t, blocked_by=[b["id"] for b in store.blockers_of(t["id"])

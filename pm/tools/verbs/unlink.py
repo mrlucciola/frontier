@@ -14,7 +14,7 @@ def register(subparsers):
 
 
 def run(args):
-    with st.locked_store(getattr(args, "repo", None),
+    with st.locked_store(args.repo,
                          lambda: f"pm: unlink {args.src} {args.dst}"[:120]) as store:
         _unlink(args, store)
 
