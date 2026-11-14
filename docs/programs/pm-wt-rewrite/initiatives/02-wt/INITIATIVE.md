@@ -27,7 +27,8 @@ fc-30c060, alone, in four serial worker parts on branch `fc-30c060` (fc-2a6562 c
 1. `prompts/00-characterize-1-start.md` -- runner, two-sided adapter, repo fixture,
    `start`. Done: 29e8a2a, overseer re-run passed 20, failed 0.
 2. `00-characterize-2a-finish-gate.md` -- `finish` and `land`: gate, known red, findings,
-   notes, dirty refusal, land. In flight.
+   notes, dirty refusal, land. Done: 38634fa, overseer re-run passed 40, failed 0.
+   2b also adds the `findings()` adapter reader 2a lacked. 2b in flight.
 3. `00-characterize-2b-finish-merge.md` -- rebase-conflict auto-park, ff-only retry,
    refusal after the merge, merged marker, nested-repo and `.vscode` refusals, failed
    remove `STOP.`, deferred teardown.

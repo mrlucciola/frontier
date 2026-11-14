@@ -37,7 +37,8 @@ land) with its start-and-commit helper. Read the whole file first; reuse its hel
 keep its style (docstring quotes the contract phrase; assert exit codes and the first
 words of wt's own `OK:`, `wt:` and `STOP.` lines; never pm's text). Reports of parts 1
 and 2a: `docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/00-characterize-1-start.md`
-and `00-characterize-2a-finish-gate.md` in the main checkout.
+and `00-characterize-2a-finish-gate.md` in the main checkout. Pinned by 2a: wt's own
+failure lines start `wt: ` (the gate line too); the gate tail is the last 30 lines.
 
 ## Read
 
@@ -88,6 +89,11 @@ Each its own test:
 - **deferred teardown** is the sandbox refusing to delete `.git/worktrees/<id>`. If you
   cannot provoke it on purpose, do not fake it: the happy-path tests already accept the
   deferred `OK:` line; list the forced case in `uncovered.md` with the operator command.
+- **findings value reaches the close** (gap left by 2a): add an adapter reader
+  `findings(repo, ticket)` on both sides (old: the closed ticket's findings field in
+  `pm ticket show --json`; new: `pm show <id> --json` key `findings`), one `AdapterTest`
+  for it, and extend 2a's `--findings` test to assert the value. The old pm accepts only
+  ticket ids or `none` as findings.
 - **every failure line names a next step**: for each refusal you provoke in parts 2a and
   2b, the `wt:` line is non-empty after the prefix. One table-driven test is enough.
 
