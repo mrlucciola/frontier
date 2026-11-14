@@ -15,6 +15,7 @@ bookkeeping; with every verb built it reports none.
 | Anything that reads or writes `.pm/` | [Spec v2](/pm/docs/spec/v2/SPEC.md); the on-disk format does not change |
 | The view renderers (`board`, `overview`) | `tests/test_views.py` |
 | A parity test that looks wrong | Stop and report it. Do not edit `tests/test_cli_parity.py` |
+| Building the event-log pm (epic fc-2a6562) | [Design](/pm/docs/design.md), then the transcripts in `tests/t/`. Do not edit the design, `tests/t/` or `tests/fixtures/`; report what looks wrong |
 
 Run from the repository root.
 

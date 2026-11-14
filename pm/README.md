@@ -49,6 +49,7 @@ registry.
 
 | Document | Read when |
 | --- | --- |
+| [Design of the next pm](/pm/docs/design.md) | Building the event-log pm that replaces this one; not built yet |
 | [Cut list](/pm/docs/cut-list.md) | Deciding whether a verb, flag or config key belongs in this component |
 | [Store format, spec v2](/pm/docs/spec/v2/SPEC.md) | Reading or writing `.pm/` files; the format is frozen |
 | [Maintenance](/pm/AGENTS.md) | Changing code or tests here |

@@ -2,161 +2,165 @@
 
 pm (ticket store CLI) and wt (worktree lifecycle CLI) live in
 `~/frontier/runtime-tools/` and deploy through frontier's pipeline. They move
-into `pm/` and `wt/` here as self-contained components, rewritten to the
-[component principles](/docs/component-principles.md), with hook-driven
-instruction delivery and an opencode integration. The old tools stay installed
-and untouched until an operator-run cutover.
+into `pm/` and `wt/` here as self-contained components. The old tools stay
+installed and untouched until an operator-run cutover.
 
-The work is three orchestrated runs, one per epic, each launched from its seed
-in [PROGRAM.md](/docs/programs/pm-wt-rewrite/PROGRAM.md). The operator rules
-between runs.
+The work is orchestrated runs, one per epic, each launched from its seed in
+[PROGRAM.md](/docs/programs/pm-wt-rewrite/PROGRAM.md). The operator rules between
+runs.
 
-## Rulings (operator, 2026-11-12)
+## Where this stands
+
+| Run | Epic | State |
+| --- | --- | --- |
+| 01 pm port | fc-c3514f | Closed 2026-11-14. A faithful port of the old pm, at parity with it. |
+| 04 pm redesign | fc-2a6562 | Next. Replaces the port. |
+| 02 wt | fc-262fa8 | After 04. Rewritten on 2026-11-14 to build on the redesigned pm. |
+| 03 delivery | fc-ccecda | After 02. Reduced on 2026-11-14: the redesign took its hook work. |
+
+## Rulings
+
+Operator, 2026-11-12:
 
 - **Language.** pm is standard-library Python at `/usr/bin/python3`. wt is zsh.
-  JSON is never parsed in shell: wt reads ticket facts through pm's plain-text
-  output.
-- **Surface.** The [cut list](/pm/docs/cut-list.md) names every kept, dropped
-  and deferred item.
-- **Data.** The on-disk format, [spec v2](/pm/docs/spec/v2/SPEC.md), is frozen.
-  A ticket that needs a format change stops its run.
+  JSON is never parsed in shell.
 - **Runs.** One overseer session per epic. Cutover is never part of a run.
+
+Operator, 2026-11-14, after the port landed:
+
+- **Redesign pm.** The store becomes an append-only event log, verbs follow the
+  agent's workflow, there is no skill, and plugins attach by file presence. The
+  whole specification is [pm/docs/design.md](/pm/docs/design.md).
+- **The format freeze is lifted.** Spec v2 is replaced; each store is imported
+  once. Old ids are kept.
+- **Order.** pm redesign, then wt as its first plugin, then delivery.
+- **Other families leave pm.** Dashboards, the dispatch loop and intake are
+  their own components, reached as plugins. The dispatch headings check and the
+  pilot contract ship as two plugins inside `pm/plugins/`.
+
+Superseded by that ruling: the port as the end state, the parity suite as the
+gate, and fc-9076a6, the three write-reduction config keys, which solve a problem
+the log does not have.
 
 ## How "done" is decided
 
 Each run has a command that exits 0.
 
-**pm.** `pm/tests/test_cli_parity.py` is the old CLI suite, trimmed to the kept
-surface. It drives a CLI as a subprocess, so it runs unchanged against old and
-new code.
+**pm redesign.** `pm/tests/t/` holds 23 transcripts: shell sessions with their
+exact expected output and exit codes. They were written before the code.
 
 ```sh
-/usr/bin/python3 -B pm/tests/run_parity.py --cli pm/tools/ticket
+/usr/bin/python3 -B pm/tests/run_transcripts.py
 ```
 
-Baseline against the old CLI at `~/frontier/runtime-tools/pm/ticket/src/ticket`,
-frontier `505936d6`:
+There is no implementation to prove them against, which the parity suite had.
+What was proven on 2026-11-14: the runner passes, fails and reports pending
+correctly against a stand-in CLI; all 23 transcripts parse and run to the end;
+the import fixture is a valid spec v2 store by the installed pm's `validate`.
+So a transcript can be wrong. The rule: a worker never edits a transcript, the
+fixtures or the design. A contradiction goes to the overseer, who fixes one side
+in a commit of its own and records it in the ledger.
 
-```text
-Ran 269 tests in 241.429s
-OK (skipped=9)
-parity: passed 260, pending 0, failed 0, skipped 9
-```
+**The pending rule.** The dispatcher's verb table is complete from the first
+ticket. A verb with no file reports itself: it appends its name to the file in
+`$PM_UNBUILT_LOG` and exits 70. A transcript whose first wrong step comes at or
+after such a call is `pending`. One whose first wrong step comes before any is
+`failed`. After every ticket `--allow-pending` must exit 0, and pending only
+shrinks. The last ticket removes the mechanism and requires `pending 0`.
 
-**The old pm is a moving target.** Four upstream commits landed while the
-suite was being prepared. The suite is pinned to `505936d6`; the
-[cut list](/pm/docs/cut-list.md) holds the drift check the integration ticket
-runs before declaring parity. Freezing feature work on the old pm for the
-length of Run 1 removes this risk entirely.
-
-**The pending rule.** While verbs are still being built, anything not built
-calls `store.unbuilt(<name>)`: it appends the name to the file in
-`$PM_UNBUILT_LOG` and exits 70. The runner counts a test that fails after
-touching something unbuilt as `pending`, not `failed`. So after every ticket,
-`--allow-pending` must exit 0 with `failed 0`, and the pending count only
-shrinks. A real regression can never hide as "not done yet". The last pm ticket
-removes the mechanism and requires `pending 0`.
+Two more gates close the epic: `pm/tests/test_budgets.py`, byte ceilings on help,
+refusals and injected text; and `pm/tests/import_check.py`, which imports a copy
+of every registered store and compares it with the installed pm's view.
 
 **wt.** The old wt tests import Python internals and cannot gate a zsh rewrite.
-The wt run's first ticket writes a black-box suite, `wt/tests/test_wt_cli.py`,
-from the [behavior contract](/wt/docs/contract.md) and proves it green against
-the old wt. The same pending rule applies, keyed on `$WT_UNBUILT_LOG`.
+The wt run's first ticket writes a black-box suite from the
+[behavior contract](/wt/docs/contract.md). It reaches tickets through an adapter
+with an old-pm and a new-pm side, and is proven green against the old wt on the
+old pm. The same pending rule applies, keyed on `$WT_UNBUILT_LOG`.
 
-## Run 1: pm (epic fc-c3514f)
+## Run 04: pm redesign (epic fc-2a6562)
 
-```text
-pm/cli/pm                  dispatcher: pm ticket|view|hook <verb>
-pm/tools/ticket            argparse entry, fixed tuple of kept verbs, lazy import of verbs/<verb>.py
-pm/tools/store.py          find store, load, validate, lock, atomic write, commit, unbuilt()
-pm/tools/routing.py        registry, prefix to store, frozen check, cross-store row lookup
-pm/tools/gitcommit.py      default-branch commit and pm-store plumbing commit
-pm/tools/verbs/<verb>.py   one file per verb: register(subparsers) and run(args)
-```
+The first ticket moves the port to `pm/v2/` untouched, so new code is born at its
+final paths. The last ticket deletes `pm/v2/`.
 
-The verb tuple is written once, in the first ticket. Parallel workers add only
-their own verb files.
+| Step | Ticket | Transcripts | Mode |
+| --- | --- | --- | --- |
+| 1 | fc-dac416 core: quarantine, dispatcher, store, `init new show help` | 01, 02 | serial |
+| 2 | fc-195118 lifecycle | 03, 04, 05, 10, 12 | parallel |
+| 2 | fc-ef483a reads | 06, 07, 14, 20 | parallel |
+| 2 | fc-8b871a structure and the duplicate guard | 08, 09, 11 | parallel |
+| 2 | fc-e2d8c9 stores, routing, doctor | 13, 21 | parallel |
+| 2 | fc-3f4bfa backup and restore | 18 | parallel |
+| 3 | fc-a731f4 plugins, with `dispatch` and `pilot` | 15, 22, 23 | after lifecycle and reads |
+| 3 | fc-a761be harness hooks, Claude and opencode | 16 | after lifecycle and reads |
+| 3 | fc-4a8593 import and the import check | 19 | after lifecycle, structure and stores |
+| 4 | fc-d6c61c integration: budgets, concurrency, remove `pm/v2`, docs, review | 17, all | serial |
 
-| Step | Ticket | Mode |
-| --- | --- | --- |
-| 1 | fc-2b34c9 core: store, entry, `init create show` | serial |
-| 2 | fc-459fe0 routing, registry, frozen, `where stores` | serial |
-| 3 | fc-d73327 lifecycle; fc-739601 reads; fc-c10bcf structure and edges; fc-c5e673 history; fc-913d02 checks and views | parallel, at most four workers at once |
-| 4 | fc-59011f integration: `pending 0`, golden diff on every registered store, docs, readability review | serial |
-
-### Open ruling: the deferred config features
-
-fc-9076a6 holds `history_interval_seconds`, `compact_closed_after_days` and
-`archive_closed_after_days`. They were deferred on the finding that no store
-used them. That stopped being true the same night: frontier-clean 88103df
-turned all three on for this repository's store. As ruled, fc-9076a6 is outside
-Run 1 and blocks the cutover runbook (fc-10981e).
-
-Recommended instead: build them in Run 1. Run these before launching the seed,
-and the overseer schedules fc-9076a6 as a sixth step-3 ticket:
-
-```sh
-pm ticket reparent fc-9076a6 fc-c3514f
-pm ticket dep fc-459fe0 blocks fc-9076a6
-pm ticket dep fc-9076a6 blocks fc-59011f
-```
-
-Either way the rewrite must read rows the old pm already compacted; that is in
-fc-2b34c9.
-
-## Run 2: wt (epic fc-262fa8)
+## Run 02: wt (epic fc-262fa8)
 
 ```text
 wt/cli/wt                         zsh dispatcher
-wt/tools/lib/{git,pm,fail}.zsh
-wt/tools/verbs/<verb>.zsh         start finish park status pending prune selftest
+wt/tools/lib/{git,pm,fail,config}.zsh
+wt/tools/verbs/<verb>.zsh         start finish park status prune selftest
+wt/pm-plugin/                     pre-done, post-take, orient
 wt/tests/test_wt_cli.py           black-box suite
 ```
 
+wt keeps no JSON. It reads tickets with `pm get`, keeps its own facts with
+`pm emit`, and takes its configuration from files: an executable `.wt/gate` and
+a `.wt/known-red` list. `wt pending` is dropped for `pm ls parked`.
+
 | Step | Ticket | Mode |
 | --- | --- | --- |
-| 0 | fc-30c060 characterization suite, green against the old wt | serial; can start before Run 1 ends |
-| 1 | fc-122c0d dispatcher and lib | serial; waits on fc-59011f |
-| 2 | fc-8ecb48 start; fc-249727 finish and land; fc-917232 park; fc-983ff4 status, pending, prune | parallel |
-| 3 | fc-8c1f62 integration on the rewritten pm, selftest, docs, review | serial |
+| 0 | fc-30c060 characterization suite, green against the old wt | serial |
+| 1 | fc-122c0d dispatcher and lib | serial; waits on fc-d6c61c |
+| 2 | fc-8ecb48 start; fc-249727 finish and land; fc-917232 park; fc-983ff4 status and prune; fc-347c67 the pm plugin | parallel |
+| 3 | fc-8c1f62 integration, selftest, docs, review | serial |
 
 If the old wt cannot be characterized inside the sandbox, step 0 lists the
 uncovered cases with the operator-terminal command for each and the run stops
 there.
 
-## Run 3: instruction delivery (epic fc-ccecda)
+## Run 03: delivery (epic fc-ccecda)
 
 | Ticket | Delivers |
 | --- | --- |
-| fc-42f64c | `pm hook <event>` for session-start, prompt and stop, one provider-neutral source |
-| fc-dfcc49 | Claude adapter and registration fragment |
-| fc-5ac03b | opencode plugin owned by the component |
-| fc-03292e | pm and wt skills as orientation, route table and verb cards |
+| fc-03292e | wt help that teaches, its byte ceilings, and a line-by-line account of the old skill |
 | fc-f9ab11 | instruction cost measured before and after |
 | fc-2c0656 | Codex: supported events recorded and wired |
 | fc-121923 | component principles and behavioral contract finalized |
 | fc-10981e | cutover runbook |
 
+fc-42f64c, fc-dfcc49 and fc-5ac03b were closed as superseded by fc-a761be.
+
 ## Cutover
 
-Operator-run, after Run 3, from the runbook fc-10981e writes. It switches the
-`~/.local/bin` symlinks, moves the registry, registers hooks, and retires the
-frontier packages. Rollback is re-pointing two symlinks at `~/.local/libexec`.
+Operator-run, after Run 03, from the runbook fc-10981e writes. It imports each
+store, writes the registry, switches the `~/.local/bin` symlinks, links the
+plugins, registers hooks, and retires the frontier packages and skills. Import
+leaves every `tickets.jsonl` untouched, so rollback is re-pointing two symlinks.
 
 ## Stop conditions for every run
 
 - A gate red after two attempts without a diagnosis: failure-retro, stop.
-- Any need to change the spec v2 format, write under `~/frontier`, or edit
-  provider configuration: out of scope; park the ticket and report.
-- A parity or characterization test that looks wrong is never edited by a
-  worker. It goes to the overseer, and a change lands in the cut list with its
-  reason.
+- Any need to write under `~/frontier`, or to edit provider configuration: out
+  of scope; park the ticket and report.
+- A transcript, fixture, characterization test or the design looks wrong: the
+  worker stops and reports. Only the overseer changes them.
+- For the redesign: a verb needs a second writer or a rewrite of the log; a
+  plugin use case cannot be met by the four plugin files; import would lose a
+  ticket, or a note other than an edit-trail note.
 
-## Changes from the approved plan
+## The old pm keeps moving
 
-- The Claude hook adapter is Python, not zsh. Its input and output are JSON.
-- `pm ticket show <id> --field <name>` is new. It gives the zsh wt plain-text
-  ticket facts.
-- The runner gained the pending rule above, so each parallel ticket has a
-  mechanical gate before the whole surface exists.
-- The root README component rows for pm and wt are added by each epic's
-  integration ticket, when the component passes its checks.
+Upstream commits landed in `~/frontier/runtime-tools/pm` all through the port,
+and five drift tickets ported them. The redesign does not chase output text, but
+a new upstream feature is still a requirement. On its first turn and before
+closing, the Run 04 overseer runs this and files a ticket for each new behavior
+the design does not already cover:
+
+```sh
+git --no-pager -C /Users/matthias/frontier log --oneline 90f8b81c..HEAD -- runtime-tools/pm runtime-tools/wt
+```
+
+Freezing feature work on the old pm and wt until cutover removes this.

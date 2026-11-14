@@ -1,4 +1,4 @@
-# OVERSEER: pm-wt-rewrite/03 instruction delivery fc-ccecda
+# OVERSEER: pm-wt-rewrite/03 delivery fc-ccecda
 
 ```
 cd ~/projects/frontier-clean && claude --model claude-opus-5-5 --effort high "$(cat docs/programs/pm-wt-rewrite/initiatives/03-delivery/seed.md)"
@@ -10,14 +10,14 @@ from the H1.
 
 ---
 
-# OVERSEER: pm-wt-rewrite/03 instruction delivery fc-ccecda
+# OVERSEER: pm-wt-rewrite/03 delivery fc-ccecda
 `docs/programs/pm-wt-rewrite/initiatives/03-delivery/seed.md`
 
 ## Who you are
 
-You are the initiative overseer for pm/wt instruction delivery, and you own exactly one
-epic: **fc-ccecda**. You start with zero context. Load the `initiative-overseer` skill
-and follow it; it is your operating pattern, and where it and this seed disagree on the
+You are the initiative overseer for pm/wt delivery, and you own exactly one epic:
+**fc-ccecda**. You start with zero context. Load the `initiative-overseer` skill and
+follow it; it is your operating pattern, and where it and this seed disagree on the
 pattern, the skill wins. Branch and worktree rules come from your global instructions.
 **This session ends when fc-ccecda closes.**
 
@@ -27,46 +27,45 @@ pattern, the skill wins. Branch and worktree rules come from your global instruc
 2. `docs/programs/pm-wt-rewrite/initiatives/03-delivery/reports/` -- every report
    written since your last turn (empty at first launch).
 3. `pm ticket tree fc-ccecda`, then `pm ticket show` each open child you intend to
-   schedule. Ticket bodies are the specs.
-4. `docs/programs/pm-wt-rewrite/PLAN.md`, `docs/component-principles.md`, the root
-   `README.md` behavioral contract, and the repository's instruction-delivery guidance
-   (`docs/instruction-delivery.md` when present, else the README section of that name).
-5. The current sources being replaced, read-only: `~/frontier/hooks/pm/session_start.py`
-   and `stop.py`, `~/frontier/skills/pm/SKILL.md`,
-   `~/frontier/skills/worktree-lifecycle/SKILL.md`,
-   `~/.config/opencode/plugins/pm/index.ts`.
+   schedule. Ticket bodies are the specs. Three children are already closed as
+   superseded; leave them.
+4. `docs/programs/pm-wt-rewrite/PLAN.md`, `docs/component-principles.md`,
+   `pm/docs/design.md`, the root `README.md` behavioral contract, and
+   `docs/instruction-delivery.md`.
+5. The sources being replaced, read-only: `~/frontier/skills/pm/SKILL.md`,
+   `~/frontier/skills/worktree-lifecycle/SKILL.md`, `~/frontier/hooks/pm/`, and the pm
+   and wt sections of `~/frontier/instructions/claude-global/CLAUDE.md`.
 
 ## Prompt queue
 
 None written yet. Write them under
 `docs/programs/pm-wt-rewrite/initiatives/03-delivery/prompts/`:
 
-- `01-hook.md` for fc-42f64c. First.
-- `02-claude.md` (fc-dfcc49), `03-opencode.md` (fc-5ac03b), `04-skills.md` (fc-03292e),
-  `06-codex.md` (fc-2c0656). Do not launch until fc-42f64c closes.
-- `07-principles.md` for fc-121923. Free from the start; it reads the two finished
-  components.
-- `05-measure.md` for fc-f9ab11. Do not launch until fc-dfcc49 and fc-03292e close.
-- `08-cutover-runbook.md` for fc-10981e. Last.
+- `01-wt-help.md` for fc-03292e and `02-principles.md` for fc-121923. Free from the
+  start.
+- `03-codex.md` for fc-2c0656. Free from the start.
+- `04-measure.md` for fc-f9ab11. Do not launch until fc-03292e closes.
+- `05-cutover-runbook.md` for fc-10981e. Last.
 
 ## Batching notes for this epic
 
-- fc-dfcc49, fc-5ac03b and fc-2c0656 each append a provider section to `pm/INSTALL.md`:
-  do not batch them together. fc-03292e and fc-121923 are free alongside any one of them.
-- fc-5ac03b needs an opencode session to verify the plugin. A worker cannot start one:
-  the worker writes the plugin and the exact verification steps, and the verification
-  is an operator action. Close the ticket with what was and was not proven.
+- fc-03292e writes under `wt/`, fc-121923 under `docs/` and the root `README.md`,
+  fc-2c0656 in `pm/INSTALL.md`: disjoint, batch them.
+- fc-2c0656 needs a Codex session to probe. A worker cannot start one: the worker
+  writes the probe and the exact steps, and running it is an operator action. Close
+  the ticket with what was and was not proven.
 - fc-10981e writes a runbook and runs none of it.
 
 ## Hard rules for this initiative
 
 - Read-only: everything under `~/frontier`, `~/.claude`, `~/.codex`, `~/.config/opencode`,
-  `~/.local/bin`, `~/.local/libexec`. Registration in a provider's settings is an
-  operator step written into `pm/INSTALL.md` or the runbook, never performed here.
-- The in-place opencode plugin at `~/.config/opencode/plugins/pm/index.ts` is copied
-  from, not moved or deleted; its removal is a cutover step.
+  `~/.config/pm`, `~/.local/bin`, `~/.local/libexec`. Registration in a provider's
+  settings is an operator step written into an `INSTALL.md` or the runbook, never
+  performed here.
 - Commits land only in `~/projects/frontier-clean`.
 - A cost or speed statement carries its command and number, or it is not written.
+- The installed `pm` and `wt` on `PATH` are still the old ones; you run this epic with
+  them.
 - The fc store sets `findings_required`: every `wt finish` and `wt park` carries
   `--findings`.
 
@@ -74,7 +73,8 @@ None written yet. Write them under
 
 1. Read the list above.
 2. Reconcile the ledger against `pm ticket tree fc-ccecda`; fix any drift and commit.
-3. Confirm fc-59011f and fc-8c1f62 are closed. If either is open, say which one blocks
+3. Confirm fc-2a6562 and fc-262fa8 are closed. If either is open, say which one blocks
    and emit only the cadence update.
-4. Write `01-hook.md` and `07-principles.md`, `wt start` both tickets, dispatch both.
+4. Write `01-wt-help.md`, `02-principles.md` and `03-codex.md`, `wt start` the three
+   tickets, dispatch them.
 5. End with the cadence update, not a plan or a summary of what you read.
