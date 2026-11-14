@@ -141,6 +141,16 @@ class PmAdapter:
     def set_gate(self, repo, argv=None, malformed=None):
         raise NotImplementedError
 
+    def gate_label(self, argv):
+        """What wt prints for the configured gate: old, the argv joined; new, the
+        executable path `.wt/gate`."""
+        raise NotImplementedError
+
+    def unregister_store(self, repo):
+        """Drop `repo` from this side's registry (new: its `$PM_STORES` line; old: the
+        registry starts empty, so nothing to do)."""
+        raise NotImplementedError
+
     def add_known_red(self, repo, ticket, match):
         raise NotImplementedError
 
@@ -214,6 +224,12 @@ class OldPm(PmAdapter):
 
     def set_gate(self, repo, argv=None, malformed=None):
         self._edit_config(repo, gate=argv if malformed is None else malformed)
+
+    def gate_label(self, argv):
+        return " ".join(argv)
+
+    def unregister_store(self, repo):
+        pass
 
     def add_known_red(self, repo, ticket, match):
         path = os.path.join(repo, ".pm", "config.json")
@@ -306,6 +322,17 @@ class NewPm(PmAdapter):
                 f.write("#!/bin/sh\nexec %s\n" % shlex.join(argv))
         os.chmod(path, 0o644 if malformed is not None else 0o755)
         self._commit_paths(repo, [".wt/gate"], "gate")
+
+    def gate_label(self, argv):
+        return ".wt/gate"
+
+    def unregister_store(self, repo):
+        path = self.env["PM_STORES"]
+        with open(path) as f:
+            lines = f.read().splitlines()
+        keep = [l for l in lines if l.split(None, 1)[-1:] != [repo]]
+        with open(path, "w") as f:
+            f.write("".join(l + "\n" for l in keep))
 
     def add_known_red(self, repo, ticket, match):
         path = os.path.join(repo, ".wt", "known-red")
@@ -946,7 +973,7 @@ class FinishTest(StartedCase):
         repo, ticket, wt_path = self.started(gate=gate)
         result = self.finish(repo, ticket)
         self.assertEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: gate %s exit 0, SKIP lines: 2" % " ".join(gate))
+        self.assert_wt_line(result, "wt: gate %s exit 0, SKIP lines: 2" % self.pm.gate_label(gate))
         self.assertEqual(self.pm.status(repo, ticket), "done")
 
     def test_gate_fail_refuses_and_prints_last_30_lines(self):
@@ -958,7 +985,7 @@ class FinishTest(StartedCase):
         before = self.head(repo)
         result = self.finish(repo, ticket)
         self.assertNotEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: gate %s exit 3, SKIP lines: 0" % " ".join(gate))
+        self.assert_wt_line(result, "wt: gate %s exit 3, SKIP lines: 0" % self.pm.gate_label(gate))
         lines = result.lines()
         for n in range(11, 41):
             self.assertIn("out-%02d" % n, lines)
@@ -1002,22 +1029,21 @@ class FinishTest(StartedCase):
         self.assert_untouched(repo, ticket, wt_path, before)
 
     def test_malformed_gate_refuses(self):
-        """A malformed `gate` (not a list of strings) refuses too -- a typo never turns
-        the gate off. (New side: `.wt/gate` present but not executable.)"""
+        """A malformed gate (old: not a list of strings; new: `.wt/gate` present but not
+        executable) refuses too -- a typo never turns the gate off. Side-neutral: a `wt:`
+        line with `gate` and `fix it or pass --no-gate.`, nothing touched."""
         repo, ticket, wt_path = self.started(malformed="not-a-list")
         before = self.head(repo)
         result = self.finish(repo, ticket)
         self.assertNotEqual(result.code, 0, result.text)
-        # Old wt names the config path first (the new side names `.wt/gate`), so pin
-        # the words after it.
-        self.assertTrue(any(l.startswith("wt: ") and
-                            "`gate` must be a non-empty list of strings (an argv), got "
-                            in l for l in result.lines()), result.text)
+        self.assertTrue(any(l.startswith("wt: ") and "gate" in l and
+                            "fix it or pass --no-gate." in l
+                            for l in result.lines()), result.text)
         self.assert_untouched(repo, ticket, wt_path, before)
 
     def test_no_gate_bypasses_and_notes_it(self):
-        """`--no-gate` bypasses it and appends `gate skipped (--no-gate): <argv>` to
-        the close note."""
+        """`--no-gate` bypasses it and appends `gate skipped (--no-gate): <label>` to
+        the close note (label: `gate_label()`)."""
         marker = os.path.join(self.root, "gate-ran.txt")
         gate = self.sh_gate("echo ran > %s; exit 1" % shlex.quote(marker))
         repo, ticket, wt_path = self.started(gate=gate)
@@ -1026,7 +1052,7 @@ class FinishTest(StartedCase):
         self.assertFalse(os.path.exists(marker))
         self.assertFalse(result.has_line("wt: gate "), result.text)
         self.assertEqual(self.pm.status(repo, ticket), "done")
-        self.assertTrue(any("gate skipped (--no-gate): " in n
+        self.assertTrue(any("gate skipped (--no-gate): " + self.pm.gate_label(gate) in n
                             for n in self.pm.notes(repo, ticket)),
                         self.pm.notes(repo, ticket))
 
@@ -1149,7 +1175,7 @@ class FinishTest(StartedCase):
         repo, ticket, wt_path = self.started(gate=gate)
         result = self.wt(repo, "land", ticket, session="s1")
         self.assertEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: gate %s exit 0, SKIP lines: 0" % " ".join(gate))
+        self.assert_wt_line(result, "wt: gate %s exit 0, SKIP lines: 0" % self.pm.gate_label(gate))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
 
     def test_land_gate_failure_refuses(self):
@@ -1160,7 +1186,7 @@ class FinishTest(StartedCase):
         before = self.head(repo)
         result = self.wt(repo, "land", ticket, session="s1")
         self.assertNotEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: gate %s exit 3, SKIP lines: 0" % " ".join(gate))
+        self.assert_wt_line(result, "wt: gate %s exit 3, SKIP lines: 0" % self.pm.gate_label(gate))
         self.assertIn("boom", result.lines())
         self.assert_untouched(repo, ticket, wt_path, before)
 
@@ -1180,7 +1206,7 @@ class FinishTest(StartedCase):
         repo, ticket, wt_path = self.started(gate=gate)
         result = self.wt(repo, "land", ticket, "--no-gate", session="s1")
         self.assertEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: --no-gate: skipping gate %s" % " ".join(gate))
+        self.assert_wt_line(result, "wt: --no-gate: skipping gate %s" % self.pm.gate_label(gate))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
         self.assertFalse(any("gate skipped" in n for n in self.pm.notes(repo, ticket)))
 
@@ -1197,7 +1223,7 @@ class FinishTest(StartedCase):
     def test_rebase_conflict_auto_parks(self):
         """`finish` **auto-parks** when the rebase conflicts: the ticket is
         `done-unmerged`, the branch is kept, the worktree is gone. Resume later with
-        `wt start`."""
+        `wt start`. See fc-f0cc16."""
         repo, ticket, wt_path = self.conflicting()
         tip = self.git(wt_path, "rev-parse", "HEAD").stdout.strip()
         before = self.head(repo)
@@ -1329,22 +1355,33 @@ class FinishTest(StartedCase):
         self.assertEqual(self.pm.status(repo, ticket), "done")
 
     def test_stale_worktree_of_a_closed_ticket(self):
-        """A stale worktree of your own (ticket already closed and merged): `wt finish
-        <ticket-id>`. Old wt does NOT tear it down: its pre-close check (pm's own
-        refusal) stops first, so the worktree and branch stay and the line is `wt: pm
-        would refuse to update <id>: ...`; the contract's "last line reports the close
-        failed" never happens. Pinned as the old wt behaves."""
+        """Old wt deviates from the contract: a stale worktree of your own (ticket
+        already closed and merged) is torn down by `wt finish <ticket-id>` and the last
+        line reports the close failed (contract.md:198-200). Old wt's pre-close check
+        (pm's own refusal) stops first: worktree and branch stay and the line is `wt: pm
+        would refuse to update <id>: ...`. Old side pins that; new side pins the
+        contract: worktree gone, branch gone, status `done`, last line `wt:` naming the
+        id and saying the close failed. The exit code is not pinned on the new side."""
         repo, ticket, wt_path = self.started()
         self.git(repo, "merge", "-q", "--ff-only", ticket)
         self.git(repo, "update-ref", "refs/wt/merged/%s" % ticket, "refs/heads/%s" % ticket)
         self.pm.close_ticket(repo, ticket, "s1")
         self.assertEqual(self.pm.status(repo, ticket), "done")
         result = self.finish(repo, ticket, "--findings", "none")
-        self.assertNotEqual(result.code, 0, result.text)
-        self.assert_wt_line(result, "wt: pm would refuse to update %s: " % ticket)
-        self.assertFalse(result.has_line("OK: "), result.text)
-        self.assertTrue(os.path.isdir(wt_path))
-        self.assertTrue(self.branch_exists(repo, ticket))
+        if SIDE == "old":
+            self.assertNotEqual(result.code, 0, result.text)
+            self.assert_wt_line(result, "wt: pm would refuse to update %s: " % ticket)
+            self.assertFalse(result.has_line("OK: "), result.text)
+            self.assertTrue(os.path.isdir(wt_path))
+            self.assertTrue(self.branch_exists(repo, ticket))
+        else:
+            last = result.lines()[-1]
+            self.assertTrue(last.startswith("wt:"), result.text)
+            self.assertIn(ticket, last)
+            self.assertIn("close", last)
+            self.assertIn("fail", last)
+            self.assertFalse(os.path.exists(wt_path))
+            self.assertFalse(self.branch_exists(repo, ticket))
         self.assertEqual(self.pm.status(repo, ticket), "done")
 
     def nested_inner(self, wt_path, ticket, name, parts):
@@ -1535,7 +1572,8 @@ class FinishTest(StartedCase):
         """A `wt:` line that ends `(reported: <path>)` means the fault is recorded: the
         path exists under $WT_FAULT_REPORT_DIR. Old wt dedups by file, not by row: one
         file per (root cause, day), one appended row per occurrence, so the same
-        failure twice leaves one file."""
+        failure twice leaves one file. Side-neutral (the contract dedups to one row,
+        the old wt appends): one file per root cause and at least one row."""
         repo = self.make_repo()
         other = self.make_repo(name="other")
         ticket = self.pm.file_ticket(other, "far")
@@ -1550,7 +1588,7 @@ class FinishTest(StartedCase):
         second = self.unpaired_start(repo, other, ticket)
         self.assertNotEqual(second.code, 0, second.text)
         self.assertEqual(self.faults(), [os.path.basename(match.group(1))])
-        self.assertEqual(len(self.fault_rows(self.faults()[0])), 2)
+        self.assertGreaterEqual(len(self.fault_rows(self.faults()[0])), 1)
 
     def test_infra_fault_line_names_the_recorded_path(self):
         """A failure that writes a row (rebase conflict) ends its `wt:` line `Recorded
@@ -1595,6 +1633,11 @@ class FinishTest(StartedCase):
             return (self.wt(repo, "land", ticket, "--note", "x", session="s1"),
                     ["pass them to the final `wt finish %s`." % ticket])
 
+        def land_findings():
+            repo, ticket, _ = self.started(name="r8")
+            return (self.wt(repo, "land", ticket, "--findings", "x", session="s1"),
+                    ["pass them to the final `wt finish %s`." % ticket])
+
         def conflict():
             repo, ticket, _ = self.conflicting(name="r6")
             return self.finish(repo, ticket), [
@@ -1610,7 +1653,7 @@ class FinishTest(StartedCase):
 
         unbuilt = []
         for build in (findings_required, gate_fails, dirty, malformed, land_note,
-                      conflict, nested):
+                      land_findings, conflict, nested):
             with self.subTest(case=build.__name__):
                 try:
                     result, steps = build()
@@ -2347,19 +2390,23 @@ class StatusPruneTest(StartedCase):
         self.assertFalse(result.has_line("wt: "), result.text)
 
     def test_start_twice_from_the_same_session(self):
-        """Not stated by the contract. Old wt: the second `start` of a live worktree
-        adopts the claim, then fails in `git worktree add` (`already exists`): exit 1,
-        a `wt: git worktree add for <id> failed` line, a fault row, no `OK:`; the
-        worktree and the claim are untouched."""
+        """Not stated by the contract, so state only (the old wt exits 1 with a
+        `git worktree add ... failed` line; a new wt may be idempotent): the worktree
+        still exists at the same tip, the ticket is `taken` by the same holder, and
+        there is one registration for it. Exit code and output are not pinned."""
         repo, ticket, wt_path = self.started()
         tip = self.git(wt_path, "rev-parse", "HEAD").stdout.strip()
-        again = self.wt(repo, "start", ticket, "--as", "ada", session="s1")
-        self.assertNotEqual(again.code, 0, again.text)
-        self.assert_wt_line(again, "adopting existing claim on %s" % ticket)
-        self.assert_wt_line(again, "wt: git worktree add for %s failed" % ticket)
-        self.assertFalse(again.has_line("OK: "), again.text)
+        holder = self.pm.holder(repo, ticket)
+        self.wt(repo, "start", ticket, "--as", "ada", session="s1")
+        self.assertTrue(os.path.isdir(wt_path))
         self.assertEqual(self.git(wt_path, "rev-parse", "HEAD").stdout.strip(), tip)
         self.assertEqual(self.pm.status(repo, ticket), "taken")
+        self.assertEqual(self.pm.holder(repo, ticket), holder)
+        listing = self.git(repo, "worktree", "list", "--porcelain").stdout
+        self.assertEqual(sum(1 for l in listing.splitlines()
+                             if l.startswith("worktree ")
+                             and os.path.realpath(l[len("worktree "):])
+                             == os.path.realpath(wt_path)), 1, listing)
 
     def test_selftest_exits_zero(self):
         """`selftest` exits 0, prints its case lines (`ok: ...`) and a final line `SELFTEST
@@ -2410,9 +2457,12 @@ class ResolutionTest(StartedCase):
         return a, b
 
     def test_unregistered_prefix_uses_cwd_repo(self):
-        """Without `--store`, an unregistered prefix: the store is the cwd repo."""
+        """Without `--store`, an unregistered prefix: the store is the cwd repo. The new
+        pm registers every store at init, so the repo is unregistered first
+        (`unregister_store`; a no-op on the old side)."""
         repo = self.make_repo()
         ticket = self.pm.file_ticket(repo, "here")
+        self.pm.unregister_store(repo)
         result = self.wt(repo, "start", ticket, "--as", "ada", session="s1")
         self.assertEqual(result.code, 0, result.text)
         self.assertTrue(os.path.isdir(self.worktree(repo, ticket)))
@@ -2608,6 +2658,35 @@ class ResolutionTest(StartedCase):
         self.assertEqual(self.git(s, "rev-parse", "HEAD").stdout, store_main)
         self.assertTrue(os.path.isdir(wt_path))
         self.assertTrue(os.path.isfile(os.path.join(wt_path, "dirty.txt")))
+        self.assertTrue(self.branch_exists(a, ticket))
+
+    def test_undeclared_pair_refuses_land_and_mutates_nothing(self):
+        """The same guard on `land`: with the pairs file emptied after the start,
+        nothing is merged, the worktree stays and the ticket stays claimed."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        with open(self.env["GIT_PAIRS_FILE"], "w") as f:
+            json.dump({"pairs": []}, f)
+        before = self.git(a, "rev-parse", "main").stdout
+        result = self.wt(elsewhere, "land", ticket, "--store", s, "--repo", a, session="s1")
+        self.refused_untouched(result, s, a, ticket, "taken")
+        self.assertEqual(self.git(a, "rev-parse", "main").stdout, before)
+        self.assertTrue(os.path.isdir(wt_path))
+        self.assertTrue(self.branch_exists(a, ticket))
+
+    def test_partial_pair_refuses_finish_and_mutates_nothing(self):
+        """The guard is per git subcommand (crossrepo.pair_allows checks the pair's
+        `git` list): a pair declared for `commit` only, with `worktree`, `merge` and
+        the rest undeclared, still refuses `finish`; nothing is merged."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        with open(self.env["GIT_PAIRS_FILE"], "w") as f:
+            json.dump({"pairs": [{"source": elsewhere, "targets": [a, s],
+                                  "git": ["commit"]}]}, f)
+        before = self.git(a, "rev-parse", "main").stdout
+        result = self.wt(elsewhere, "finish", ticket, "--findings", "none", "--store", s,
+                         "--repo", a, session="s1")
+        self.refused_untouched(result, s, a, ticket, "taken")
+        self.assertEqual(self.git(a, "rev-parse", "main").stdout, before)
+        self.assertTrue(os.path.isdir(wt_path))
         self.assertTrue(self.branch_exists(a, ticket))
 
     def test_status_takes_store_and_repo_flags(self):
