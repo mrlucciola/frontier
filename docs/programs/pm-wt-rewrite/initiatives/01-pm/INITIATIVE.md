@@ -10,26 +10,30 @@ blocked-by chain:
   (none)
 epic subtree:
   fc-2b34c9  P2  closed        pm core: store module, ticket entry with the kept-verb table, verbs init create show
-  fc-459fe0  P2  claimed       pm routing: store registry, prefix routing, frozen stores, verbs where and stores [@agent:claude/claude#8126bedd]
-  fc-d73327  P2  open          pm lifecycle verbs: claim hold release close reopen
-  fc-739601  P2  open          pm read verbs: list ready tree summary
-  fc-c10bcf  P2  open          pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard
-  fc-c5e673  P2  open          pm history verb: status enable disable sync restore, commit modes
+  fc-459fe0  P2  closed        pm routing: store registry, prefix routing, frozen stores, verbs where and stores
+  fc-d73327  P2  claimed       pm lifecycle verbs: claim hold release close reopen [@agent:claude/claude#8126bedd]
+  fc-739601  P2  claimed       pm read verbs: list ready tree summary [@agent:claude/claude#8126bedd]
+  fc-c10bcf  P2  claimed       pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard [@agent:claude/claude#8126bedd]
+  fc-c5e673  P2  claimed       pm history verb: status enable disable sync restore, commit modes [@agent:claude/claude#8126bedd]
   fc-913d02  P2  open          pm checks and views: validate lint archive board overview
   fc-59011f  P2  open          pm integration: full parity green, golden diff on live stores, component docs, readability review
   fc-0817f6  P2  closed        pm parity: port upstream drift 505936d6..1ecfec0a (claim exit lines, lint <id>)
   fc-d659dd  P2  closed        pm parity: port upstream drift 1ecfec0a..7fd60e5c (pilot contract in lint and summary)
+  fc-8acbe2  P2  closed        pm parity: port upstream drift 7fd60e5c..03b232d2 (refusal hints, claim --reopen, close --via wt)
 ```
 
 ## Next batch
 
-fc-459fe0, alone, as two serial workers on its branch: `02a` (routing.py and call
-sites; dispatched from main d1f9da9), `02b` (where, stores). Then step 3: the five
-verb tickets, at most four workers at once, prompts `03a`-`03e` written after
-fc-459fe0 merges. Re-run the drift command (pin `7fd60e5c`) before dispatching step 3.
+Step 3, four lanes running from main 285a86f: fc-d73327 (`03a1` then `03a2`),
+fc-739601 (`03b1` then `03b2`), fc-c10bcf (`03c1` then `03c2`), fc-c5e673 (`03d`).
+fc-913d02 (`03e1`-`03e4`, serial) starts in the first lane that frees. Merge one at a
+time with `wt finish`, re-running the full `--allow-pending` gate from main after each;
+fc-c10bcf merges after fc-d73327 and fc-739601. A rebase conflict in `store.py`
+auto-parks: resume with `wt start` and hand the conflict to a worker. Re-run the drift
+command (pin `03b232d2`) before each merge.
 
-Parity baseline at main d1f9da9: old CLI `passed 262, pending 0, failed 0, skipped 9`;
-new CLI `passed 20, pending 242, failed 0, skipped 9`.
+Parity baseline at main 285a86f: old CLI `passed 262, pending 0, failed 0, skipped 9`;
+new CLI `passed 21, pending 241, failed 0, skipped 9`.
 
 ## Owed operator actions
 
