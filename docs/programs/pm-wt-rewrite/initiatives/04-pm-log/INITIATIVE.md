@@ -66,6 +66,11 @@ One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
 - `pm/docs/design.md` "Output", bare `pm`: the parked section's overflow line is
   `+N more: pm ls parked`, not `pm ls ready`, which pointed at the wrong list
   (raised by worker 02b; no transcript pins it).
+- `pm/tests/t/24-plugin-edges.t` added (on branch fc-a731f4, commit 3f2422a): a dry
+  run runs `pre` and not `post`; a silent `pre` refusal names the plugin; a plugin
+  file that cannot run is a refusal, not a traceback; `emit` rejects a name with `/`.
+  Why: the reviewer check of fc-a731f4 (`reports/03a-review.md`) found these
+  untested.
 
 ## Unbuilt stubs and their owners
 
