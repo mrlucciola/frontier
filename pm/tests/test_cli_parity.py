@@ -287,6 +287,35 @@ class TicketCliTest(unittest.TestCase):
         self.assertTrue(all(line.startswith("WARN stale-path") for line in out[3:]), out)
         self.assertNotIn(".local/libexec/pm/cli/pm", " ".join(out[:3]))
 
+    def test_lint_and_summary_enforce_the_pilot_contract(self):
+        """fr-a0a004: an open pilot needs a future `review_by:`; a closed one
+        needs `measured:` and `ruling:` notes; summary names overdue pilots
+        only when there are some."""
+        self.assertNotIn("pilots overdue", run(self.store, "summary"))
+        bare = self.make("bare", "--label", "pilot", "--body", "no date")
+        out = run(self.store, "lint", expect=1)
+        self.assertIn(f"({bare}): open pilot ticket review_by: line missing", out)
+        run(self.store, "edit", bare, "--body", "review_by: soon")
+        self.assertIn("unparsable", run(self.store, "lint", expect=1))
+        run(self.store, "edit", bare, "--body", "review_by: 2099-01-01")
+        self.assertIn("OK spec_version=2", run(self.store, "lint"))
+        self.assertNotIn("pilots overdue", run(self.store, "summary"))
+        run(self.store, "edit", bare, "--body", "review_by: 2000-01-01")
+        self.assertIn(f"is past", run(self.store, "lint", expect=1))
+        self.assertIn(f"pilots overdue: {bare}", run(self.store, "summary"))
+        problems = json.loads(run(self.store, "lint", "--json", expect=1))["problems"]
+        self.assertEqual([p["invariant"] for p in problems], ["P-01"])
+        run(self.store, "close", bare)
+        out = run(self.store, "lint", expect=1)
+        self.assertIn("no 'measured:' note", out)
+        self.assertIn("no 'ruling:' note", out)
+        self.assertNotIn("pilots overdue", run(self.store, "summary"))
+        run(self.store, "note", bare, "measured: 12 -> 9 tokens")
+        self.assertNotIn("no 'measured:' note", run(self.store, "lint", expect=1))
+        run(self.store, "note", bare, "ruling: promoted")
+        self.assertIn("OK spec_version=2", run(self.store, "lint"))
+        self.assertIn("OK spec_version=2", run(self.store, "validate"))
+
     def test_ready_scope_and_limit(self):
         """fr-7bea4a: --scope <epic> keeps the epic's subtree, --scope <label>
         keeps rows carrying it, --limit cuts the lowest-priority tail, a scope

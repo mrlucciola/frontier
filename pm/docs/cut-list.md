@@ -24,12 +24,14 @@ ticket blocks the cutover runbook, so the switch cannot silently turn them off.
 
 ## Baseline and upstream drift
 
-The old pm is still being changed. The parity suite matches frontier `1ecfec0a`
-(2026-11-13T04:10-05:00). The first copy was taken at `c86faab0`; four upstream
-commits landed during that work and were folded in at `505936d6`, and two more
+The old pm is still being changed. The parity suite matches frontier `7fd60e5c`
+(2026-11-13T19:26-05:00). The first copy was taken at `c86faab0`; four upstream
+commits landed during that work and were folded in at `505936d6`, two more
 tests were ported at `1ecfec0a`: `test_claim_ends_with_the_four_exits` (claim
 prints the four exit lines) and `test_lint_id_reports_missing_dispatch_headings`
-(`lint <id>`).
+(`lint <id>`), and one at `7fd60e5c`:
+`test_lint_and_summary_enforce_the_pilot_contract` (`lint` reports P-01 and P-02
+for tickets labelled `pilot`; `summary` prints `pilots overdue: <ids>`).
 
 The spec copies here still match `505936d6`. The one upstream change after it is
 prose in SPEC.md section 5, not format: `lint <id>` reports each missing dispatch
@@ -42,7 +44,7 @@ Before the rewrite is declared at parity, the integration ticket runs this and
 ports every new test on kept surface, with the count table below updated:
 
 ```sh
-git --no-pager -C /Users/matthias/frontier diff --stat 1ecfec0a HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
+git --no-pager -C /Users/matthias/frontier diff --stat 7fd60e5c HEAD -- runtime-tools/pm/ticket/tests/test_ticket_cli.py runtime-tools/pm/ticket/spec/v2
 ```
 
 Empty output means no drift.
@@ -83,11 +85,11 @@ It passes against the old CLI and is the gate for the new one.
 
 | | Count |
 | --- | --- |
-| Tests in the old suite at `1ecfec0a` | 284 |
+| Tests in the old suite at `7fd60e5c` | 285 |
 | Removed | 14 |
 | Changed | 8 |
 | Skipped as deferred | 9 |
-| Run against the CLI under test | 261 |
+| Run against the CLI under test | 262 |
 
 Removed, with the dropped item each one covered:
 
