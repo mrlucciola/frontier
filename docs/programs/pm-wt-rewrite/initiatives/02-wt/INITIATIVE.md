@@ -43,7 +43,8 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `--pm new` against `.tmp/wt-unbuilt-stub`, which answers every verb exit 70) printed
    `passed 9, pending 83, skipped 1, failed 8`: a subtest table reusing prefix `tk`
    (the new `pm init` registers prefixes) and a `Pending` inside `subTest`, plus the
-   two-owners case. In flight.
+   two-owners case. Done: 51c9993; overseer re-run on the stub printed `passed 9,
+   pending 84, skipped 2, failed 0`.
 7. Read-only reviewer (qa-engineer, opus) mapped the suite to `wt/docs/contract.md`:
    `reports/00-review.md`, PARTIAL, about 20 gaps. All accepted. Closed by
    `00-characterize-6a-review-finish.md` (finish, land, teardown, guard, fault rows)
