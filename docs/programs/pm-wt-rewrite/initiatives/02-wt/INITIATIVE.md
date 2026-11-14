@@ -3,21 +3,26 @@
 ## State
 
 ```text
-fc-262fa8  P2  open          wt rewrite: self-contained zsh component in frontier-clean/wt, one file per verb [epic]
+fc-262fa8  P2  closed        wt rewrite: self-contained zsh component in frontier-clean/wt, one file per verb [epic]
 impacts (transitively blocks):
   (none)
 blocked-by chain:
   (none)
 epic subtree:
   fc-30c060  P2  closed        wt characterization suite: black-box tests proven green against the old wt
-  fc-122c0d  P2  claimed       wt core: zsh dispatcher and lib (git, pm, fail, config), verb table [@agent:claude/claude#95c6eaa1]
-  fc-8ecb48  P2  open          wt verb: start (take, resume, adopt own ticket, quiet prune)
-  fc-249727  P2  open          wt verbs: finish and land (gate, rebase, ff-only merge, teardown, done)
-  fc-917232  P2  open          wt verb: park (WIP commit, park or drop, teardown)
-  fc-983ff4  P2  open          wt verbs: status prune
-  fc-8c1f62  P2  open          wt integration: suite green on the redesigned pm, selftest, component docs, readability review
-  fc-347c67  P2  open          wt pm plugin: refuse a direct done while a worktree exists, hint after take, orient lines
+  fc-122c0d  P2  closed        wt core: zsh dispatcher and lib (git, pm, fail, config), verb table
+  fc-8ecb48  P2  closed        wt verb: start (take, resume, adopt own ticket, quiet prune)
+  fc-249727  P2  closed        wt verbs: finish and land (gate, rebase, ff-only merge, teardown, done)
+  fc-917232  P2  closed        wt verb: park (WIP commit, park or drop, teardown)
+  fc-983ff4  P2  closed        wt verbs: status prune
+  fc-8c1f62  P2  closed        wt integration: suite green on the redesigned pm, selftest, component docs, readability review
+  fc-347c67  P2  closed        wt pm plugin: refuse a direct done while a worktree exists, hint after take, orient lines
 ```
+
+**Epic closed 2026-11-14.** Final gates on main after the fc-8c1f62 merge: suite
+`--pm new` exit 0 (123 passed, pending 0, failed 0, 2 skipped by ruling); selftest
+`SELFTEST PASSED`; plugin transcripts passed 3; `zsh -n` on all 14 zsh files; check
+structure ok. Findings filed: fc-f0cc16, fc-0d0f1e.
 
 ## Next batch
 
