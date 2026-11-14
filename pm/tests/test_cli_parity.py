@@ -1351,13 +1351,6 @@ class ValidateTest(unittest.TestCase):
             self.assertEqual([json.loads(l)["path"] for l in f if l.strip()], year)
         self.assertTrue(run(self.store, "validate").startswith("OK"))
 
-    def test_archive_year_filename_follows_spec_version(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(TICKET_CLI)))
-        import ticket_core
-        self.assertEqual(ticket_core.archive_year_filename(1, "2026"), "issues-2026.jsonl")
-        self.assertEqual(ticket_core.archive_year_filename(None, "2026"), "issues-2026.jsonl")
-        self.assertEqual(ticket_core.archive_year_filename(2, "2026"), "tickets-2026.jsonl")
-
     def test_archive_by_id_dry_run_moves_nothing(self):
         a, _ = self.closed_pair()
         self.assertIn(f"would archive {a}", run(self.store, "archive", a, "--dry-run"))

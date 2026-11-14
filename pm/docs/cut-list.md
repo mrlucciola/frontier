@@ -84,10 +84,10 @@ It passes against the old CLI and is the gate for the new one.
 | | Count |
 | --- | --- |
 | Tests in the old suite at `1ecfec0a` | 284 |
-| Removed | 13 |
+| Removed | 14 |
 | Changed | 8 |
 | Skipped as deferred | 9 |
-| Run against the CLI under test | 262 |
+| Run against the CLI under test | 261 |
 
 Removed, with the dropped item each one covered:
 
@@ -106,6 +106,7 @@ Removed, with the dropped item each one covered:
 | `StoreRoutingTest.test_notes_prune_apply_refuses_a_frozen_store_selected_by_flag` | `notes-prune` |
 | `StoreRoutingTest.test_adopt_dry_run_on_a_frozen_store_still_works` | `adopt` |
 | `StoreRoutingTest.test_upgrade_workspace_continues_past_a_frozen_repo_and_exits_nonzero` | `upgrade` |
+| `ValidateTest.test_archive_year_filename_follows_spec_version` | v1 stores; it imported the old `ticket_core`, so it ran no CLI (overseer, 2026-11-13). `test_archive_on_v2_store_writes_tickets_year_file` covers the v2 name |
 
 Helpers that only those tests used went with them: `_make_v1_store`,
 `v1_config_path`, `write_v1_rows`, `_read_rows_raw`, `_git_init`,
