@@ -28,7 +28,12 @@ second builds `close` and `reopen`. Read and obey
 `CLAUDE_CODE_SESSION_ID`), bulk ids all-or-nothing in one lock with repeated ids
 deduped, refusal on a blocked ticket unless `--force`, the hold marker and its heartbeat
 and staleness, release's `released_by` and its fix for a stray assignee, the four exit
-lines claim prints, and each verb's typed note kind.
+lines claim prints, and each verb's typed note kind. Also from upstream `03b232d2`
+(the ticket's newest note): `claim --reopen` (a done-unmerged ticket back in one call,
+dropping `findings`, `findings_absent`, `closed_by`, readiness checked as if open;
+`store.claim_veto(t, reopen=...)` already has the texts) and `hold`'s
+`not claimed (status: ...); <status_hint>`. Their upstream tests import `ticket_core`,
+so add CLI cases for them to `pm/tests/test_cli_contract.py`.
 
 Old source by name: `ticket`: `each`, `CLAIM_EXITS`, `cmd_claim`, `_hold_marker`,
 `cmd_hold`, `acting_identity`, `cmd_release`, and their `add_parser` blocks;

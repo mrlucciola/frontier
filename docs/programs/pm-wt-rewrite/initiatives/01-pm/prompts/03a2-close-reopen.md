@@ -30,11 +30,17 @@ with `findings_required` (phase 1 warns, phase 2 refuses), findings ids across s
 through `routing.py`, an epic with open children (`--force`, `--detach` with kind
 `edit-trail`), the tooling-label `bin/deploy close-check` contract (exit 4) and
 `--no-deploy-check` (kind `finding`), `--session`; reopen clearing `closed_by`,
-`findings`, holds and `closure_reason` as the old one does.
+`findings`, holds and `closure_reason` as the old one does. Also from upstream
+`03b232d2` (the ticket's newest note): `close --via wt`, and a direct close refused
+while `<repo>/.worktrees/<id>` exists (old `refuse_if_worktree`, checked after
+`refuse_if_closed` for every id; the installed wt passes `--via wt`, so this flag is
+load-bearing at cutover); `reopen` refusing a claimed ticket and appending the status
+hint to `already open`. Their upstream tests import `ticket_core`, so add CLI cases to
+`pm/tests/test_cli_contract.py`.
 
 Old source by name: `ticket`: `refuse_if_unclaimed`, `refuse_if_closed`,
 `close_open_children`, `NO_FINDINGS_TEXT`, `parse_findings`, `_cmd_close_locked`,
-`EXIT_DEPLOY_PENDING`, `DEPLOY_CHECK_LABEL`, `_ticket_paths`, `deploy_check`,
+`refuse_if_worktree`, `EXIT_DEPLOY_PENDING`, `DEPLOY_CHECK_LABEL`, `_ticket_paths`, `deploy_check`,
 `cmd_close`, `cmd_reopen`, their `add_parser` blocks. The `where --mutate` verb
 (already merged) uses the same close-time rules: `rg -n` for them in `store.py` and
 `routing.py` and reuse them rather than writing a second copy.
