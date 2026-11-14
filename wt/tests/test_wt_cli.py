@@ -13,6 +13,7 @@ open, taken, parked, done.
 """
 import json
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -772,18 +773,21 @@ class FinishTest(StartedCase):
         self.assertTrue(result.out.startswith("OK: %s merged into main, " % ticket),
                         result.text)
         self.assertFalse(os.path.exists(wt_path))
-        ok_line = [l for l in result.lines() if l.startswith("OK: ")][-1]
-        if "deferred" not in ok_line:
-            self.assertFalse(self.branch_exists(repo, ticket))
+        self.assertNotIn("deferred", result.text)
+        self.assertFalse(self.branch_exists(repo, ticket))
         self.assertTrue(os.path.isfile(os.path.join(repo, "work.txt")))
         self.assertEqual(self.pm.status(repo, ticket), "done")
 
     def test_finish_is_fast_forward_only(self):
-        """`finish` ... ff-only merge: the branch commit itself lands on main."""
+        """`finish` ... ff-only merge: the branch commit itself lands on main and no
+        merge commit is created."""
         repo, ticket, wt_path = self.started()
         tip = self.git(wt_path, "rev-parse", "HEAD").stdout.strip()
+        before = self.head(repo)
         self.assertEqual(self.finish(repo, ticket).code, 0)
         self.git(repo, "merge-base", "--is-ancestor", tip, "main")
+        self.assertEqual(self.git(repo, "rev-list", "--merges",
+                                  "%s..main" % before).stdout.strip(), "")
 
     def test_note_and_findings_reach_the_close(self):
         """`finish [--note TEXT] [--findings VALUE]`: both are recorded on the close."""
@@ -960,6 +964,7 @@ class FinishTest(StartedCase):
         self.assertTrue(result.out.startswith("OK: %s merged into main, " % ticket),
                         result.text)
         self.assertFalse(os.path.exists(wt_path))
+        self.assertFalse(self.branch_exists(repo, ticket))
         self.assertTrue(os.path.isfile(os.path.join(repo, "work.txt")))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
         self.assertEqual(self.pm.holder(repo, ticket), holder)
@@ -973,8 +978,75 @@ class FinishTest(StartedCase):
         result = self.finish(repo, ticket, "--keep-open")
         self.assertEqual(result.code, 0, result.text)
         self.assertFalse(os.path.exists(wt_path))
+        self.assertFalse(self.branch_exists(repo, ticket))
         self.assertTrue(os.path.isfile(os.path.join(repo, "work.txt")))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def test_land_refuses_a_dirty_worktree(self):
+        """`finish --keep-open` (`wt land`) ... same refusals (dirty worktree): nothing
+        merged, ticket stays claimed, worktree and branch intact."""
+        repo, ticket, wt_path = self.started()
+        with open(os.path.join(wt_path, "stray.txt"), "w") as f:
+            f.write("untracked\n")
+        before = self.head(repo)
+        result = self.wt(repo, "land", ticket, session="s1")
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: worktree %s has uncommitted or untracked files"
+                            % wt_path)
+        self.assert_untouched(repo, ticket, wt_path, before)
+
+    def test_land_rebase_conflict_auto_parks(self):
+        """`land` has the same refusals as `finish` (rebase conflict): auto-parked, the
+        branch kept, the worktree gone."""
+        repo, ticket, wt_path = self.conflicting()
+        before = self.head(repo)
+        result = self.wt(repo, "land", ticket, session="s1")
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: rebase of %s onto main conflicted; auto-parked"
+                            % ticket)
+        self.assertEqual(self.pm.status(repo, ticket), "parked")
+        self.assertFalse(os.path.exists(wt_path))
+        self.assertTrue(self.branch_exists(repo, ticket))
+        self.git(repo, "merge-base", "--is-ancestor", before, "main")
+        with open(os.path.join(repo, "README.md")) as f:
+            self.assertEqual(f.read(), "main side\n")
+
+    def test_land_ffonly_exhaustion_auto_parks(self):
+        """`land` has the same refusals as `finish` (ff-only exhaustion): auto-parked
+        after three tries, nothing merged."""
+        repo, ticket, wt_path = self.started()
+        self.commit_file(repo, "later.txt", "later\n", "main moves first")
+        self.hook_moves_main(repo, 9)
+        result = self.wt(repo, "land", ticket, session="s1")
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: ff-only merge of %s onto main failed 3 times"
+                            % ticket)
+        self.assertEqual(self.pm.status(repo, ticket), "parked")
+        self.assertFalse(os.path.exists(wt_path))
+        self.assertTrue(self.branch_exists(repo, ticket))
+        self.assertFalse(os.path.exists(os.path.join(repo, "work.txt")))
+
+    def test_land_runs_the_gate(self):
+        """`finish` and `land` read the gate: a passing gate on `land` without
+        `--no-gate` prints its exit line and the land completes."""
+        gate = self.sh_gate("echo fine")
+        repo, ticket, wt_path = self.started(gate=gate)
+        result = self.wt(repo, "land", ticket, session="s1")
+        self.assertEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: gate %s exit 0, SKIP lines: 0" % " ".join(gate))
+        self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def test_land_gate_failure_refuses(self):
+        """A non-zero gate exit refuses `land`: nothing merged, ticket stays claimed,
+        worktree intact."""
+        gate = self.sh_gate("echo boom; exit 3")
+        repo, ticket, wt_path = self.started(gate=gate)
+        before = self.head(repo)
+        result = self.wt(repo, "land", ticket, session="s1")
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: gate %s exit 3, SKIP lines: 0" % " ".join(gate))
+        self.assertIn("boom", result.lines())
+        self.assert_untouched(repo, ticket, wt_path, before)
 
     def test_land_rejects_note_and_findings(self):
         """It rejects `--note`/`--findings` (nothing to attach them to)."""
@@ -1078,7 +1150,7 @@ class FinishTest(StartedCase):
         tries: the ticket is `done-unmerged`, the branch is kept, the worktree is gone."""
         repo, ticket, wt_path = self.started()
         self.commit_file(repo, "later.txt", "later\n", "main moves first")
-        self.hook_moves_main(repo, 9)
+        counter = self.hook_moves_main(repo, 9)
         result = self.finish(repo, ticket)
         self.assertNotEqual(result.code, 0, result.text)
         self.assert_wt_line(result, "wt: ff-only merge of %s onto main failed 3 times"
@@ -1087,6 +1159,23 @@ class FinishTest(StartedCase):
         self.assertFalse(os.path.exists(wt_path))
         self.assertTrue(self.branch_exists(repo, ticket))
         self.assertFalse(os.path.exists(os.path.join(repo, "work.txt")))
+        with open(counter) as f:
+            self.assertEqual(f.read().strip(), "6")
+
+    def test_ffonly_retry_absorbs_two_moves(self):
+        """`finish` ... ff-only merge is retried up to three times: two moves are
+        absorbed (the third try merges) and the finish succeeds."""
+        repo, ticket, wt_path = self.started()
+        self.commit_file(repo, "later.txt", "later\n", "main moves first")
+        counter = self.hook_moves_main(repo, 2)
+        result = self.finish(repo, ticket)
+        self.assertEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "OK: %s merged into main, " % ticket)
+        with open(counter) as f:
+            self.assertEqual(f.read().strip(), "0")
+        self.assertTrue(os.path.isfile(os.path.join(repo, "moved2.txt")))
+        self.assertTrue(os.path.isfile(os.path.join(repo, "work.txt")))
+        self.assertEqual(self.pm.status(repo, ticket), "done")
 
     def test_refusal_after_merge_leaves_ticket_taken(self):
         """`OK: <id> merged ...; ticket NOT closed`: the merge landed, pm refused the
@@ -1101,7 +1190,12 @@ class FinishTest(StartedCase):
         result = self.finish(repo, ticket, "--findings", "none")
         self.assertEqual(result.code, 0, result.text)
         self.assert_wt_line(result, "OK: %s merged into main, " % ticket)
-        self.assertIn("ticket NOT closed", result.out)
+        ok_line = [l for l in result.out.splitlines()
+                   if l.startswith("OK: %s merged" % ticket)]
+        self.assertEqual(len(ok_line), 1, result.text)
+        self.assertIn("ticket NOT closed", ok_line[0])
+        # The line ends with the command that closes the ticket: it names the id.
+        self.assertIn(ticket, ok_line[0].rsplit("run ", 1)[1])
         self.assertTrue(os.path.isfile(os.path.join(repo, "work.txt")))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
 
@@ -1172,6 +1266,8 @@ class FinishTest(StartedCase):
         self.assertIn("Do not run any further git, wt or pm command", stop[0])
         self.assertIn("do not escalate", stop[0])
         self.assertNotIn("retry", stop[0].lower())
+        self.assertRegex(stop[0], r"merged %s into main, but `git -C \S+ worktree remove "
+                         r"\S+` failed" % ticket)
         # Old wt: the operator-run cleanup it hands over does carry `--force`.
         self.assertLess(stop[0].index("operator-run"), stop[0].index("--force"))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
@@ -1195,6 +1291,96 @@ class FinishTest(StartedCase):
         self.assertNotEqual(again.code, 0, again.text)
         self.assert_wt_line(again, "wt: no worktree at %s for %s" % (wt_path, ticket))
         self.assertEqual(self.pm.status(repo, ticket), "taken")
+
+    def merged_marked(self):
+        """A started ticket already ff-merged with wt's merged marker, so finish takes
+        the teardown-and-close route whatever shape the worktree is in."""
+        repo, ticket, wt_path = self.started()
+        self.git(repo, "merge", "-q", "--ff-only", ticket)
+        self.git(repo, "update-ref", "refs/wt/merged/%s" % ticket, "refs/heads/%s" % ticket)
+        return repo, ticket, wt_path
+
+    def operator_part(self, result):
+        stop = [l for l in result.lines() if l.startswith("wt: STOP.")]
+        self.assertEqual(len(stop), 1, result.text)
+        self.assertIn("operator-run, in order", stop[0])
+        return stop[0].split("operator-run, in order", 1)[1]
+
+    def test_failed_remove_dir_gone_hands_over_prune(self):
+        """The failed-remove handoff is per shape: dir gone -> `worktree prune` (no
+        `rm -rf`, no `--force`)."""
+        repo, ticket, wt_path = self.merged_marked()
+        shutil.rmtree(wt_path)
+        shim = os.path.join(self.root, "prune-shim")
+        os.mkdir(shim)
+        with open(os.path.join(shim, "git"), "w") as f:
+            f.write('#!/bin/sh\n'
+                    'case "$*" in *"worktree prune"*)\n'
+                    '  echo "fatal: prune refused" >&2; exit 1;; esac\n'
+                    'exec /usr/bin/git "$@"\n')
+        os.chmod(os.path.join(shim, "git"), 0o755)
+        result = self.wt(repo, "finish", ticket, "--findings", "none", session="s1",
+                         path_first=shim)
+        self.assertNotEqual(result.code, 0, result.text)
+        ops = self.operator_part(result)
+        self.assertIn("`git -C %s worktree prune`" % repo, ops)
+        self.assertNotIn("rm -rf", ops)
+        self.assertNotIn("--force", ops)
+
+    def test_failed_remove_gitfile_missing_hands_over_rm_then_prune(self):
+        """The failed-remove handoff is per shape: `.git` file missing -> `rm -rf` then
+        prune (no `--force`)."""
+        repo, ticket, wt_path = self.merged_marked()
+        os.remove(os.path.join(wt_path, ".git"))
+        result = self.finish(repo, ticket, "--findings", "none")
+        self.assertNotEqual(result.code, 0, result.text)
+        ops = self.operator_part(result)
+        self.assertIn("`rm -rf %s`" % wt_path, ops)
+        self.assertIn("`git -C %s worktree prune`" % repo, ops)
+        self.assertLess(ops.index("rm -rf"), ops.index("worktree prune"))
+        self.assertNotIn("--force", ops)
+
+    def fault_rows(self, name):
+        with open(os.path.join(self.env["WT_FAULT_REPORT_DIR"], name)) as f:
+            return [l for l in f.read().splitlines()
+                    if l.startswith("| ") and not l.startswith("| when")]
+
+    def unpaired_start(self, repo, other, ticket):
+        return self.wt(repo, "start", ticket, "--as", "ada", "--store", other, session="s1")
+
+    def test_fault_row_ends_the_line_with_reported_path_and_dedups(self):
+        """A `wt:` line that ends `(reported: <path>)` means the fault is recorded: the
+        path exists under $WT_FAULT_REPORT_DIR. Old wt dedups by file, not by row: one
+        file per (root cause, day), one appended row per occurrence, so the same
+        failure twice leaves one file."""
+        repo = self.make_repo()
+        other = self.make_repo(name="other")
+        ticket = self.pm.file_ticket(other, "far")
+        first = self.unpaired_start(repo, other, ticket)
+        self.assertNotEqual(first.code, 0, first.text)
+        line = [l for l in first.lines() if l.startswith("wt: cross-repo ")]
+        self.assertEqual(len(line), 1, first.text)
+        match = re.search(r"\(reported: (\S+)\)$", line[0])
+        self.assertTrue(match, line[0])
+        self.assertTrue(os.path.isfile(match.group(1)))
+        self.assertEqual(os.path.dirname(match.group(1)), self.env["WT_FAULT_REPORT_DIR"])
+        second = self.unpaired_start(repo, other, ticket)
+        self.assertNotEqual(second.code, 0, second.text)
+        self.assertEqual(self.faults(), [os.path.basename(match.group(1))])
+        self.assertEqual(len(self.fault_rows(self.faults()[0])), 2)
+
+    def test_infra_fault_line_names_the_recorded_path(self):
+        """A failure that writes a row (rebase conflict) ends its `wt:` line `Recorded
+        in <path>. This is infrastructure, not a finding: ...`; the path exists."""
+        repo, ticket, wt_path = self.conflicting()
+        result = self.finish(repo, ticket)
+        self.assertNotEqual(result.code, 0, result.text)
+        line = [l for l in result.lines() if l.startswith("wt: rebase of ")]
+        self.assertEqual(len(line), 1, result.text)
+        match = re.search(r"Recorded in (\S+)\. This is infrastructure, not a finding", line[0])
+        self.assertTrue(match, line[0])
+        self.assertTrue(os.path.isfile(match.group(1)))
+        self.assertEqual(self.faults(), [os.path.basename(match.group(1))])
 
     def test_every_refusal_names_a_next_step(self):
         """A line starting `wt:` is a failure. It names the exact next step: every
@@ -1579,8 +1765,13 @@ class DeferredTeardownTest(StartedCase):
         self.assert_wt_line(result, "wt: worktree for %s is gone but its leftover "
                             "registration" % ticket)
         self.assertTrue(result.has_line("OK: %s " % ticket), result.text)
+        line = [l for l in result.lines() if l.startswith("wt: worktree for ")]
+        self.assertEqual(len(line), 1, result.text)
+        self.assertIn("This is infrastructure, not a finding: file no ticket and write no "
+                      "retro.", line[0])
         if kind == "finish":
-            self.assertIn("deferred to wt prune", result.out)
+            self.assertIn("registration and branch deferred to wt prune, ticket closed",
+                          result.out)
         self.assertFalse(result.has_line("wt: STOP."), result.text)
         low = result.text.lower()
         for word in ("retry", "re-run", "--force", "escalate", "disable"):
@@ -1638,6 +1829,118 @@ class DeferredTeardownTest(StartedCase):
         self.assertNotIn(os.path.realpath(wt_path),
                          self.git(repo, "worktree", "list", "--porcelain").stdout)
         self.assertFalse(self.branch_exists(repo, ticket))
+
+
+LOG_SHIM = """#!/bin/sh
+for a in "$@"; do printf '%%s\\t' "$a"; done >> %(log)s
+printf '\\n' >> %(log)s
+exec %(real)s "$@"
+"""
+
+
+class NeverForceTest(StartedCase):
+    """`wt` never runs `branch -D`, `worktree remove --force` or `rm -rf`: logging
+    `git` and `rm` shims (they pass everything to the real tools) record every argv."""
+
+    def logged(self):
+        shim = os.path.join(self.root, "log-shim")
+        os.mkdir(shim)
+        self.git_log = os.path.join(self.root, "git-argv.log")
+        self.rm_log = os.path.join(self.root, "rm-argv.log")
+        for name, log, real in (("git", self.git_log, "/usr/bin/git"),
+                                ("rm", self.rm_log, "/bin/rm")):
+            path = os.path.join(shim, name)
+            with open(path, "w") as f:
+                f.write(LOG_SHIM % {"log": shlex.quote(log), "real": real})
+            os.chmod(path, 0o755)
+        return shim
+
+    def calls(self, log):
+        if not os.path.exists(log):
+            return []
+        with open(log) as f:
+            return [line.rstrip("\n").split("\t")[:-1] for line in f if line.strip()]
+
+    def subcommand(self, argv):
+        i = 0
+        while i < len(argv) and argv[i].startswith("-"):
+            i += 2 if argv[i] in ("-C", "-c") else 1
+        return (argv[i], argv[i + 1:]) if i < len(argv) else ("", [])
+
+    def shorts(self, args):
+        return "".join(a[1:] for a in args if a.startswith("-") and not a.startswith("--"))
+
+    def forbidden_git(self):
+        found = []
+        for argv in self.calls(self.git_log):
+            sub, rest = self.subcommand(argv)
+            letters = self.shorts(rest)
+            if sub == "branch":
+                delete = "--delete" in rest or "d" in letters or "D" in letters
+                force = "--force" in rest or "f" in letters or "D" in letters
+                if "D" in letters or (delete and force):
+                    found.append(argv)
+            if sub == "worktree" and rest[:1] == ["remove"]:
+                if "--force" in rest or "f" in self.shorts(rest[1:]):
+                    found.append(argv)
+        return found
+
+    def forbidden_rm(self):
+        return [argv for argv in self.calls(self.rm_log)
+                if "--recursive" in argv or "r" in self.shorts(argv) or "R" in self.shorts(argv)]
+
+    def saw(self, *words):
+        return any(self.subcommand(argv)[0] == words[0]
+                   and self.subcommand(argv)[1][:len(words) - 1] == list(words[1:])
+                   for argv in self.calls(self.git_log))
+
+    def assert_never_forced(self):
+        self.assertEqual(self.forbidden_git(), [])
+        self.assertEqual(self.forbidden_rm(), [])
+
+    def test_start_finish_never_forces(self):
+        """`wt` never runs `branch -D`, `worktree remove --force`, `rm -rf` (a full
+        start and finish)."""
+        shim = self.logged()
+        repo = self.make_repo()
+        ticket = self.pm.file_ticket(repo, "work")
+        self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada", session="s1",
+                                 path_first=shim).code, 0)
+        wt_path = self.worktree(repo, ticket)
+        self.commit_file(wt_path, "work.txt", "work\n", "%s: work" % ticket)
+        result = self.wt(repo, "finish", ticket, "--findings", "none", session="s1",
+                         path_first=shim)
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(self.saw("worktree", "remove"), self.calls(self.git_log))
+        self.assertTrue(self.saw("branch", "-d"), self.calls(self.git_log))
+        self.assert_never_forced()
+
+    def test_start_park_never_forces(self):
+        """The same for a start and a park."""
+        shim = self.logged()
+        repo = self.make_repo()
+        ticket = self.pm.file_ticket(repo, "work")
+        self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada", session="s1",
+                                 path_first=shim).code, 0)
+        wt_path = self.worktree(repo, ticket)
+        self.commit_file(wt_path, "work.txt", "work\n", "%s: work" % ticket)
+        result = self.wt(repo, "park", ticket, "--findings", "none", session="s1",
+                         path_first=shim)
+        self.assertEqual(result.code, 0, result.text)
+        self.assertTrue(self.saw("worktree", "remove"), self.calls(self.git_log))
+        self.assert_never_forced()
+
+    def test_failed_remove_never_forces(self):
+        """The same on a failed remove: the STOP line hands the operator `--force`, wt
+        itself does not run it."""
+        shim = self.logged()
+        repo, ticket, wt_path, cache = self.locked_started()
+        result = self.wt(repo, "finish", ticket, "--findings", "none", session="s1",
+                         path_first=shim)
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assertTrue(result.has_line("wt: STOP."), result.text)
+        self.assertTrue(self.saw("worktree", "remove"), self.calls(self.git_log))
+        self.assert_never_forced()
 
 
 class StatusPruneTest(StartedCase):
@@ -1967,6 +2270,52 @@ class ResolutionTest(StartedCase):
         self.assertTrue(self.branch_exists(a, ticket))
         self.assertFalse(os.path.exists(wt_path))
         self.assertEqual(self.pm.status(s, ticket), "parked")
+
+    def refused_untouched(self, result, store, repo, ticket, status):
+        self.assertNotEqual(result.code, 0, result.text)
+        self.assert_wt_line(result, "wt: cross-repo ")
+        self.assertEqual(self.pm.status(store, ticket), status)
+        for where in (store, repo):
+            self.assertFalse(os.path.exists(self.worktree(where, ticket)) and status == "open")
+            self.assertFalse(self.branch_exists(where, ticket) and status == "open")
+
+    def test_undeclared_pair_refuses_start_and_mutates_nothing(self):
+        """store/repo guard: a `--store` into another repo with no declared pair in
+        $GIT_PAIRS_FILE refuses with the `wt: cross-repo` line before the claim."""
+        a = self.make_repo(name="repo-a", prefix="aa")
+        s = self.make_repo(name="repo-s", prefix="ss")
+        ticket = self.pm.file_ticket(s, "far")
+        before = (self.git(a, "rev-parse", "HEAD").stdout, self.git(s, "rev-parse", "HEAD").stdout)
+        result = self.wt(a, "start", ticket, "--as", "ada", "--store", s, session="s1")
+        self.refused_untouched(result, s, a, ticket, "open")
+        self.assertEqual(self.pm.holder(s, ticket), "")
+        self.assertEqual(before, (self.git(a, "rev-parse", "HEAD").stdout,
+                                  self.git(s, "rev-parse", "HEAD").stdout))
+        self.assertEqual(self.git(a, "worktree", "list").stdout.count("\n"), 1)
+        self.assertEqual(self.git(s, "worktree", "list").stdout.count("\n"), 1)
+
+    def test_undeclared_pair_refuses_a_repo_flag(self):
+        """The same guard on the worktree target: `--repo` into another repo with no
+        declared pair refuses; the ticket is not claimed."""
+        a = self.make_repo(name="repo-a", prefix="aa")
+        s = self.make_repo(name="repo-s", prefix="ss")
+        ticket = self.pm.file_ticket(s, "far")
+        result = self.wt(s, "start", ticket, "--as", "ada", "--repo", a, session="s1")
+        self.refused_untouched(result, s, a, ticket, "open")
+
+    def test_undeclared_pair_refuses_finish_and_mutates_nothing(self):
+        """The same guard on `finish`: with the pairs file emptied after the start,
+        nothing is merged, the worktree stays and the ticket stays claimed."""
+        elsewhere, a, s, ticket, wt_path = self.split_started()
+        with open(self.env["GIT_PAIRS_FILE"], "w") as f:
+            json.dump({"pairs": []}, f)
+        before = self.git(a, "rev-parse", "main").stdout
+        result = self.wt(elsewhere, "finish", ticket, "--findings", "none", "--store", s,
+                         "--repo", a, session="s1")
+        self.refused_untouched(result, s, a, ticket, "taken")
+        self.assertEqual(self.git(a, "rev-parse", "main").stdout, before)
+        self.assertTrue(os.path.isdir(wt_path))
+        self.assertTrue(self.branch_exists(a, ticket))
 
     def test_status_takes_store_and_repo_flags(self):
         """The same flags on `status`: worktrees of `--repo`, joined against the
