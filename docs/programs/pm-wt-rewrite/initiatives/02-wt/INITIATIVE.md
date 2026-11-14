@@ -50,8 +50,12 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `00-characterize-6a-review-finish.md` (finish, land, teardown, guard, fault rows)
    then `00-characterize-6b-review-rest.md` (sessions, start hint, where failures,
    refusal words, nested variants, selftest, guard on park), serial after 6. 6a done:
-   f82be24, 111 tests; stub run `passed 9, pending 100, skipped 2, failed 0`. Then a
-   re-review.
+   f82be24, 111 tests; stub run `passed 9, pending 100, skipped 2, failed 0`. 6b
+   done: c85a178, 123 tests; stub run `passed 9, pending 112, skipped 2, failed 0`.
+8. Re-review in flight (qa-engineer, read-only): coverage again, plus every assertion
+   a correct new wt could not pass (old-pm or JSON-config words). Known one:
+   `test_malformed_gate_refuses` pins the old JSON-gate words on both sides. Its body
+   goes to `reports/00-review-2.md`; one fix round follows.
 
 ## Owed operator actions
 
@@ -128,6 +132,10 @@ None.
   non-infra refusal (cross-repo, mass-deletion resume) ends `(reported: <path>)`; an
   infra one (rebase conflict, `STOP.`, deferred) says `Recorded in <path>. This is
   infrastructure, not a finding`.
+- **More pins from 6b, for the acceptance ruling.** A stale worktree whose ticket is
+  already closed is NOT torn down by the old `finish` (its preflight `pm ticket where
+  --mutate` refuses; exit 1, worktree and branch kept), against contract.md:198-200.
+  The old `selftest` leaves three `wt-selftest-*pairs*.json` files in `$TMPDIR`.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
