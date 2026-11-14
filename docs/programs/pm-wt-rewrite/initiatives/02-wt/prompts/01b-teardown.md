@@ -32,7 +32,8 @@ Part 1 on this branch: `WT/cli/wt` (dispatcher) and `WT/tools/lib/{git,pm,fail,c
 plus `crossrepo.py`. Its report, with every lib function and its callers:
 `/Users/matthias/projects/frontier-clean/docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/01a-core.md`.
 Read it and the lib files first; reuse them, do not change their signatures (if one is
-wrong, say so in NOT DONE).
+wrong, say so in NOT DONE). Calling convention part 1 set: the dispatcher sources every
+`tools/lib/*.zsh`, so `teardown.zsh` is picked up with no dispatcher change.
 
 ## Read
 

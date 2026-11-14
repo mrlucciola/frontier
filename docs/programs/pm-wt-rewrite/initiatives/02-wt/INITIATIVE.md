@@ -71,7 +71,15 @@ fc-30c060 closed by `wt finish` with `--findings fc-f0cc16`.
 **fc-122c0d (core), alone, two serial workers on branch `fc-122c0d`:**
 
 1. `prompts/01a-core.md` -- dispatcher, `git` `pm` `fail` `config` libs,
-   `crossrepo.py`. In flight.
+   `crossrepo.py`, `findings_required.py`. Done: bd0b0c6; stub-free suite run on the
+   new side `passed 9, pending 114, skipped 2, failed 0`. Convention: the dispatcher
+   sources every `tools/lib/*.zsh`, then the verb file, then calls `wt_verb "$@"`;
+   `land` maps to `verbs/finish.zsh` with `WT_VERB=land`. Overseer check of the new pm:
+   `pm get <id> store` prints the repo root; an unregistered prefix exits 1 with
+   `pm: no store has prefix <p>`; from a directory with no store, routing fails
+   (filed fc-0d0f1e). For the lib review: `wt_resolve_repos` falls back to the cwd
+   repo on any `pm get` failure, where the contract wants that only for "no store has
+   prefix"; pm missing must stop with `wt: could not run \`pm `.
 2. `prompts/01b-teardown.md` -- `teardown.zsh` (keep entry, deferred and `STOP.`
    lines, undeletable paths, merged marker, prune of debt). Overseer split: these are
    shared by finish, park, prune and start, which meets principle 2's three-verb bar.
