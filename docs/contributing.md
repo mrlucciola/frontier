@@ -147,4 +147,3 @@ the row when the component conforms.
 | `cwf` | `C-CLAUDE` | Every regular file under `cwf/` becomes part of its release manifest. |
 | `cwf` | `A-CWD` | cwf tests are documented to run from `cwf/`. |
 | `cwf` | `L-ROOT` | cwf routing documents use relative links; `cwf/` is not edited for repository conventions. |
-| `wt` | `A-RUN` | wt has no test suite yet; the first ticket of the wt epic adds `tests/test_wt_cli.py` and its commands. |
