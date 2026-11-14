@@ -89,20 +89,20 @@ def announce(cls):
         print(f"gitfault[{cls}]: {REMEDY[cls]}", file=sys.stderr)
 
 
-def guard_env(env=None):
+def guard_env():
     """Call before the first git call: announce a missing identity now, so the
     remedy prints ahead of the failure it explains. True when it announced."""
-    if identity_env_missing(env):
+    if identity_env_missing():
         announce("identity-missing")
         return True
     return False
 
 
-def on_failure(proc, env=None, already_warned=False):
+def on_failure(proc, already_warned=False):
     """Classify and announce a failed git result; returns the class. An
     identity-missing line already printed by `guard_env` is not repeated."""
     try:
-        cls, _ = classify(proc, env)
+        cls, _ = classify(proc)
     except Exception:
         return "other"
     if not (cls == "identity-missing" and already_warned):
@@ -241,8 +241,9 @@ def _off_default_branch(repo_dir, warned):
     return None
 
 
-def commit_store(root, message, ticket_file="tickets.jsonl"):
+def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=()):
     """Commit the store's ticket file in the repo owning `root` (the `.pm` dir).
+    `extra_paths` (repo-relative) ride on the same commit on the branch path.
 
     A store whose config.json sets `history_ref` records the file on that ref by
     plumbing, with no branch skip. Otherwise the file is committed on the
@@ -274,11 +275,16 @@ def commit_store(root, message, ticket_file="tickets.jsonl"):
         off = _off_default_branch(repo_dir, warned)
         if off:
             return off
-        cfg_rel = os.path.join(os.path.basename(root), "config.json")
-        cfg = _git(repo_dir, "status", "--porcelain", "--", cfg_rel)
-        untracked = cfg.stdout.startswith("??")
     except subprocess.TimeoutExpired:
         return _timeout_fault()
     except OSError as e:
         return str(e)
-    return commit_paths(repo_dir, [rel, cfg_rel] if untracked else [rel], message)
+    paths = [rel, *extra_paths]
+    cfg_rel = os.path.join(os.path.basename(root), "config.json")
+    try:
+        cfg = _git(repo_dir, "status", "--porcelain", "--", cfg_rel)
+        if cfg.stdout.startswith("??"):
+            paths.append(cfg_rel)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return commit_paths(repo_dir, paths, message)

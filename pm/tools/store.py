@@ -45,10 +45,6 @@ def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _git(cwd, *args):
-    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True)
-
-
 def _worktree_main(gitfile):
     """Main checkout owning the linked worktree whose `.git` file is `gitfile`,
     or None. Its `gitdir:` line points into the main checkout's `.git/worktrees`."""
@@ -64,8 +60,8 @@ def _worktree_main(gitfile):
     if not os.path.isabs(gitdir):
         gitdir = os.path.join(os.path.dirname(os.path.abspath(gitfile)), gitdir)
     try:
-        r = _git(gitdir, "rev-parse", "--git-common-dir")
-    except OSError:
+        r = gitcommit._git(gitdir, "rev-parse", "--git-common-dir")
+    except (OSError, subprocess.TimeoutExpired):
         return None
     common = r.stdout.strip()
     if r.returncode != 0 or not common:
@@ -130,14 +126,17 @@ class Store:
                 f"{STORE_DIR}/{TICKET_FILE} is missing but this store keeps history "
                 f"on {history_ref}; run: pm ticket history restore")
         self.tickets = []
+        self.rows = []
         self.by_id = {}
+        self.extra_commit_paths = []
         self._archive_index = None
         if os.path.exists(self.ticket_path):
             with open(self.ticket_path) as f:
-                for line in f:
+                for lineno, line in enumerate(f, 1):
                     if not line.strip():
                         continue
                     row = json.loads(line)
+                    self.rows.append((lineno, row))
                     self.tickets.append(row)
                     if isinstance(row, dict) and isinstance(row.get("id"), str):
                         self.by_id.setdefault(row["id"], row)
@@ -259,7 +258,6 @@ class Store:
 TITLE_MAX = 200
 LABEL_MAX = 80
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9:_./-]*$")
-ID_RE = re.compile(r"^[a-z][a-z0-9]{1,7}-[0-9a-f]{6,11}$")
 
 
 def title_problem(title):
@@ -393,18 +391,57 @@ def locked_store(repo=None, message=None):
         yield store
         store.save()
         if message:
-            commit(root, message() if callable(message) else message)
+            commit(root, message() if callable(message) else message, repo,
+                   store.extra_commit_paths)
 
 
-def commit(root, message):
+def fmt_line(t):
+    flags = []
+    if t["assignee"]:
+        flags.append(f"@{t['assignee']}")
+    if t.get("hold"):
+        flags.append("held")
+    if t["kind"] == "epic":
+        flags.append("epic")
+    tail = f" [{' '.join(flags)}]" if flags else ""
+    return f"{t['id']}  P{t['priority']}  {t['status']:<13} {t['title']}{tail}"
+
+
+def claim_veto(t):
+    """Why `t` may not be claimed, ignoring readiness, else None. One rule set for
+    `claim` and `create --claim-as`, so a write cannot produce a claimed epic."""
+    if t["kind"] == "epic":
+        return "epics aggregate work and cannot be claimed; claim a child task"
+    if t["status"] == "claimed":
+        return f"already claimed by {t['assignee']}"
+    if t["status"] != "open":
+        return f"cannot claim a {t['status']} ticket"
+    return None
+
+
+def edge_target(store, raw, edge_type=None):
+    """Stored `to` for an edge to `raw` in this store. A discovered-from edge may
+    name a compacted or archived id. Another store's row is not built yet."""
+    tid = local_id(raw)
+    if ref_prefix(tid) is not None and is_remote_ref(store, raw):
+        unbuilt("cross-store-edge")
+    if (edge_type == "discovered-from" and tid not in store.by_id
+            and (tid in store.compacted or tid in store.archived_ids())):
+        return tid
+    store.get(tid)
+    return tid
+
+
+def commit(root, message, repo=None, extra_paths=()):
     """Record the saved store in git; the row is saved either way.
+    `repo` is the store the caller named (`--store`/`--repo`), if any.
 
     A policy skip prints one stderr line and the by-hand command, and returns. A
     git failure prints the same plus git's own output, then raises
     GitCommitFailed (exit 3); on a `history_ref` store it only marks the snapshot
     owed, so the next write catches up.
     """
-    skipped = gitcommit.commit_store(root, message)
+    skipped = gitcommit.commit_store(root, message, extra_paths=extra_paths)
     if not skipped:
         with contextlib.suppress(OSError):
             os.remove(os.path.join(root, HISTORY_PENDING))
@@ -413,21 +450,24 @@ def commit(root, message):
     fault = isinstance(skipped, gitcommit.GitFault)
     if fault and skipped.stderr_tail:
         print(skipped.stderr_tail, file=sys.stderr)
-    repo = os.path.dirname(os.path.abspath(root))
+    repo_dir = os.path.dirname(os.path.abspath(root))
     rel = os.path.join(os.path.basename(root), TICKET_FILE)
     ref = _history_ref(root)
     if ref:
+        by_hand = "pm ticket history sync"
+        if repo is not None:
+            by_hand += f" --repo {shlex.quote(repo_dir)}"
         print(f"pm: the row above is saved but NOT yet recorded on {ref}; the next "
               "pm write or summary that can commit records it, or run: "
-              "pm ticket history sync", file=sys.stderr)
+              f"{by_hand}", file=sys.stderr)
         if fault:
             with contextlib.suppress(OSError), \
                     open(os.path.join(root, HISTORY_PENDING), "w") as f:
                 f.write(f"{skipped}\n")
         return
     print("pm: the row above is saved but NOT committed; commit it by hand: "
-          f"git -C {shlex.quote(repo)} add -- {shlex.quote(rel)} && git -C "
-          f"{shlex.quote(repo)} commit -q -o -m {shlex.quote(message)} -- "
+          f"git -C {shlex.quote(repo_dir)} add -- {shlex.quote(rel)} && git -C "
+          f"{shlex.quote(repo_dir)} commit -q -o -m {shlex.quote(message)} -- "
           f"{shlex.quote(rel)}", file=sys.stderr)
     if fault:
         raise GitCommitFailed(skipped)

@@ -282,5 +282,34 @@ class AnnounceGuardTest(unittest.TestCase):
         self.assertIn(cls, ("identity-missing", "other"))
 
 
+class CommitStoreExtraPathsTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        _scoped_env(self, {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"})
+        self.repo = _mkrepo(os.path.join(os.path.realpath(self._tmp.name), "r"))
+        self.root = os.path.join(self.repo, ".pm")
+        os.makedirs(os.path.join(self.root, "archive"))
+        for name, text in (("config.json", '{"spec_version": 2, "prefix": "tt"}\n'),
+                           ("tickets.jsonl", "one\n"),
+                           ("archive/archive-index.jsonl", "idx\n")):
+            with open(os.path.join(self.root, name), "w") as f:
+                f.write(text)
+        _git(self.repo, "add", ".pm/config.json")
+        _git(self.repo, "commit", "-q", "-m", "cfg")
+        self.extra = ".pm/archive/archive-index.jsonl"
+
+    def files(self):
+        return _git(self.repo, "show", "--name-only", "--format=", "HEAD").stdout.split()
+
+    def test_extra_path_rides_in_the_same_commit(self):
+        self.assertIsNone(gitcommit.commit_store(self.root, "pm: x", extra_paths=[self.extra]))
+        self.assertEqual(sorted(self.files()), [self.extra, ".pm/tickets.jsonl"])
+
+    def test_default_commits_the_ticket_file_alone(self):
+        self.assertIsNone(gitcommit.commit_store(self.root, "pm: x"))
+        self.assertEqual(self.files(), [".pm/tickets.jsonl"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

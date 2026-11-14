@@ -11,7 +11,7 @@ from store import TicketError, now
 
 KINDS = ("task", "epic")
 
-# Duplicate guard (fr-1bdf6d). A token is rare when at most DUP_RARE_MIN_DF rows,
+# Duplicate guard. A token is rare when at most DUP_RARE_MIN_DF rows,
 # or DUP_RARE_FRACTION of the store, hold it. Floor: DUP_THRESHOLD shared rare
 # words/ids, or one shared rare path or quoted string (DUP_STRONG_WEIGHT), and an
 # idf-weighted Jaccard of DUP_MIN_SIMILARITY.
@@ -115,19 +115,6 @@ def find_duplicates(tickets, title, body, now_ts=None):
     return out[:DUP_MAX_CANDIDATES]
 
 
-def edge_target(store, raw, edge_type):
-    """Stored `to` for an edge to `raw` in this store. A discovered-from edge may
-    name a compacted or archived id. Another store's row is not built yet."""
-    tid = st.local_id(raw)
-    if st.ref_prefix(tid) is not None and st.is_remote_ref(store, raw):
-        st.unbuilt("cross-store-edge")
-    if (edge_type == "discovered-from" and tid not in store.by_id
-            and (tid in store.compacted or tid in store.archived_ids())):
-        return tid
-    store.get(tid)
-    return tid
-
-
 def run(args):
     problem = st.title_problem(args.title)
     if problem:
@@ -145,12 +132,14 @@ def _create(args, store, minted):
             raise TicketError(f"{problem}; nothing written")
     if args.parent:
         store.get(args.parent)
-    discovered = edge_target(store, args.discovered_from, "discovered-from") \
+    discovered = st.edge_target(store, args.discovered_from, "discovered-from") \
         if args.discovered_from else None
     if args.parent and store.get(args.parent)["kind"] != "epic":
         raise TicketError(f"parent {args.parent} is not an epic")
-    if args.claim_as and args.kind == "epic":
-        raise TicketError("epics aggregate work and cannot be claimed; claim a child task")
+    if args.claim_as:
+        veto = st.claim_veto({"kind": args.kind, "status": "open", "assignee": None})
+        if veto:
+            raise TicketError(veto)
     if args.dup_of and args.new:
         raise TicketError("--dup-of and --new are mutually exclusive")
     if args.dup_of:

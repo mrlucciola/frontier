@@ -226,6 +226,54 @@ class ValidateHintTest(Base):
             self.assertNotIn(verb, text)
 
 
+PM_DISPATCHER = os.path.join(HERE, "..", "cli", "pm")
+
+
+class DispatcherTest(unittest.TestCase):
+    def run_pm(self, cwd, *argv):
+        return subprocess.run(["/usr/bin/python3", "-B", PM_DISPATCHER, *argv],
+                              cwd=cwd, capture_output=True, text=True)
+
+    def test_view_accepts_only_board_and_overview(self):
+        with tempfile.TemporaryDirectory() as work:
+            self.assertEqual(self.run_pm(work, "ticket", "init", "--prefix", "tt").returncode, 0)
+            before = os.listdir(os.path.join(work, ".pm"))
+            r = self.run_pm(work, "view", "create", "x")
+            self.assertEqual(r.returncode, 2, r.stderr)
+            self.assertEqual(os.listdir(os.path.join(work, ".pm")), before)
+            with open(os.path.join(work, ".pm", "tickets.jsonl")) as f:
+                self.assertEqual(f.read(), "")
+
+    def test_help_exits_0(self):
+        with tempfile.TemporaryDirectory() as work:
+            for argv in ((), ("-h",), ("--help",)):
+                r = self.run_pm(work, *argv)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn("usage: pm <family> <verb>", r.stdout)
+
+
+class HistoryRefRemedyTest(unittest.TestCase):
+    def test_named_store_prints_the_repo_remedy(self):
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as elsewhere:
+            repo = os.path.realpath(repo)
+            self.assertEqual(pm(repo, "init", "--prefix", "tt").returncode, 0)
+            subprocess.run(["git", "-C", repo, "init", "-q", "-b", "main"], check=True)
+            cfg = os.path.join(repo, ".pm", "config.json")
+            with open(cfg) as f:
+                config = json.load(f)
+            config["history_ref"] = "pm-store"
+            with open(cfg, "w") as f:
+                json.dump(config, f)
+            hook = os.path.join(repo, ".git", "hooks", "reference-transaction")
+            with open(hook, "w") as f:
+                f.write("#!/bin/sh\nif [ \"$1\" = prepared ] && cat | grep -q "
+                        "refs/heads/pm-store; then echo 'ref refused' >&2; exit 1; fi\n")
+            os.chmod(hook, 0o755)
+            r = pm(elsewhere, "--store", repo, "create", "row survives")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(f"pm ticket history sync --repo {repo}", r.stderr)
+
+
 class UnbuiltTest(Base):
     def test_unbuilt_verb_contract(self):
         missing = [v for v in KEPT if not built(v)]

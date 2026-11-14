@@ -21,18 +21,6 @@ def register(subparsers):
                           "order given (repeatable)")
 
 
-def fmt_line(t):
-    flags = []
-    if t["assignee"]:
-        flags.append(f"@{t['assignee']}")
-    if t.get("hold"):
-        flags.append("held")
-    if t["kind"] == "epic":
-        flags.append("epic")
-    tail = f" [{' '.join(flags)}]" if flags else ""
-    return f"{t['id']}  P{t['priority']}  {t['status']:<13} {t['title']}{tail}"
-
-
 def _registry_lists_a_store():
     path = os.environ.get("PM_STORES_FILE") or os.path.join(
         os.path.expanduser("~"), ".config", "pm", "stores.json")
@@ -62,9 +50,7 @@ def field_text(value):
 def run(args):
     store = st.open_store(getattr(args, "repo", None))
     tid = st.local_id(args.id)
-    pfx = st.ref_prefix(tid)
-    if pfx is not None and pfx not in st.owned_prefixes(store.config) \
-            and tid not in store.by_id:
+    if st.is_remote_ref(store, args.id):
         st.unbuilt("routing")
     t = store.read(tid)
     archive_path = t.get("archive_path")
@@ -89,7 +75,7 @@ def run(args):
         print(json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True))
         return
 
-    lines = [fmt_line(t)]
+    lines = [st.fmt_line(t)]
     if archive_path:
         lines.append(f"archived: {archive_path}")
     if t["body"]:

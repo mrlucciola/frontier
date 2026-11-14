@@ -46,7 +46,7 @@ def verb_in(argv):
 
 def main(argv):
     parser = argparse.ArgumentParser(prog="pm ticket", description=__doc__,
-                                     epilog=EPILOG)
+                                     epilog=EPILOG, allow_abbrev=False)
     parser.add_argument("--store", dest="repo",
                         help="repo root holding the .pm store (default: the cwd store)")
     parser.add_argument("--repo", dest="repo", help=argparse.SUPPRESS)
