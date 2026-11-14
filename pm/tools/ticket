@@ -29,7 +29,7 @@ EPILOG = (
     "(nothing to commit, an off-branch checkout) stays exit 0 with one "
     "stderr line. 4 close refused: a ticket labelled tooling "
     "whose packages the repo's bin/deploy close-check reports "
-    "not deployed current; nothing closed. 70 the verb is not built yet.")
+    "not deployed current; nothing closed.")
 
 
 def verb_in(argv):
@@ -106,8 +106,6 @@ def main(argv):
     verb = verb_in(argv)
     module = None
     if verb:
-        if not os.path.exists(os.path.join(HERE, "verbs", verb + ".py")):
-            store.unbuilt(verb)
         module = importlib.import_module("verbs." + verb)
         module.register(sub)
         # Accepted after the verb too; SUPPRESS keeps an unset flag from

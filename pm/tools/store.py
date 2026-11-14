@@ -23,7 +23,6 @@ TICKET_FILE = "tickets.jsonl"
 NO_SUCH_TICKET_HINT = ("`pm ticket list` shows this store's ids, "
                        "`pm ticket create` files a new one")
 HISTORY_PENDING = "history-pending"
-UNBUILT_EXIT = 70
 GIT_COMMIT_FAILED_EXIT = 3
 
 
@@ -33,16 +32,6 @@ class TicketError(Exception):
 
 class GitCommitFailed(Exception):
     """The store's own git commit failed; the row is saved. The entry exits 3."""
-
-
-def unbuilt(name):
-    """Mark a verb or call site the rewrite has not built yet (exit 70)."""
-    log = os.environ.get("PM_UNBUILT_LOG")
-    if log:
-        with open(log, "a") as f:
-            f.write(name + "\n")
-    print(f"pm: '{name}' is not built yet", file=sys.stderr)
-    sys.exit(UNBUILT_EXIT)
 
 
 def now():

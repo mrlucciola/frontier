@@ -5,9 +5,6 @@ Black-box: runs pm/tools/ticket as a subprocess and reads its output and exit
 code. Imports nothing from pm/tools. Run:
 
     /usr/bin/python3 -B -m unittest discover -s pm/tests -p 'test_cli_contract.py'
-
-A case whose verb has no file under pm/tools/verbs/ yet is skipped as
-"unbuilt: <verb>"; the integration ticket removes those branches.
 """
 import json
 import os
@@ -19,23 +16,13 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.join(HERE, "..", "tools")
 TICKET_CLI = os.path.join(TOOLS, "ticket")
-VERBS_DIR = os.path.join(TOOLS, "verbs")
 
-KEPT = ("init", "create", "show", "list", "ready", "tree", "summary", "claim",
-        "hold", "release", "close", "reopen", "note", "edit", "dep", "unlink",
-        "reparent", "where", "stores", "history", "validate", "lint", "archive",
-        "board", "overview")
 DROPPED = ("upgrade", "adopt", "fix-labels", "notes-prune")
 
 _REGISTRY = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
 _REGISTRY.write('{"stores": []}\n')
 _REGISTRY.close()
 os.environ["PM_STORES_FILE"] = _REGISTRY.name
-os.environ.pop("PM_UNBUILT_LOG", None)
-
-
-def built(verb):
-    return os.path.exists(os.path.join(VERBS_DIR, verb + ".py"))
 
 
 def pm(cwd, *argv, env=None):
@@ -192,8 +179,6 @@ class RefusalTest(Base):
         epic, sub = make_compacted(self)
         for verb, mk in MUTATORS.items():
             with self.subTest(verb=verb):
-                if not built(verb):
-                    self.skipTest(f"unbuilt: {verb}")
                 r = pm(self.dir, *mk(sub))
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertIn(f"{sub} was compacted into {epic} when it closed", r.stderr)
@@ -203,8 +188,6 @@ class RefusalTest(Base):
         tid = self.archive_fixture()
         for verb, mk in MUTATORS.items():
             with self.subTest(verb=verb):
-                if not built(verb):
-                    self.skipTest(f"unbuilt: {verb}")
                 r = pm(self.dir, *mk(tid))
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertIn(f"{tid} is archived; it cannot be changed. File a new ticket.",
@@ -213,8 +196,6 @@ class RefusalTest(Base):
 
 class ValidateHintTest(Base):
     def test_fix_hints_name_no_dropped_verb(self):
-        if not built("validate"):
-            self.skipTest("unbuilt: validate")
         self.ok("create", "unsorted", "--label", "b", "--label", "a")
         rows = self.rows()
         rows[0]["labels"] = ["b", "a", "B"]
@@ -274,7 +255,6 @@ class HistoryRefRemedyTest(unittest.TestCase):
             self.assertIn(f"pm ticket history sync --repo {repo}", r.stderr)
 
 
-@unittest.skipUnless(built("history"), "unbuilt: history")
 class HistoryMarkerTest(unittest.TestCase):
     """The `.pm/history-pending` gitignore line and fault marker, driven by a
     marker the test writes (the interval that normally writes it is not built)."""
@@ -341,28 +321,9 @@ class HistoryMarkerTest(unittest.TestCase):
         self.assertEqual(self.hist("status"), "on")
 
 
-class UnbuiltTest(Base):
-    def test_unbuilt_verb_contract(self):
-        missing = [v for v in KEPT if not built(v)]
-        if not missing:
-            self.skipTest("every kept verb is built")
-        verb = missing[0]
-        log = os.path.join(self.dir, "unbuilt.log")
-        r = pm(self.dir, verb, env={"PM_UNBUILT_LOG": log})
-        self.assertEqual(r.returncode, 70, r.stderr)
-        self.assertIn(f"pm: '{verb}' is not built yet", r.stderr)
-        with open(log) as f:
-            self.assertIn(verb, f.read().split())
-
-
 class ClaimReopenHoldTest(Base):
     ENV = {"PM_AGENT": "claude/w", "PM_SESSION_ID": "sess-1",
            "PM_HOLD_STATE_DIR": tempfile.mkdtemp()}
-
-    def setUp(self):
-        if not all(built(v) for v in ("claim", "hold", "release")):
-            self.skipTest("unbuilt: claim/hold/release")
-        super().setUp()
 
     def done_unmerged(self):
         tid = self.ok("create", "parked work")
@@ -421,11 +382,6 @@ class ClaimReopenHoldTest(Base):
 
 class CloseReopenTest(Base):
     ENV = {"PM_AGENT": "claude/w", "PM_SESSION_ID": "sess-1"}
-
-    def setUp(self):
-        if not all(built(v) for v in ("close", "reopen")):
-            self.skipTest("unbuilt: close/reopen")
-        super().setUp()
 
     def test_direct_close_refused_while_worktree_exists(self):
         tid = self.ok("create", "wt work")
