@@ -129,7 +129,10 @@ park, the full new-side suite printed `passed 122, pending 1 (selftest), skipped
 failed 0`, all auto-park tests green.
 
 **fc-8c1f62 (integration)**, serial on branch `fc-8c1f62`:
-`prompts/03a-integration-selftest.md` (selftest, drop the unbuilt path) in flight, then
+`prompts/03a-integration-selftest.md` (selftest, drop the unbuilt path) done at b4637c3:
+worker's suite `--pm new` (no `--allow-pending`) passed 123, pending 0, skipped 2,
+failed 0; overseer's `zsh wt/cli/wt selftest` printed 11 `ok:` lines and `SELFTEST
+PASSED`. In flight in parallel:
 `prompts/03b-integration-docs.md` (README, AGENTS, INSTALL, contract rewrite,
 contributing row), then a read-only readability review of `wt/cli`, `wt/tools`,
 `wt/pm-plugin` against component-principles. Rulings: the suite pins selftest's last
