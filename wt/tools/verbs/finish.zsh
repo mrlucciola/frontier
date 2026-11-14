@@ -189,6 +189,7 @@ _wt_finish_autopark() {
 
 _wt_finish_check_findings() {
   emulate -L zsh
+  setopt extendedglob
   local store=$1 id=$2 verb=$3 have=$4 findings=$5 note=$6 text log
   local -i required=0
   wt_findings_required "$store" && required=1
@@ -201,8 +202,8 @@ _wt_finish_check_findings() {
     wt_say "$text"
   elif [[ ${findings//[[:space:]]/} == none ]] && (( required )); then
     if [[ -z ${note//[[:space:]]/} ]]; then
-      log=$(wt_pm "$store" "" log "$id" 2>/dev/null)
-      if [[ $log != *'"text":"'[^\"]* && $log != *'"text": "'[^\"]* ]]; then
+      log=$(wt_pm "$store" "" show "$id" 2>/dev/null)
+      if [[ $log != (#s)(*$'\n')#(notes:|notes \(last)* ]]; then
         wt_say "--findings none needs a non-empty --note or an existing ticket note: 'none' is a statement, not a default. Nothing was merged or removed; re-run \`wt $verb $id --findings none --note <text>\`."
         return 1
       fi
