@@ -571,6 +571,41 @@ class TicketCliTest(unittest.TestCase):
         run(self.store, "dep", c, "blocks", a, expect=1)
         run(self.store, "dep", a, "blocks", a, expect=1)
 
+    def edges(self, tid):
+        return json.loads(run(self.store, "show", tid, "--json"))["edges"]
+
+    def test_dep_blocks_several_targets_all_or_none(self):
+        a, b, c, d = (self.make(n) for n in ("alpha", "bravo", "charlie", "delta"))
+        run(self.store, "dep", a, "blocks", b, c, d)
+        self.assertEqual({e["to"] for e in self.edges(a)}, {b, c, d})
+        self.assertNotIn(b, self.ready_ids())
+        e1, e2 = self.make("echo"), self.make("foxtrot")
+        run(self.store, "dep", e1, "blocks", e2, "tt-nope00", expect=1)
+        self.assertEqual(self.edges(e1), [])
+        run(self.store, "dep", a, "blocks", e2, b, expect=1)
+        self.assertEqual({e["to"] for e in self.edges(a)}, {b, c, d})
+        run(self.store, "dep", e1, "blocks", e2)
+        self.assertEqual(len(self.edges(e1)), 1)
+
+    def test_dep_related_note_lands_on_target(self):
+        a, b = self.make("golf"), self.make("hotel")
+        run(self.store, "dep", a, "related", b, "--note", "degrades without golf")
+        notes = json.loads(run(self.store, "show", b, "--json"))["notes"]
+        self.assertEqual([n["text"] for n in notes], ["degrades without golf"])
+        self.assertEqual(json.loads(run(self.store, "show", a, "--json"))["notes"], [])
+
+    def test_create_writes_blocks_and_blocked_by_edges(self):
+        up, down1, down2 = self.make("india"), self.make("juliet"), self.make("kilo")
+        new = self.make("lima", "--blocks", down1, "--blocks", down2, "--blocked-by", up)
+        self.assertEqual({e["to"] for e in self.edges(new)}, {down1, down2})
+        self.assertIn({"type": "blocks", "to": new}, self.edges(up))
+        self.assertNotIn(new, self.ready_ids())
+        self.assertNotIn(down1, self.ready_ids())
+        run(self.store, "create", "mike", "--blocks", "tt-nope00", expect=1)
+        run(self.store, "create", "november", "--blocked-by", down1, "--blocks", up,
+            expect=1)
+        self.assertEqual(self.edges(down1), [])
+
     def test_epic_parent_and_tree(self):
         epic = self.make("the epic", "--kind", "epic")
         t1 = self.make("child 1", "--parent", epic)
