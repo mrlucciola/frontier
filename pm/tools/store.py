@@ -279,6 +279,7 @@ class Store:
 
 TITLE_MAX = 200
 LABEL_MAX = 80
+ID_RE = re.compile(r"^[a-z][a-z0-9]{1,7}-[0-9a-f]{6,11}$")
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9:_./-]*$")
 
 
@@ -622,11 +623,22 @@ def parse_findings(raw, store):
 
 
 def edge_target(store, raw, edge_type=None):
-    """Stored `to` for an edge to `raw` in this store. A discovered-from edge may
-    name a compacted or archived id. Another store's row is not built yet."""
+    """Stored `to` for an edge to `raw` in this store: the bare id for a row this
+    store holds, else `<prefix>/<id>` once the target resolves read-only. A
+    discovered-from edge may name a compacted or archived id of this store."""
+    import routing
     tid = local_id(raw)
-    if ref_prefix(tid) is not None and is_remote_ref(store, raw):
-        unbuilt("cross-store-edge")
+    pfx = ref_prefix(tid)
+    if pfx is not None and is_remote_ref(store, raw):
+        ref = f"{pfx}/{tid}"
+        if not ID_RE.match(tid):
+            raise TicketError(f"no such ticket: {tid}; {NO_SUCH_TICKET_HINT}")
+        reason = routing.cross_target(store, ref)["reason"]
+        if reason:
+            raise TicketError(
+                f"cannot add an edge to {ref}: {reason}; check the registry with "
+                "`pm ticket stores` (source: runtime-tools/pm/stores.json)")
+        return ref
     if (edge_type == "discovered-from" and tid not in store.by_id
             and (tid in store.compacted or tid in store.archived_ids())):
         return tid

@@ -55,9 +55,32 @@ ROUTED_VERBS = {
 }
 
 
+def route_edge(args):
+    """dep/unlink: normalise both ids, then route to the store that holds the
+    edge: the blocked ticket's for `blocks` across stores, else the source's."""
+    args.src = store.local_id(args.src)
+    args.dst = store.local_id(args.dst)
+    if getattr(args, "repo", None):
+        return
+    by = args.src
+    if args.cmd == "dep" and args.type == "blocks":
+        by = args.dst
+    elif args.cmd == "unlink" and args.type == "blocks":
+        dpfx = store.ref_prefix(args.dst)
+        if dpfx and store.ref_prefix(args.src):
+            home = routing.resolve_store(args.src, None, None)
+            if not routing.store_owns(home.root, dpfx):
+                by = args.dst
+    repo = routing.route_ids([by], mutate=True)
+    if repo:
+        args.repo = repo
+
+
 def route_args(args):
     """Normalise `<prefix>/<id>` to the bare id and point `args.repo` at the
     owning repo, so a verb opens the right store the first time."""
+    if args.cmd in ("dep", "unlink"):
+        return route_edge(args)
     spec = ROUTED_VERBS.get(args.cmd)
     if not spec:
         return
