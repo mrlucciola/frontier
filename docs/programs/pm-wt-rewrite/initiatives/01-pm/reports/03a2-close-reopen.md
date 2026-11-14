@@ -1,0 +1,16 @@
+TICKET: fc-d73327 -- pm lifecycle verbs: close, reopen (03a2; claim hold release were 03a1)
+DID: pm/tools/verbs/close.py: bulk all-or-nothing close; closed_by, --unmerged (park), --note/--reason (worker-return), --findings with findings_required (warn/refuse), epic --force/--detach (edit-trail), --via wt plus direct-close refusal while .worktrees/<id> exists (after already-closed), bin/deploy close-check exit 4 and --no-deploy-check (finding note), --session. Reuses store.each_id, locked_verb, refuse_if_closed, close_open_children, parse_findings and release.acting_identity; no store.py change.
+DID: pm/tools/verbs/reopen.py: refuses open (with status_hint) and claimed; clears hold, findings, findings_absent, closed_by, released_by.
+DID: pm/tests/test_cli_contract.py: CloseReopenTest (9 CLI cases: worktree refusal and --via wt, already-closed precedence, park note and closed_by, phase 1 warn / phase 2 refuse, all-or-nothing, epic children and detach note kind, unknown findings id, deploy exit 4 and override, reopen clearing and refusals).
+EVIDENCE:
+/usr/bin/python3 -B pm/tests/run_parity.py --cli pm/tools/ticket -k close -k reopen -k findings -k phase -k deploy -k test_lifecycle_verbs_write_their_kind --allow-pending -> parity: passed 30, pending 20, failed 0, skipped 1 (every pending line names unbuilt archive/dep/edit/history/lint/note/ready/validate)
+/usr/bin/python3 -B -m unittest discover -s pm/tests -p 'test_cli_contract.py' -> Ran 29 tests ... OK (skipped=11)
+/usr/bin/python3 -B -m unittest discover -s pm/tests -p 'test_gitcommit.py' -> Ran 24 tests ... OK
+/usr/bin/python3 -B pm/tests/run_parity.py --cli pm/tools/ticket --allow-pending -> Ran 271 tests ... FAILED (failures=1, skipped=9); the one failure is test_cli_parity.StoreRoutingTest.test_two_live_owners_are_refused (see NOT DONE); the "parity:" and "unbuilt verbs still needed:" lines were not printed because the runner exited on the failure; the only failure is that test
+COMMITS: /Users/matthias/projects/frontier-clean/.worktrees/fc-d73327 178e2c0 (branch fc-d73327)
+NOT DONE: (1) Full run is not at failed 0: test_two_live_owners_are_refused expects the text "fix runtime-tools/pm/stores.json or pass --store" but routing.py prints the registry path (here the temp PM_STORES_FILE). Not touched by close/reopen; routing.py is outside my write set and the parity test is not mine to edit; I have not checked whether main has the same failure. (2) The unbuilt-verbs line of the full run was not captured for the same reason; the narrow run's line names none of claim, hold, release, close, reopen. (3) Prompt's "reopen clearing closure_reason": the old cmd_reopen has no such key, so none is cleared. (4) `--findings` needs-v2 store check omitted (rewrite is v2-only). (5) No byte-diff against the old CLI on a live store (integration ticket). (6) deploy exit-4 test uses GIT_CONFIG_GLOBAL=os.devnull for its scratch repo.
+BLOCKED ON OPERATOR: NONE
+ARTIFACTS:
+/Users/matthias/projects/frontier-clean/.worktrees/fc-d73327/pm/tools/verbs/close.py
+/Users/matthias/projects/frontier-clean/.worktrees/fc-d73327/pm/tools/verbs/reopen.py
+/Users/matthias/projects/frontier-clean/.worktrees/fc-d73327/pm/tests/test_cli_contract.py
