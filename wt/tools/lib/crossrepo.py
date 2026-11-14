@@ -99,8 +99,8 @@ def main(argv):
     if same_repository(source, target) or pair_allows(load_pairs(), source, target, sub):
         return 0
     print("cross-repo %s into %s is not a declared git-pairs pair from %s "
-          "(~/.claude/git-pairs.json); wt refuses what the git guard would refuse. "
-          "Ask the operator to add the pair." % (sub, target, source))
+          "(~/.claude/git-pairs.json); wt refuses what gitguard would refuse. "
+          "Standing need: ask the operator to add the pair." % (sub, target, source))
     return 1
 
 

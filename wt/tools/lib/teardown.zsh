@@ -4,7 +4,7 @@
 typeset -gi WT_MASS_DELETE_MIN=50
 
 # Results of the last wt_worktree_remove, read by the functions below.
-typeset -g WT_REMOVE_RC=0 WT_REMOVE_OUT="" WT_REMOVE_ACTION="" WT_REMOVE_DEFERRED=0
+typeset -g WT_REMOVE_RC=0 WT_REMOVE_OUT="" WT_REMOVE_ERR="" WT_REMOVE_ACTION="" WT_REMOVE_DEFERRED=0
 # Results of the last wt_prune_debt.
 typeset -ga WT_PRUNE_DELETED
 typeset -gi WT_PRUNE_CLEARED=0 WT_PRUNE_REMAINING=0
@@ -56,23 +56,47 @@ wt_keep_worktrees_dir() {
 }
 
 # wt_worktree_remove <repo> <wt_path>: keep entry, then `git worktree remove` (`prune` when
-# the directory is already gone), then keep entry again. Sets WT_REMOVE_RC, WT_REMOVE_OUT,
-# WT_REMOVE_ACTION and WT_REMOVE_DEFERRED. Returns 0 when removed or deferred, 1 otherwise.
+# the directory is already gone), then keep entry again. Sets WT_REMOVE_RC, WT_REMOVE_OUT
+# (stderr then stdout, for the deferred check), WT_REMOVE_ERR (git's stderr, else its stdout,
+# trimmed: the text the lines below quote), WT_REMOVE_ACTION and WT_REMOVE_DEFERRED.
+# Returns 0 when removed or deferred, 1 otherwise. Deferred means the one benign failure:
+# git could not delete THIS worktree's admin dir (`.git/worktrees/<id>` plus `Operation not
+# permitted`) and the working tree is gone; checked on a prune that exited 0 too.
 wt_worktree_remove() {
   emulate -L zsh
-  local repo=$1 wt_path=$2 shape
+  setopt extendedglob
+  local repo=$1 wt_path=$2 shape errf sout serr
+  local -a cmd
   wt_keep_worktrees_dir "$repo"
   shape=$(wt_wt_shape "$wt_path")
   if [[ $shape == gone ]]; then
     WT_REMOVE_ACTION="git -C $repo worktree prune"
-    WT_REMOVE_OUT=$(git -C "$repo" worktree prune 2>&1)
+    cmd=(git -C "$repo" worktree prune)
   else
     WT_REMOVE_ACTION="git -C $repo worktree remove $wt_path"
-    WT_REMOVE_OUT=$(git -C "$repo" worktree remove "$wt_path" 2>&1)
+    cmd=(git -C "$repo" worktree remove "$wt_path")
   fi
-  WT_REMOVE_RC=$?
+  errf=$(mktemp "${TMPDIR:-/tmp}/wt-remove.XXXXXX" 2>/dev/null)
+  if [[ -n $errf ]]; then
+    sout=$("${cmd[@]}" 2>"$errf")
+    WT_REMOVE_RC=$?
+    serr=$(<"$errf")
+    command rm -f -- "$errf"
+  else
+    serr=$("${cmd[@]}" 2>&1)
+    WT_REMOVE_RC=$?
+    sout=""
+  fi
+  WT_REMOVE_OUT=$serr$'\n'$sout
+  serr=${${serr##[[:space:]]#}%%[[:space:]]#}
+  sout=${${sout##[[:space:]]#}%%[[:space:]]#}
+  WT_REMOVE_ERR=${serr:-$sout}
   WT_REMOVE_DEFERRED=0
-  wt_is_deferred_remove "$wt_path" && WT_REMOVE_DEFERRED=1
+  local admin=".git/worktrees/${wt_path:t}"
+  if [[ $WT_REMOVE_OUT == *"$admin"* && $WT_REMOVE_OUT == *"Operation not permitted"* \
+        && $(wt_wt_shape "$wt_path") == gone ]]; then
+    WT_REMOVE_DEFERRED=1
+  fi
   if (( WT_REMOVE_RC != 0 && ! WT_REMOVE_DEFERRED )); then
     return 1
   fi
@@ -80,24 +104,13 @@ wt_worktree_remove() {
   return 0
 }
 
-# True only for the one benign failure: git could not delete THIS worktree's admin dir
-# (`.git/worktrees/<id>` plus `Operation not permitted`) and the working tree is gone.
-# Reads WT_REMOVE_OUT.
-wt_is_deferred_remove() {
-  emulate -L zsh
-  local admin=".git/worktrees/${1:t}"
-  [[ $WT_REMOVE_OUT == *"$admin"* && $WT_REMOVE_OUT == *"Operation not permitted"* ]] || return 1
-  [[ $(wt_wt_shape "$1") == gone ]]
-}
-
 # wt_stop_remove_failed <key> <repo> <ticket> <verb> <what> <operator cmd>...: the STOP line
-# for a failed remove, with the fault row; reads WT_REMOVE_OUT. Returns 1.
+# for a failed remove, with the fault row; reads WT_REMOVE_ERR. Returns 1.
 wt_stop_remove_failed() {
   emulate -L zsh
   local key=$1 repo=$2 ticket=$3 verb=$4 what=$5 err file cmds
   shift 5
-  err=${WT_REMOVE_OUT//$'\n'/ }
-  err=${err%%[[:space:]]#}
+  err=$WT_REMOVE_ERR
   file=$(wt_fault_row "$key" "$repo" "$ticket" "$verb" "git: $err -- $what")
   cmds=${(j:; :)@}
   wt_say "STOP. $what: git said: $err. Recorded in ${file:-(fault report unwritable)}. This is infrastructure, not a finding: file no ticket and write no retro. Do not run any further git, wt or pm command against this worktree and do not escalate or disable the sandbox; tell the operator and hand them this cleanup (operator-run, in order): $cmds."
@@ -105,12 +118,11 @@ wt_stop_remove_failed() {
 }
 
 # wt_deferred_line <key> <repo> <ticket> <verb> <wt_path> <branch_kept 0|1>: the one line for
-# a gone working tree whose admin dir git could not delete; reads WT_REMOVE_OUT.
+# a gone working tree whose admin dir git could not delete; reads WT_REMOVE_ERR.
 wt_deferred_line() {
   emulate -L zsh
   local key=$1 repo=$2 ticket=$3 verb=$4 wt_path=$5 kept=$6 err file kept_text=""
-  err=${WT_REMOVE_OUT//$'\n'/ }
-  err=${err%%[[:space:]]#}
+  err=$WT_REMOVE_ERR
   file=$(wt_fault_row "$key" "$repo" "$ticket" "$verb" "git: $err -- worktree $wt_path removed, admin dir left behind")
   (( kept )) && kept_text="; branch $ticket is kept until then"
   wt_say "worktree for $ticket is gone but its leftover registration (admin dir $repo/.git/worktrees/$ticket) could not be deleted in this sandbox$kept_text; \`wt prune\` clears it. Recorded in ${file:-(fault report unwritable)}. This is infrastructure, not a finding: file no ticket and write no retro."
@@ -137,12 +149,6 @@ wt_wip_tip() {
   return 0
 }
 
-wt_record_merged() {
-  emulate -L zsh
-  git -C "$1" update-ref "refs/wt/merged/$2" "refs/heads/$2" >/dev/null 2>&1
-  return 0
-}
-
 wt_clear_merged() {
   emulate -L zsh
   git -C "$1" update-ref -d "refs/wt/merged/$2" >/dev/null 2>&1
@@ -158,12 +164,6 @@ wt_branch_already_merged() {
   tip=$(git -C "$repo" rev-parse --verify -q "refs/heads/$id" 2>/dev/null) || return 1
   [[ -n $marker && $marker == $tip ]] || return 1
   wt_is_ancestor "$repo" "refs/heads/$id" "$default"
-}
-
-# Ancestry of the default branch, by full ref name; the marker only nominates candidates.
-wt_branch_proven_merged() {
-  emulate -L zsh
-  wt_is_ancestor "$1" "refs/heads/$3" "$2"
 }
 
 # Paths the sandbox cannot delete: the root of every nested git repo holding `.git/config`
@@ -293,7 +293,7 @@ wt_prune_debt() {
       wt_clear_merged "$repo" "$bid"
       continue
     fi
-    wt_branch_proven_merged "$repo" "$default" "$bid" || continue
+    wt_is_ancestor "$repo" "refs/heads/$bid" "$default" || continue
     if git -C "$repo" branch -d "$bid" >/dev/null 2>&1; then
       wt_clear_merged "$repo" "$bid"
       WT_PRUNE_DELETED+=("$bid")

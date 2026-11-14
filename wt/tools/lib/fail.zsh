@@ -11,7 +11,7 @@ wt_say() {
 _wt_cell() {
   emulate -L zsh
   local v=${1:--} cap=${2:-160}
-  v=${v//|//}
+  v=${v//\|//}
   v=${v//$'\n'/ }
   print -r -- "${v[1,cap]}"
 }
@@ -26,10 +26,12 @@ wt_fault_row() {
   file=$dir/$day-wt-$key.md
   row="| $(date -u +%Y-%m-%dT%H:%M:%SZ) | $(_wt_cell "$2") | $(_wt_cell "$3") | $(_wt_cell "$4") | $(_wt_cell "$5" 800) |"
   mkdir -p -- "$dir" 2>/dev/null || return 1
-  header="# Infra fault - wt-$key - $day
+  header="# Infra fault -- wt-$key -- $day
 
-Machine-appended by wt: one file per root-cause key per day, one row per occurrence. An
-infrastructure fault in the worktree lifecycle, not an agent mistake.
+Machine-appended by \`frontier/runtime-tools/wt\` (cl-0c03c7): one file per
+root-cause key per day, one line per occurrence. Not a failure-retro report
+-- this is an infrastructure/workflow fault in the worktree lifecycle, not
+an agent mistake. Protocol and triage: ~/frontier/docs/backlog/inbox/infra-faults/README.md
 
 | when (UTC) | repo | ticket | verb | detail |
 |---|---|---|---|---|"
@@ -66,7 +68,13 @@ wt_fail() {
 # refusal printed when the pairs file does not let source change target.
 wt_guard() {
   emulate -L zsh
-  local reason
-  reason=$(/usr/bin/python3 -B "${WT_TOOLS}/lib/crossrepo.py" "$1" "$2" "$3") && return 0
-  wt_fail flow crossrepo-refused "$2" "$4" "$5" "$reason"
+  local reason rc
+  reason=$(/usr/bin/python3 -B "${WT_TOOLS}/lib/crossrepo.py" "$1" "$2" "$3")
+  rc=$?
+  (( rc == 0 )) && return 0
+  if (( rc == 1 )) && [[ -n $reason ]]; then
+    wt_fail flow crossrepo-refused "$2" "$4" "$5" "$reason"
+    return 1
+  fi
+  wt_fail infra crossrepo-guard-failed "$2" "$4" "$5" "the cross-repo pairs check could not run (exit $rc): ${reason:-no output}" "Re-run the command; if it fails again, tell the operator."
 }

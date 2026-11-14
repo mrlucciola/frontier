@@ -4,9 +4,10 @@
 # Main checkout of the repository containing $1 (a linked worktree maps to its main checkout).
 wt_repo_root() {
   emulate -L zsh
-  local top common
-  top=$(git -C "${1:-.}" rev-parse --show-toplevel 2>&1) || {
-    print -u2 -r -- "wt: not inside a git repository (git rev-parse --show-toplevel: $top)"
+  local top common err
+  top=$(git -C "${1:-.}" rev-parse --show-toplevel 2>/dev/null) || {
+    err=$(git -C "${1:-.}" rev-parse --show-toplevel 2>&1)
+    print -u2 -r -- "wt: not inside a git repository (git rev-parse --show-toplevel: $err)"
     return 1
   }
   top=${top:A}
@@ -23,10 +24,11 @@ wt_repo_root() {
 
 wt_default_branch() {
   emulate -L zsh
-  local branch
-  branch=$(git -C "$1" branch --show-current 2>&1)
+  local branch err
+  branch=$(git -C "$1" branch --show-current 2>/dev/null)
   if (( $? != 0 )) || [[ -z $branch ]]; then
-    print -u2 -r -- "wt: could not determine the default branch of $1 (the main checkout must stay on a named branch, never a detached HEAD): $branch"
+    err=$(git -C "$1" branch --show-current 2>&1)
+    print -u2 -r -- "wt: could not determine the default branch of $1 (main checkout must stay on a named branch, never detached HEAD): $err"
     return 1
   fi
   print -r -- "$branch"
@@ -44,20 +46,23 @@ wt_branch_exists() {
   git -C "$1" show-ref --verify --quiet "refs/heads/$2"
 }
 
-# Fills three index-aligned arrays: WT_WORKTREE_PATHS, WT_WORKTREE_BRANCHES (empty when
-# detached), WT_WORKTREE_PRUNABLE (git's reason, empty when not prunable).
+# Fills four index-aligned arrays: WT_WORKTREE_PATHS, WT_WORKTREE_BRANCHES (empty when
+# detached), WT_WORKTREE_PRUNABLE (git's reason, empty when not prunable), WT_WORKTREE_BARE
+# (1 for a bare entry, else empty).
 wt_worktree_list() {
   emulate -L zsh
   local out line
-  typeset -ga WT_WORKTREE_PATHS WT_WORKTREE_BRANCHES WT_WORKTREE_PRUNABLE
-  WT_WORKTREE_PATHS=() WT_WORKTREE_BRANCHES=() WT_WORKTREE_PRUNABLE=()
-  out=$(git -C "$1" worktree list --porcelain 2>&1) || {
+  typeset -ga WT_WORKTREE_PATHS WT_WORKTREE_BRANCHES WT_WORKTREE_PRUNABLE WT_WORKTREE_BARE
+  WT_WORKTREE_PATHS=() WT_WORKTREE_BRANCHES=() WT_WORKTREE_PRUNABLE=() WT_WORKTREE_BARE=()
+  out=$(git -C "$1" worktree list --porcelain 2>/dev/null) || {
+    out=$(git -C "$1" worktree list --porcelain 2>&1)
     print -u2 -r -- "wt: git worktree list failed: $out"
     return 1
   }
   for line in "${(@f)out}"; do
     case $line in
-      "worktree "*) WT_WORKTREE_PATHS+=("${line#worktree }") WT_WORKTREE_BRANCHES+=("") WT_WORKTREE_PRUNABLE+=("") ;;
+      "worktree "*) WT_WORKTREE_PATHS+=("${line#worktree }") WT_WORKTREE_BRANCHES+=("") WT_WORKTREE_PRUNABLE+=("") WT_WORKTREE_BARE+=("") ;;
+      bare) WT_WORKTREE_BARE[-1]=1 ;;
       "branch "*) WT_WORKTREE_BRANCHES[-1]=${line#branch refs/heads/} ;;
       prunable*) WT_WORKTREE_PRUNABLE[-1]=${${line#prunable}# }; [[ -n ${WT_WORKTREE_PRUNABLE[-1]} ]] || WT_WORKTREE_PRUNABLE[-1]=prunable ;;
     esac
