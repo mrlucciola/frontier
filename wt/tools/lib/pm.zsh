@@ -53,7 +53,7 @@ wt_resolve_repos() {
     elif (( rc == 1 )) && [[ $found == "pm: no store has prefix"* || $found == "pm: no ticket "* ]]; then
       WT_STORE=$cwd_repo
     else
-      print -u2 -r -- "wt: \`pm get $id store\` failed (exit $rc): $found"
+      print -u2 -r -- "wt: \`pm get $id store\` failed (exit $rc): $found. Fix that pm error, or pass --store <ticket repo>, then re-run."
       return 1
     fi
   fi
@@ -64,7 +64,7 @@ wt_resolve_repos() {
     abspath=${raw/#\~/$HOME}
     abspath=${abspath:A}
     if [[ ! -d $abspath ]]; then
-      print -u2 -r -- "wt: $label $raw is not a directory"
+      print -u2 -r -- "wt: $label $raw is not a directory. Pass an existing repo path with $label, then re-run."
       return 1
     fi
     top=$(git -C "$abspath" rev-parse --show-toplevel 2>/dev/null) || {

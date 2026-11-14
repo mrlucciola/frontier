@@ -47,6 +47,8 @@ wt_verb() {
   fi
 
   local env_session=${PM_SESSION_ID:-${CODEX_THREAD_ID:-}}
+  # The environment wins for pm calls: ParkTest.test_waits_on_note_and_session_in_resume_line
+  # passes --session for the resume line only, while pm must keep acting as the holder.
   local pm_session=${env_session:-$session_opt}
   local resume_session=${session_opt:-$env_session}
 
@@ -79,7 +81,7 @@ wt_verb() {
   fi
 
   local -a local_files=("$wt_path"/.local/*(DN))
-  if [[ -d $wt_path/.local ]] && (( $#local_files )); then
+  if (( $#local_files )); then
     wt_say "$wt_path/.local is non-empty -- park refuses to remove a worktree carrying local state. Clear it (or move what matters out) and re-run \`wt park $id\`."
     return 1
   fi
@@ -139,7 +141,7 @@ wt_verb() {
   tip_sha=$(git -C "$wt_path" rev-parse HEAD 2>/dev/null) || tip_sha="(unknown)"
   holder=$(wt_pm_get "$store" "$id" holder 2>/dev/null)
   actor=${${holder%%#*}##*[:/]}
-  [[ -n $actor ]] && export PM_ACTOR=$actor
+  [[ -n $actor ]] && export PM_ACTOR=$actor # pm park acts as the holder, not the shell's actor
   local resume="wt start $id"
   [[ -n $actor ]] && resume+=" --as $actor"
   [[ -n $resume_session ]] && resume+=" --session $resume_session"
@@ -232,7 +234,7 @@ _wt_park_record_wait() {
 _wt_park_zero_delta() {
   emulate -L zsh
   local repo=$1 store=$2 wt_path=$3 id=$4 session=$5 waits_on=$6 note=$7 findings=$8 auto=$9
-  local out tail branch_out
+  local out tail
   local -i kept=0
   if ! wt_worktree_remove "$repo" "$wt_path"; then
     local -a steps=("${(@f)$(wt_cleanup_steps "$repo" "$wt_path")}")
@@ -241,7 +243,7 @@ _wt_park_zero_delta() {
       "${steps[@]}" "\`git -C $repo branch -d $id\`" "\`pm drop $id\`"
     return 1
   fi
-  branch_out=$(git -C "$repo" branch -d "$id" 2>&1) || kept=1
+  git -C "$repo" branch -d "$id" >/dev/null 2>&1 || kept=1
   (( WT_REMOVE_DEFERRED )) && wt_deferred_line park-teardown-deferred "$repo" "$id" park "$wt_path" $kept
   _wt_park_record_wait "$repo" "$store" "$session" "$id" "$waits_on"
   out=$(wt_pm "$store" "$session" drop "$id" 2>&1)
@@ -253,6 +255,8 @@ _wt_park_zero_delta() {
   fi
   if (( WT_REMOVE_DEFERRED )); then
     tail="worktree removed, registration deferred to wt prune"
+  elif (( kept )); then
+    tail="worktree removed, branch $id kept"
   else
     tail="worktree and branch removed"
   fi

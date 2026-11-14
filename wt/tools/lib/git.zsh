@@ -28,7 +28,7 @@ wt_default_branch() {
   branch=$(git -C "$1" branch --show-current 2>/dev/null)
   if (( $? != 0 )) || [[ -z $branch ]]; then
     err=$(git -C "$1" branch --show-current 2>&1)
-    print -u2 -r -- "wt: could not determine the default branch of $1 (main checkout must stay on a named branch, never detached HEAD): $err"
+    print -u2 -r -- "wt: could not determine the default branch of $1 (main checkout must stay on a named branch, never detached HEAD): $err. Check out the default branch in $1, then re-run."
     return 1
   fi
   print -r -- "$branch"

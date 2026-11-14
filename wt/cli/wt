@@ -6,10 +6,12 @@ typeset -r WT_TOOLS=$WT_COMPONENT/tools
 typeset -ra WT_VERBS=(start finish land park status prune selftest)
 
 wt_usage() {
+  emulate -L zsh
   print -u2 -r -- "usage: wt <${(j:|:)WT_VERBS}> ...  (what each does: $WT_COMPONENT/docs/contract.md)"
 }
 
 main() {
+  emulate -L zsh
   local verb=${1:-} file lib
   if [[ -z $verb ]]; then
     wt_usage

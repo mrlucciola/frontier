@@ -1,6 +1,6 @@
 # The one failure line, the fault report row, and the cross-repo refusal.
 
-typeset -g WT_FAULT_DIR_DEFAULT=/Users/matthias/frontier/docs/backlog/inbox/infra-faults
+typeset -g WT_FAULT_DIR_DEFAULT=$HOME/frontier/docs/backlog/inbox/infra-faults
 
 # wt_say <text>: one fixed line, `wt: <text>`, on stderr.
 wt_say() {
@@ -28,8 +28,8 @@ wt_fault_row() {
   mkdir -p -- "$dir" 2>/dev/null || return 1
   header="# Infra fault -- wt-$key -- $day
 
-Machine-appended by \`frontier/runtime-tools/wt\` (cl-0c03c7): one file per
-root-cause key per day, one line per occurrence. Not a failure-retro report
+Machine-appended by \`wt\`: one file per root-cause key per day, one line per
+occurrence. Not a failure-retro report
 -- this is an infrastructure/workflow fault in the worktree lifecycle, not
 an agent mistake. Protocol and triage: ~/frontier/docs/backlog/inbox/infra-faults/README.md
 
@@ -77,4 +77,5 @@ wt_guard() {
     return 1
   fi
   wt_fail infra crossrepo-guard-failed "$2" "$4" "$5" "the cross-repo pairs check could not run (exit $rc): ${reason:-no output}" "Re-run the command; if it fails again, tell the operator."
+  return 1
 }

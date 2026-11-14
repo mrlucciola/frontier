@@ -31,10 +31,10 @@ wt_cleanup_steps() {
     gone)
       print -r -- "\`git -C $repo worktree prune\` (the directory is already gone; this drops the stale registration)" ;;
     no-gitfile)
-      print -r -- "\`rm -rf $wt_path\` (its .git file is gone, so git no longer recognises it)"
+      print -r -- "\`rm -rf ${(q)wt_path}\` (its .git file is gone, so git no longer recognises it)"
       print -r -- "\`git -C $repo worktree prune\` (drops the stale registration)" ;;
     *)
-      print -r -- "\`git -C $repo worktree remove --force $wt_path\` (a partial tree counts as modified, so a plain remove refuses; check \`git -C $wt_path status\` first)" ;;
+      print -r -- "\`git -C $repo worktree remove --force ${(q)wt_path}\` (a partial tree counts as modified, so a plain remove refuses; check \`git -C $wt_path status\` first)" ;;
   esac
   return 0
 }
@@ -129,26 +129,6 @@ wt_deferred_line() {
   return 0
 }
 
-# Prints "<short sha> <deleted count>" and returns 0 when branch $2's tip is a wt WIP park
-# commit made up purely of deletions; returns 1 otherwise.
-wt_wip_tip() {
-  emulate -L zsh
-  local repo=$1 id=$2 subj ns line sha
-  local -i n=0
-  subj=$(git -C "$repo" log -1 --format=%s "refs/heads/$id" 2>/dev/null) || return 1
-  [[ $subj == "WIP: park $id" ]] || return 1
-  ns=$(git -C "$repo" diff --name-status "refs/heads/$id^" "refs/heads/$id" 2>/dev/null) || return 1
-  for line in "${(@f)ns}"; do
-    [[ -n ${line//[[:space:]]/} ]] || continue
-    [[ ${line[1]} == D ]] || return 1
-    n+=1
-  done
-  (( n > 0 )) || return 1
-  sha=$(git -C "$repo" rev-parse --short "refs/heads/$id")
-  print -r -- "$sha $n"
-  return 0
-}
-
 wt_clear_merged() {
   emulate -L zsh
   git -C "$1" update-ref -d "refs/wt/merged/$2" >/dev/null 2>&1
@@ -193,7 +173,7 @@ wt_undeletable_paths() {
 # paths named) and returns 1.
 wt_refuse_undeletable() {
   emulate -L zsh
-  local wt_path=$1 ticket=$2 did_not=$3 verb=${4:-finish} out shown rms p
+  local wt_path=$1 ticket=$2 did_not=$3 verb=$4 out shown rms p
   local -a hits
   out=$(wt_undeletable_paths "$wt_path")
   [[ -n $out ]] || return 0
@@ -202,7 +182,7 @@ wt_refuse_undeletable() {
   (( $#hits > 5 )) && shown+=" and $(( $#hits - 5 )) more"
   rms=""
   for p in "${hits[@]}"; do
-    rms+="${rms:+; }rm -rf $p"
+    rms+="${rms:+; }rm -rf ${(q)p}"
   done
   wt_say "worktree $wt_path holds paths the sandbox cannot delete (nested git repo or .vscode): $shown. Nothing was $did_not -- the worktree is intact and $ticket stays claimed. Hand the operator: $rms -- after that, \`wt $verb $ticket\` completes normally."
   return 1

@@ -46,7 +46,7 @@ Environment variables wt reads:
 | `PM_SESSION_ID` | Session token for claims; first choice |
 | `CODEX_THREAD_ID` | Session token when `PM_SESSION_ID` is unset |
 | `CLAUDE_CODE_SESSION_ID` | Session token when both above are unset (`start`'s adoption check) |
-| `WT_FAULT_REPORT_DIR` | Directory for the deduplicated fault rows; a built-in default otherwise |
+| `WT_FAULT_REPORT_DIR` | Directory for the deduplicated fault rows; default `$HOME/frontier/docs/backlog/inbox/infra-faults` |
 | `GIT_PAIRS_FILE` | Git-pairs file read by the cross-repo guard; default `~/.claude/git-pairs.json` |
 
 ## Disable and remove

@@ -26,6 +26,18 @@ plugin transcripts.
 
 wt never runs `git branch -D`, `git worktree remove --force` or `rm -rf`. A
 port that needs one of them is wrong. The one exception is `selftest`, which
-runs `rm -r` on its own scratch directory.
+runs `rm -r` on its own scratch directory. wt does print `rm -rf` and
+`git worktree remove --force` in its failure lines as commands for the operator; it
+hands them over, quoted, and never runs them.
+
+Recorded exceptions to "shared helpers need three callers":
+
+- `wt_findings_required` is shared by finish and park.
+- `wt_stop_remove_failed`, `wt_deferred_line`, `wt_refuse_undeletable` and
+  `wt_merged_route` are shared by finish and park: finish auto-parks through park, so
+  they are one teardown family.
+
+`--session` overrides the environment in every verb except park's pm calls, where a suite
+test needs the environment to win (see the comment in `tools/verbs/park.zsh`).
 
 After a docs change, run `python3 -B docs/check_structure.py`.

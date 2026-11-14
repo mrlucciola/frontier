@@ -62,7 +62,7 @@ wt_verb() {
     wip=$(wt_wip_tip "$repo" "$id")
     if [[ -n $wip ]]; then
       wip_sha=${wip%% *} wip_n=${wip##* }
-      if (( wip_n > 50 )); then
+      if (( wip_n > WT_MASS_DELETE_MIN )); then
         wt_fail flow start-resume-mass-deletion "$repo" "$id" start \
           "refusing to resume $id: its tip $wip_sha is a wt WIP park commit that only deletes $wip_n files (a failed worktree remove left a partial tree and park committed it). Nothing was claimed or created. Do not retry with the sandbox disabled; tell the operator to inspect \`git -C $repo show --stat $wip_sha\` and, if the deletion is bogus, drop that commit from branch $id"
         return 1
@@ -106,11 +106,9 @@ wt_verb() {
   wt_prune_debt "$repo" "$default" quiet >/dev/null 2>&1
 
   wt_branch_exists "$repo" "$id" && resume=1
-  if (( resume )); then
-    add_err=$(git -C "$repo" worktree add "$wt_path" "$id" 2>&1)
-  else
-    add_err=$(git -C "$repo" worktree add -b "$id" "$wt_path" 2>&1)
-  fi
+  local -a add_args=(worktree add "$wt_path" "$id")
+  (( resume )) || add_args=(worktree add -b "$id" "$wt_path")
+  add_err=$(git -C "$repo" "${add_args[@]}" 2>&1)
   if (( $? != 0 )); then
     add_err=${add_err//$'\n'/ }
     hint=""
@@ -147,6 +145,26 @@ wt_verb() {
 
   wt_pm "$store" "$session" emit "$id" wt.start "branch=$id" "path=$wt_path" >/dev/null 2>&1
   print -r -- "OK: $id -> $wt_path"
+  return 0
+}
+
+# Prints "<short sha> <deleted count>" and returns 0 when branch $2's tip is a wt WIP park
+# commit made up purely of deletions; returns 1 otherwise.
+wt_wip_tip() {
+  emulate -L zsh
+  local repo=$1 id=$2 subj ns line sha
+  local -i n=0
+  subj=$(git -C "$repo" log -1 --format=%s "refs/heads/$id" 2>/dev/null) || return 1
+  [[ $subj == "WIP: park $id" ]] || return 1
+  ns=$(git -C "$repo" diff --name-status "refs/heads/$id^" "refs/heads/$id" 2>/dev/null) || return 1
+  for line in "${(@f)ns}"; do
+    [[ -n ${line//[[:space:]]/} ]] || continue
+    [[ ${line[1]} == D ]] || return 1
+    n+=1
+  done
+  (( n > 0 )) || return 1
+  sha=$(git -C "$repo" rev-parse --short "refs/heads/$id")
+  print -r -- "$sha $n"
   return 0
 }
 

@@ -3,6 +3,9 @@
 # wt land <id> [--no-gate] [--session ID] [--store PATH] [--repo PATH]   (WT_VERB=land)
 # Gate, rebase onto the default branch, ff-only merge from the main checkout, teardown,
 # then `pm done`. land is finish --keep-open: the ticket stays claimed.
+# `land` arrives here from the dispatcher with WT_VERB=land. wt_merged_route returns 0
+# when the branch is already merged (only teardown remains), 1 when it still has to be
+# merged, and 2 when it refused and printed why.
 
 typeset -gi WT_FFONLY_TRIES=3
 typeset -gi WT_GATE_TAIL=30
@@ -89,7 +92,7 @@ wt_verb() {
     fi
     wt_guard "$cwd_repo" "$repo" worktree "$id" "$verb" || return 1
     wt_refuse_undeletable "$wt_path" "$id" removed "$verb" || return 1
-    _wt_finish_teardown "$repo" "$store" "$session" "$wt_path" "$id" "$default" "$note" "$have_findings" "$findings" "$keep_open" 0 1
+    _wt_finish_teardown "$repo" "$store" "$session" "$wt_path" "$id" "$default" "$note" "$verb" "$findings" "$keep_open" 0 1
     return $?
   fi
 
@@ -131,8 +134,6 @@ wt_verb() {
     if ! git -C "$wt_path" rebase "$default" >/dev/null 2>&1; then
       git -C "$wt_path" rebase --abort >/dev/null 2>&1
       park_note=$(_wt_finish_autopark "$id" "$session" "$store_opt" "$repo_opt")
-      rc=$?
-      (( rc == 70 )) && return 70
       wt_fail infra finish-rebase-conflict "$repo" "$id" "$verb" \
         "rebase of $id onto $default conflicted; auto-parked ($park_note)" \
         "resolve the conflict by hand in a fresh \`wt start $id\`, then \`wt finish $id\` again"
@@ -156,8 +157,6 @@ wt_verb() {
         cause="the default branch kept moving"
       fi
       park_note=$(_wt_finish_autopark "$id" "$session" "$store_opt" "$repo_opt")
-      rc=$?
-      (( rc == 70 )) && return 70
       wt_fail infra finish-ffonly-retry-exhausted "$repo" "$id" "$verb" \
         "ff-only merge of $id onto $default failed $WT_FFONLY_TRIES times ($cause); git: $merge_err; auto-parked ($park_note)" \
         "re-run \`wt finish $id\` once $default is quiet"
@@ -165,12 +164,12 @@ wt_verb() {
     fi
   done
 
-  _wt_finish_teardown "$repo" "$store" "$session" "$wt_path" "$id" "$default" "$note" "$have_findings" "$findings" "$keep_open" "$skips" 0
+  _wt_finish_teardown "$repo" "$store" "$session" "$wt_path" "$id" "$default" "$note" "$verb" "$findings" "$keep_open" "$skips" 0
   return $?
 }
 
 # The subprocess is the dispatcher itself: park is another verb file. Its stdout is the
-# note; its exit status is passed on (70 means park is not built).
+# note; its exit status is passed on.
 _wt_finish_autopark() {
   emulate -L zsh
   local id=$1 session=$2 store_opt=$3 repo_opt=$4 out rc
@@ -235,22 +234,6 @@ _wt_known_red() {
   return 0
 }
 
-_wt_red_covered() {
-  emulate -L zsh
-  local i=$1 p=$1 c
-  local -a kids
-  while (( p )); do
-    (( ${matched[p]} )) && return 0
-    p=${parent[p]}
-  done
-  kids=(${=children[i]})
-  (( $#kids )) || return 1
-  for c in $kids; do
-    _wt_red_covered $c || return 1
-  done
-  return 0
-}
-
 # Classifies a failing run's output against the known-red entries. Sets WT_SCAN_HITS
 # ("<ticket>\t<line>"), WT_SCAN_UNMATCHED (failure-marked lines no entry covers) and
 # WT_SCAN_STALE (entry indexes with no hit). A failure-marked line is covered when it, an
@@ -258,9 +241,9 @@ _wt_red_covered() {
 _wt_red_scan() {
   emulate -L zsh
   setopt extendedglob
-  local out=$1 ln text lead
-  local -a ind txt matched parent children stack hit_e
-  local -i n=0 i j e
+  local out=$1 ln text lead c
+  local -a ind txt matched parent children stack hit_e anc covered kids
+  local -i n=0 i e
   WT_SCAN_HITS=() WT_SCAN_UNMATCHED=() WT_SCAN_STALE=()
   for ln in "${(@f)out}"; do
     text=${${ln##[[:space:]]#}%%[[:space:]]#}
@@ -286,15 +269,27 @@ _wt_red_scan() {
     while (( $#stack )) && (( ${ind[$stack[-1]]} >= ${ind[i]} )); do
       stack[-1]=()
     done
+    anc[i]=${matched[i]}
     if (( $#stack )); then
       parent[i]=${stack[-1]}
       children[${stack[-1]}]+=" $i"
+      (( ${anc[${stack[-1]}]} )) && anc[i]=1
     fi
     stack+=($i)
   done
+  for (( i = n; i >= 1; i-- )); do
+    covered[i]=${anc[i]}
+    kids=(${=children[i]})
+    if (( ! covered[i] && $#kids )); then
+      covered[i]=1
+      for c in $kids; do
+        (( ${covered[c]} )) || covered[i]=0
+      done
+    fi
+  done
   for (( i = 1; i <= n; i++ )); do
     [[ ${txt[i]} =~ '(^|[^A-Za-z0-9_])(FAIL|FAILED|ERROR|not ok)([^A-Za-z0-9_]|$)' ]] || continue
-    _wt_red_covered $i || WT_SCAN_UNMATCHED+=("${txt[i]}")
+    (( ${covered[i]} )) || WT_SCAN_UNMATCHED+=("${txt[i]}")
   done
   for (( e = 1; e <= $#WT_RED_MATCH; e++ )); do
     (( ${hit_e[(Ie)$e]} )) || WT_SCAN_STALE+=($e)
@@ -308,7 +303,7 @@ typeset -g WT_GATE_NOTE=""
 typeset -gi WT_GATE_SKIPS=0
 _wt_finish_gate() {
   emulate -L zsh
-  local gate=$1 wt_path=$2 repo=$3 id=$4 verb=$5 out ln lower e t
+  local gate=$1 wt_path=$2 repo=$3 id=$4 verb=$5 out ln lower e
   local -a lines tail_lines hit_tickets
   local -i rc skips=0 n_lines
   out=$( builtin cd -q -- "$wt_path" && "$gate" 2>&1 )
@@ -351,11 +346,11 @@ _wt_finish_gate() {
   return 0
 }
 
-# _wt_finish_close_cmd <repo> <store> <id> <note> <have_findings> <findings>: a paste-safe
-# `pm done` for the operator.
+# _wt_finish_close_cmd <repo> <store> <id> <note> <findings>: a paste-safe `pm done` for
+# the operator.
 _wt_finish_close_cmd() {
   emulate -L zsh
-  local repo=$1 store=$2 id=$3 note=$4 have=$5 findings=$6 cmd="pm done"
+  local repo=$1 store=$2 id=$3 note=$4 findings=$5 cmd="pm done"
   [[ -n $note ]] && cmd+=" -m ${(qq)note}"
   cmd+=" --findings ${(qq)${findings:-none}} $id"
   [[ ${store:A} != ${repo:A} ]] && cmd="cd ${(qq)store} && $cmd"
@@ -372,13 +367,14 @@ _wt_finish_done() {
   [[ -n $note ]] && args+=(-m "$note")
   [[ -n $findings ]] && args+=(--findings "$findings")
   WT_DONE_OUT=$(wt_pm "$store" "$session" "${args[@]}" 2>&1)
+  return $?
 }
 
 _wt_finish_teardown() {
   emulate -L zsh
-  local repo=$1 store=$2 session=$3 wt_path=$4 id=$5 default=$6 note=$7 have=$8 findings=$9
+  local repo=$1 store=$2 session=$3 wt_path=$4 id=$5 default=$6 note=$7 verb=$8 findings=$9
   local keep_open=${10} skips=${11} already=${12}
-  local what cmds_text out tail err file refusal status_now closecmd
+  local what out tail err file refusal status_now closecmd
   local -a cmds
   local -i kept=0 deferred=0
 
@@ -390,7 +386,7 @@ _wt_finish_teardown() {
   if ! wt_worktree_remove "$repo" "$wt_path"; then
     cmds=("${(@f)$(wt_cleanup_steps "$repo" "$wt_path")}")
     cmds+=("\`git -C $repo branch -d $id\`")
-    closecmd=$(_wt_finish_close_cmd "$repo" "$store" "$id" "$note" "$have" "$findings")
+    closecmd=$(_wt_finish_close_cmd "$repo" "$store" "$id" "$note" "$findings")
     if (( already && ! keep_open )); then
       _wt_finish_done "$store" "$session" "$id" "${note:+$note$'\n'}branch was already merged into $default; worktree remove failed, cleanup left to the operator" "$findings"
       if (( $? == 0 )); then
@@ -404,7 +400,7 @@ _wt_finish_teardown() {
       what="merged $id into $default, but \`$WT_REMOVE_ACTION\` failed; the ticket is NOT yet closed"
       (( keep_open )) || cmds+=("$closecmd")
     fi
-    wt_stop_remove_failed finish-worktree-remove-failed "$repo" "$id" finish "$what" "${cmds[@]}"
+    wt_stop_remove_failed finish-worktree-remove-failed "$repo" "$id" "$verb" "$what" "${cmds[@]}"
     return 1
   fi
   deferred=$WT_REMOVE_DEFERRED
@@ -417,7 +413,7 @@ _wt_finish_teardown() {
       wt_clear_merged "$repo" "$id"
     else
       err=${out//$'\n'/ }
-      file=$(wt_fault_row finish-branch-delete-failed "$repo" "$id" finish "$err")
+      file=$(wt_fault_row finish-branch-delete-failed "$repo" "$id" "$verb" "$err")
       wt_say "merged and removed the worktree for $id, but \`git -C $repo branch -d $id\` failed: $err. Recorded in ${file:-(fault report unwritable)}. This is infrastructure, not a finding: file no ticket and write no retro; delete the branch by hand."
     fi
   else
@@ -426,7 +422,7 @@ _wt_finish_teardown() {
 
   tail="worktree and branch removed"
   if (( deferred )); then
-    wt_deferred_line finish-teardown-deferred "$repo" "$id" finish "$wt_path" "$kept"
+    wt_deferred_line finish-teardown-deferred "$repo" "$id" "$verb" "$wt_path" "$kept"
     if (( kept )); then
       tail="worktree removed; registration and branch deferred to wt prune"
     else
@@ -439,12 +435,12 @@ _wt_finish_teardown() {
     return 0
   fi
 
-  closecmd=$(_wt_finish_close_cmd "$repo" "$store" "$id" "$note" "$have" "$findings")
+  closecmd=$(_wt_finish_close_cmd "$repo" "$store" "$id" "$note" "$findings")
   if ! _wt_finish_done "$store" "$session" "$id" "$note" "$findings"; then
     refusal=${WT_DONE_OUT//$'\n'/ }
     status_now=$(wt_pm_get "$store" "$id" status 2>/dev/null)
     if [[ $status_now == done ]]; then
-      wt_fail flow finish-ticket-close-failed "$repo" "$id" finish \
+      wt_fail flow finish-ticket-close-failed "$repo" "$id" "$verb" \
         "merged $id and cleaned up the worktree/branch, but \`pm done $id\` failed: $refusal" \
         "close it by hand with $closecmd"
       return 1

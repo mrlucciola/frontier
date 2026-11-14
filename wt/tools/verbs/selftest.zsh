@@ -3,8 +3,8 @@
 
 typeset -gi WT_ST_FAILS=0
 
-wt_st_ok() { print -r -- "ok: $1" }
-wt_st_fail() { print -r -- "FAIL: $1: $2"; (( WT_ST_FAILS++ )) }
+wt_st_ok() { emulate -L zsh; print -r -- "ok: $1" }
+wt_st_fail() { emulate -L zsh; print -r -- "FAIL: $1: $2"; (( WT_ST_FAILS++ )) }
 
 # wt_st_expect <case> <wanted> <got>
 wt_st_expect() {
@@ -94,8 +94,11 @@ wt_st_run() {
   wt_st_expect "land keeps the ticket taken" taken "$(wt_st_get "$repo" "$id" status)"
 
   # prune
-  out=$(builtin cd -q -- "$repo" && "$wt" prune 2>&1) || wt_st_fail prune "exit $?: $out"
-  wt_st_ok "prune with nothing to do"
+  if out=$(builtin cd -q -- "$repo" && "$wt" prune 2>&1); then
+    wt_st_ok "prune with nothing to do"
+  else
+    wt_st_fail prune "exit $?: $out"
+  fi
   return 0
 }
 
