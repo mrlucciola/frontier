@@ -23,8 +23,9 @@ epic subtree:
 ## Next batch
 
 fc-2b34c9, alone, as four serial workers on its branch: `01-core-a` (entry, store,
-init; dispatched), `01-core-b` (gitcommit; written), `01-core-c` (create, show),
-`01-core-d` (test_cli_contract.py). Everything else is blocked behind it.
+init; verified, branch c7f2484), `01-core-b` (gitcommit; dispatched), `01-core-c`
+(create, show), `01-core-d` (test_cli_contract.py). Everything else is blocked
+behind it.
 
 ## Owed operator actions
 
@@ -40,6 +41,10 @@ None.
   `create.py`.
 - **gitfault report writer dropped** (2026-11-13): recorded in `pm/docs/cut-list.md`
   "What the cuts change".
+- **Parity test removed** (2026-11-13, branch fc-2b34c9 49f5921):
+  `ValidateTest.test_archive_year_filename_follows_spec_version` imported the old
+  `ticket_core`, so no rewrite could pass it. After fc-2b34c9 merges the suite runs
+  270 tests, 261 against the CLI and 9 skipped; it was the only internal import.
 - **Reverse cross-store blockers in text `show`** (2026-11-13): until fc-459fe0, `show`
   calls `store.unbuilt("routing")` only when the registry file lists a store; the
   suite's default registry is empty, so ordinary `show` is not pending.
