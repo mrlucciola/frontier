@@ -113,8 +113,13 @@ finish. `finish` auto-parks through `wt park <id> --auto` as a subprocess (inter
 None. (The fc-122c0d scratch cleanup was done by the operator on 2026-11-14; `wt
 finish fc-122c0d` then merged and closed it.)
 
-Batch A in flight: fc-8ecb48 (`prompts/02a-start.md`) and fc-347c67
-(`prompts/02e-pm-plugin.md`), each in its own worktree.
+Batch A: fc-8ecb48 (`prompts/02a-start.md`) in flight. fc-347c67
+(`prompts/02e-pm-plugin.md`) closed: 54f697d, overseer re-run of
+`pm/tests/run_transcripts.py --dir wt/tests/t` passed 3, failed 0. Its report was not
+in the worker-brief shape; the artifacts were verified on disk instead.
+
+Batch B prompts queued: `02c-park.md`, `02d-status-prune.md`, `02b-finish.md`; they
+start once start merges.
 
 ## Facts not to re-derive
 
