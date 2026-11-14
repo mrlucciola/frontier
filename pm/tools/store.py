@@ -17,15 +17,6 @@ ID_RE = re.compile(r"^([a-z][a-z0-9]{0,7})-([A-Za-z0-9]+)$")
 KEY_ORDER = ("ts", "by", "op", "id")
 
 
-def unbuilt(name):
-    path = os.environ.get("PM_UNBUILT_LOG")
-    if path:
-        with open(path, "a") as f:
-            f.write(name + "\n")
-    sys.stderr.write("pm: %s is not built yet.\n" % name)
-    sys.exit(70)
-
-
 class Store:
     def __init__(self, root):
         self.root = root

@@ -9,12 +9,8 @@ The gate is the transcripts in `tests/t/`.
 Run from the repository root.
 
 ```sh
-/usr/bin/python3 -B pm/tests/run_transcripts.py --allow-pending
+/usr/bin/python3 -B pm/tests/run_transcripts.py
 ```
-
-A verb with no file under `tools/verbs/` is reported unbuilt by the dispatcher. A built
-verb that reaches a part a later ticket owns calls `store.unbuilt(<name>)`, and
-`--allow-pending` must stay at `failed 0`.
 
 | Work | Read |
 | --- | --- |

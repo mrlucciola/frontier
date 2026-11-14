@@ -68,13 +68,10 @@ def help_all():
 
 
 def help_verb(word):
-    import store
     verb = ALIASES.get(word, word)
     if verb not in [v[0] for v in VERBS]:
         return no_verb(word)
     path = verb_path(verb)
-    if not os.path.isfile(path):
-        store.unbuilt(verb)
     with open(path) as f:
         doc = ast.get_docstring(ast.parse(f.read()), clean=False) or ""
     sys.stdout.write(doc.strip("\n") + "\n")
@@ -91,10 +88,7 @@ def no_verb(word):
 
 
 def run_verb(verb, argv):
-    import store
     path = verb_path(verb)
-    if not os.path.isfile(path):
-        store.unbuilt(verb)
     spec = importlib.util.spec_from_file_location("pm_verb_" + verb, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
