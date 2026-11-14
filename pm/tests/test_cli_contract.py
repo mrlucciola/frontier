@@ -274,6 +274,73 @@ class HistoryRefRemedyTest(unittest.TestCase):
             self.assertIn(f"pm ticket history sync --repo {repo}", r.stderr)
 
 
+@unittest.skipUnless(built("history"), "unbuilt: history")
+class HistoryMarkerTest(unittest.TestCase):
+    """The `.pm/history-pending` gitignore line and fault marker, driven by a
+    marker the test writes (the interval that normally writes it is not built)."""
+
+    MARKER_LINE = ".pm/history-pending"
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.repo = os.path.realpath(tmp.name)
+        for argv in (("init", "-q", "-b", "main"), ("config", "user.name", "t"),
+                     ("config", "user.email", "t@example.invalid"),
+                     ("config", "commit.gpgsign", "false")):
+            self.git(*argv)
+        with open(os.path.join(self.repo, "README"), "w") as f:
+            f.write("x\n")
+        self.git("add", "README")
+        self.git("commit", "-q", "-m", "seed")
+        self.assertEqual(pm(self.repo, "init", "--prefix", "tt").returncode, 0)
+        self.assertEqual(pm(self.repo, "create", "row").returncode, 0)
+        self.git("add", ".gitignore", ".pm/config.json")
+        self.git("commit", "-q", "-m", "track config")
+        self.marker = os.path.join(self.repo, ".pm", "history-pending")
+
+    def git(self, *argv):
+        r = subprocess.run(["git", "-C", self.repo, *argv], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def hist(self, *argv):
+        r = pm(self.repo, "history", *argv)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def ignored(self):
+        with open(os.path.join(self.repo, ".gitignore")) as f:
+            return f.read().splitlines()
+
+    def fault_marker(self):
+        with open(self.marker, "w") as f:
+            f.write("some git fault\n")
+
+    def test_enable_ignores_the_marker_and_disable_drops_line_and_file(self):
+        self.hist("enable")
+        self.assertIn(self.MARKER_LINE, self.ignored())
+        self.assertIn(".pm/tickets.jsonl", self.ignored())
+        self.fault_marker()
+        self.assertEqual(self.git("status", "--porcelain", "--", self.MARKER_LINE), "")
+        self.hist("disable")
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertNotIn(self.MARKER_LINE, self.ignored())
+        self.assertNotIn(".pm/tickets.jsonl", self.ignored())
+
+    def test_restore_and_sync_clear_the_marker(self):
+        self.hist("enable")
+        self.fault_marker()
+        self.hist("sync")
+        self.assertFalse(os.path.exists(self.marker))
+        self.fault_marker()
+        os.remove(os.path.join(self.repo, ".pm", "tickets.jsonl"))
+        self.assertEqual(self.hist("status"), "missing")
+        self.hist("restore")
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertEqual(self.hist("status"), "on")
+
+
 class UnbuiltTest(Base):
     def test_unbuilt_verb_contract(self):
         missing = [v for v in KEPT if not built(v)]

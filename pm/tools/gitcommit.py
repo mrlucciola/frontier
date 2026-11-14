@@ -241,9 +241,12 @@ def _off_default_branch(repo_dir, warned):
     return None
 
 
-def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=()):
+def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=(),
+                 legacy=False):
     """Commit the store's ticket file in the repo owning `root` (the `.pm` dir).
     `extra_paths` (repo-relative) ride on the same commit on the branch path.
+    `legacy=True` forces the branch path even on a `history_ref` store: `history
+    enable` flushes the tracked copy that way before it stops being tracked.
 
     A store whose config.json sets `history_ref` records the file on that ref by
     plumbing, with no branch skip. Otherwise the file is committed on the
@@ -259,7 +262,7 @@ def commit_store(root, message, ticket_file="tickets.jsonl", extra_paths=()):
     except (OSError, ValueError):
         config = {}
     rel = os.path.join(os.path.basename(root), ticket_file)
-    if config.get("history_ref"):
+    if config.get("history_ref") and not legacy:
         return commit_blob_to_ref(
             repo_dir, rel, f"refs/heads/{config['history_ref']}", message)
     warned = False
