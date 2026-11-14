@@ -77,6 +77,10 @@ One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
   file that cannot run is a refusal, not a traceback; `emit` rejects a name with `/`.
   Why: the reviewer check of fc-a731f4 (`reports/03a-review.md`) found these
   untested.
+- `pm/tests/run_transcripts.py`: the pending rule is gone (`$PM_UNBUILT_LOG`,
+  `--allow-pending`, the `pending` count); the summary line is now
+  `transcripts: passed N, failed M`. Why: fc-d6c61c removes the unbuilt mechanism
+  from pm, so nothing can be pending; checked that a failing CLI still fails.
 
 ## Unbuilt stubs and their owners
 
