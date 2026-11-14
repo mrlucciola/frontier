@@ -84,8 +84,12 @@ fc-30c060 closed by `wt finish` with `--findings fc-f0cc16`.
    lines, undeletable paths, merged marker, prune of debt). Overseer split: these are
    shared by finish, park, prune and start, which meets principle 2's three-verb bar.
 
+   Done: b445660 (`teardown.zsh`, 306 lines); suite on the new side `passed 9,
+   pending 114, skipped 2, failed 0`.
+
 Then a read-only check of the lib against component-principles and the old code,
-because five parallel step-2 workers build on it and may not edit it.
+because five parallel step-2 workers build on it and may not edit it. In flight
+(design-reviewer); body goes to `reports/01-review.md`.
 
 ## Owed operator actions
 
@@ -181,6 +185,15 @@ None.
   guard refusal to before the merge.
 - **Step-2 workers do not edit `wt/tools/lib/`.** A lib change one of them needs goes
   to the overseer, who makes it in a fix round, so the five can run in parallel.
+- **Incident, 01b (2026-11-14).** The worker's hand driver ran `git init` under the
+  worktree's `.tmp/`; the sandbox refused it (it denies a nested `.git/config` there),
+  and the git commands that followed hit the real frontier-clean repository: a stray
+  commit on fc-122c0d, branches `t1` and `t2`, a `t2` worktree, the keep entry, and a
+  `git worktree prune` on the shared repo. The worker undid it. Overseer check after:
+  `git worktree list` shows only main and fc-122c0d, no `t1`/`t2`, no `refs/wt/*`, and
+  fc-122c0d is bd0b0c6 then b445660. Not provable: whether that prune removed another
+  session's stale registration. Rule for every later prompt: throwaway repos live under
+  `$TMPDIR` (as the suite's do), and a driver stops if `git init` fails.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
