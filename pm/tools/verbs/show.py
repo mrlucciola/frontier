@@ -1,7 +1,7 @@
 """pm ticket show: full ticket with graph context."""
 import json
-import os
 
+import routing
 import store as st
 from store import TicketError
 
@@ -21,18 +21,6 @@ def register(subparsers):
                           "order given (repeatable)")
 
 
-def _registry_lists_a_store():
-    path = os.environ.get("PM_STORES_FILE") or os.path.join(
-        os.path.expanduser("~"), ".config", "pm", "stores.json")
-    try:
-        with open(path) as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return False
-    entries = data.get("stores") if isinstance(data, dict) else None
-    return bool(entries) and isinstance(entries, list)
-
-
 def field_text(value):
     if isinstance(value, bool):
         return "true" if value else "false"
@@ -49,13 +37,8 @@ def field_text(value):
 
 def run(args):
     store = st.open_store(getattr(args, "repo", None))
-    tid = st.local_id(args.id)
-    if st.is_remote_ref(store, args.id):
-        st.unbuilt("routing")
-    t = store.read(tid)
+    t = store.read(st.local_id(args.id))
     archive_path = t.get("archive_path")
-    if any("/" in str(e.get("to")) for e in t["edges"]):
-        st.unbuilt("routing")
     obj = dict(t, blocked_by=[b["id"] for b in store.blockers_of(t["id"])
                               if b["status"] != "closed"],
                blocks=[e["to"] for e in t["edges"] if e["type"] == "blocks"],
@@ -80,14 +63,19 @@ def run(args):
         lines.append(f"archived: {archive_path}")
     if t["body"]:
         lines.append(t["body"])
+    cross = routing.cross_blockers(store, t)
     for key in ("parent", "blocked_by", "blocks", "children", "labels"):
         val = obj.get(key) if key != "parent" else t.get("parent")
+        if key == "blocked_by":
+            val = list(val) + [routing.cross_label(b) for b in cross
+                               if b["status"] != "closed"]
         if key == "parent" and val and val in store.by_id:
             val = f"{val}  {store.by_id[val]['title']}"
         if val:
             lines.append(f"{key}: {val if isinstance(val, str) else ', '.join(val)}")
-    if _registry_lists_a_store():
-        st.unbuilt("routing")
+    reverse = routing.cross_blocks_of(store, t["id"])
+    if reverse:
+        lines.append(f"blocks (other stores): {', '.join(reverse)}")
     if t.get("compacted"):
         lines.append(f"compacted into {t['parent']} on close")
     for e in t["edges"]:

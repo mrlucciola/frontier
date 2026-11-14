@@ -130,6 +130,7 @@ class Store:
         self.by_id = {}
         self.extra_commit_paths = []
         self._archive_index = None
+        self.cross_cache = {"targets": {}, "stores": {}, "ctx": {}}
         if os.path.exists(self.ticket_path):
             with open(self.ticket_path) as f:
                 for lineno, line in enumerate(f, 1):
@@ -251,8 +252,10 @@ class Store:
         return [t for t in self.tickets if t.get("parent") == tid]
 
     def is_ready(self, t):
+        import routing
         return (t["kind"] == "task" and t["status"] == "open"
-                and all(b["status"] == "closed" for b in self.blockers_of(t["id"])))
+                and all(b["status"] == "closed" for b in self.blockers_of(t["id"]))
+                and not routing.unsatisfied_cross(self, t))
 
 
 TITLE_MAX = 200
@@ -384,7 +387,9 @@ def locked_store(repo=None, message=None):
     An exception skips the write and leaves the store byte-unchanged. `message`
     is a string, or a callable run after the op so it can name minted ids.
     """
+    import routing
     root = _located(repo)
+    routing.refuse_if_frozen(root)
     with open(os.path.join(root, "lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         store = Store(root)

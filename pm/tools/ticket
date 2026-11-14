@@ -8,6 +8,7 @@ import sys
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, HERE)
 
+import routing  # noqa: E402
 import store  # noqa: E402
 
 VERBS = ("init", "create", "show", "list", "ready", "tree", "summary", "claim",
@@ -44,6 +45,31 @@ def verb_in(argv):
     return None
 
 
+#: Id-taking verbs routed by prefix: verb -> (id attribute, mutates). `dep` and
+#: `unlink` route their edges themselves (fc-c10bcf).
+ROUTED_VERBS = {
+    "show": ("id", False), "tree": ("id", False),
+    "claim": ("id", True), "hold": ("id", True), "release": ("id", True),
+    "close": ("id", True), "reopen": ("id", True), "note": ("id", True),
+    "edit": ("id", True), "reparent": ("id", True),
+}
+
+
+def route_args(args):
+    """Normalise `<prefix>/<id>` to the bare id and point `args.repo` at the
+    owning repo, so a verb opens the right store the first time."""
+    spec = ROUTED_VERBS.get(args.cmd)
+    if not spec:
+        return
+    attr, mutate = spec
+    raw = getattr(args, attr)
+    ids = [store.local_id(i) for i in (raw if isinstance(raw, list) else [raw])]
+    setattr(args, attr, ids if isinstance(raw, list) else ids[0])
+    repo = routing.route_ids(ids, explicit=getattr(args, "repo", None), mutate=mutate)
+    if repo:
+        args.repo = repo
+
+
 def main(argv):
     parser = argparse.ArgumentParser(prog="pm ticket", description=__doc__,
                                      epilog=EPILOG, allow_abbrev=False)
@@ -74,6 +100,7 @@ def main(argv):
     if module is None:
         parser.error(f"no such verb: {args.cmd}")
     try:
+        route_args(args)
         module.run(args)
     except store.TicketError as e:
         print(f"pm: {e}", file=sys.stderr)
