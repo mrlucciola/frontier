@@ -171,8 +171,11 @@ fc-3868ea) showed:
   reported the session in `--cwd`.
 - With the prompt passed as one argument, the user message was the prompt
   wrapped in double quotes (the digests match exactly). Passing it one word per
-  argument has passed fixture tests only; it has not been rerun against the
-  client.
+  argument, rerun on a resume row (2026-11-13), gave `prompt_echoed` true, empty
+  `diagnostics`, `location_is_cwd` true, and a user message digest equal to
+  `prompt_sha256`. The
+  fresh and resume phases share one delivery path, but no fresh row has been
+  recorded since that fix (its attempt hit `session_already_exists`).
 
-Not checked against the client: word-by-word prompt delivery, pagination, tool
-and skill messages, failed and interrupted turns, and permission requests.
+Not checked against the client: pagination, tool and skill messages, failed and
+interrupted turns, and permission requests.
