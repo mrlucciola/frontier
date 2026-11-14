@@ -424,6 +424,95 @@ def claim_veto(t):
     return None
 
 
+def status_hint(t):
+    """The verb that moves `t` on from its status, for a refusal's tail."""
+    tid = t.get("id", "<id>")
+    if t["status"] == "open":
+        return f"`pm ticket claim {tid} --as <name>` takes it"
+    if t["status"] == "claimed":
+        return f"`pm ticket release {tid}` gives the claim up"
+    return f"`pm ticket reopen {tid}` reopens it"
+
+
+def refuse_if_unclaimed(t):
+    """`release`'s status refusal; `where --mutate --verb release` shares it."""
+    if t["status"] != "claimed" and t["assignee"] is None:
+        raise TicketError(f"not claimed (status: {t['status']}); {status_hint(t)}")
+
+
+def refuse_if_closed(t):
+    """`close`'s status refusal; `where --mutate --verb close` shares it."""
+    if t["status"] == "closed":
+        raise TicketError(f"already closed; {status_hint(t)}")
+
+
+def close_open_children(store, t, force, detach):
+    """`close`'s epic guard: the open children to reparent when `detach`, [] when
+    none or `force`; refuses when there are open children and neither flag is
+    given. `where --mutate` shares it."""
+    if t["kind"] != "epic" or force:
+        return []
+    open_children = [c for c in store.children(t["id"])
+                     if c["status"] not in ("closed", "done-unmerged")]
+    if open_children and not detach:
+        lines = "\n".join(f"  {c['id']}  {c['status']}  {c['title']}"
+                          for c in open_children)
+        raise TicketError(
+            f"{t['id']} has open children:\n{lines}\n"
+            "close them first, or pass --detach to reparent them to "
+            "(none), or --force to close anyway")
+    return open_children
+
+
+def parse_findings(raw, store):
+    """`--findings none|<id>[,<id>...]` -> ["none"] or the deduped bare id list.
+
+    An id whose prefix this store owns must be a row of this store; any other id,
+    bare or `<prefix>/<id>`, is routed read-only through `routing.resolve_store`
+    and must be a row there."""
+    import routing
+    items = [s.strip() for s in raw.split(",")]
+    if not all(items):
+        raise TicketError(f"--findings {raw!r}: empty entry; use none or id[,id...]")
+    if "none" in items:
+        if items != ["none"]:
+            raise TicketError("--findings: 'none' cannot be combined with ticket ids")
+        return ["none"]
+    items = list(dict.fromkeys(items))
+    owned = owned_prefixes(store.config)
+    repo = os.path.dirname(os.path.abspath(store.root))
+    unknown, bare = [], []
+    archived = store.archived_ids()
+    for i in items:
+        if i in store.by_id or i in store.compacted or i in archived:
+            bare.append(i)
+            continue
+        try:
+            tid = local_id(i)
+            if ref_prefix(i) in owned:
+                if (tid not in store.by_id and tid not in store.compacted
+                        and tid not in archived):
+                    unknown.append(i)
+                bare.append(tid)
+                continue
+            r = routing.resolve_store(i, None, repo, read=True,
+                                      _ctx=store.cross_cache["ctx"])
+            foreign = store.cross_cache["stores"]
+            key = os.path.realpath(r.root)
+            other = foreign.get(key)
+            if other is None:
+                other = foreign[key] = Store(r.root)
+        except (TicketError, OSError, ValueError) as e:
+            raise TicketError(f"--findings: {i}: {e}")
+        if tid not in other.by_id:
+            raise TicketError(f"--findings: no ticket {tid} in store {r.repo} (from {i})")
+        bare.append(tid)
+    if unknown:
+        raise TicketError(f"--findings: unknown ticket id(s) in {store.config['prefix']} "
+                          f"store: {', '.join(unknown)}")
+    return list(dict.fromkeys(bare))
+
+
 def edge_target(store, raw, edge_type=None):
     """Stored `to` for an edge to `raw` in this store. A discovered-from edge may
     name a compacted or archived id. Another store's row is not built yet."""
