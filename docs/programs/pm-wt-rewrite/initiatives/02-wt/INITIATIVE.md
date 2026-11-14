@@ -121,8 +121,12 @@ then reached `start.zsh` and failed on its own `status` variable (read-only in z
 `pm/tests/run_transcripts.py --dir wt/tests/t` passed 3, failed 0. Its report was not
 in the worker-brief shape; the artifacts were verified on disk instead.
 
-Batch B prompts queued: `02c-park.md`, `02d-status-prune.md`, `02b-finish.md`; they
-start once start merges.
+fc-8ecb48 closed after round 2 (9fccaab): overseer re-run StartTest passed 17, pending 1
+(on park), failed 0; full suite exit 0.
+
+Batch B in flight, three parallel workers: fc-917232 (`02c-park.md`), fc-983ff4
+(`02d-status-prune.md`), fc-249727 (`02b-finish.md`). Merge park before finish, then
+re-run finish's auto-park tests on main.
 
 ## Facts not to re-derive
 
