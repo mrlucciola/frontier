@@ -214,6 +214,16 @@ def next_id(s, tickets):
     return "%s-%d" % (s.prefix, n)
 
 
+def is_done(tid, tickets):
+    t = tickets.get(tid)
+    if t is not None:
+        return t["status"] == "done"
+    m = ID_RE.match(tid or "")
+    if m and m.group(1) not in {x.split("-")[0] for x in tickets}:
+        unbuilt("routing")
+    return False
+
+
 def _line(event):
     head = {k: event[k] for k in KEY_ORDER if k in event}
     rest = {k: event[k] for k in sorted(event) if k not in KEY_ORDER}
