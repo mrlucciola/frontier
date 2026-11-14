@@ -46,7 +46,7 @@ wt_resolve_repos() {
     found=$(wt_pm_get "$cwd_repo" "$id" store 2>&1)
     rc=$?
     if (( rc == 0 )) && [[ -n $found ]]; then
-      kinds+=(store) raws+=("${${(f)found}[-1]}") labels+=("pm store")
+      kinds+=(store) raws+=("${found##*$'\n'}") labels+=("pm store")
     elif (( rc == 127 )); then
       print -u2 -r -- "$found"
       return 1
