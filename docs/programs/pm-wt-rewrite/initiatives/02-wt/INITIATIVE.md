@@ -113,7 +113,10 @@ finish. `finish` auto-parks through `wt park <id> --auto` as a subprocess (inter
 None. (The fc-122c0d scratch cleanup was done by the operator on 2026-11-14; `wt
 finish fc-122c0d` then merged and closed it.)
 
-Batch A: fc-8ecb48 (`prompts/02a-start.md`) in flight. fc-347c67
+Batch A: fc-8ecb48 (`prompts/02a-start.md`) in flight, round 2. Round 1 (c592b74)
+found a core bug from 01c: `${${(f)found}[-1]}` took the last character of `pm get`'s
+output. Overseer fixed it on the start branch (c865198, `${found##*$'\n'}`); StartTest
+then reached `start.zsh` and failed on its own `status` variable (read-only in zsh). fc-347c67
 (`prompts/02e-pm-plugin.md`) closed: 54f697d, overseer re-run of
 `pm/tests/run_transcripts.py --dir wt/tests/t` passed 3, failed 0. Its report was not
 in the worker-brief shape; the artifacts were verified on disk instead.

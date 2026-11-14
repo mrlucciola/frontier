@@ -39,7 +39,11 @@ the lib files before writing; use the lib, do not re-implement it. Verbs call pm
 
 ## Rules for verb code
 
-zsh only; `emulate -L zsh` in every function; quoted paths; explicit `return`s. JSON is
+zsh only; `emulate -L zsh` in every function; quoted paths; explicit `return`s. Never
+name a local after a zsh special parameter: `status`, `path`, `argv`, `pipestatus`,
+`options`, `signals`, `commands`, `functions`, `PWD` among them (`status` is read-only,
+and `path` rewrites `$PATH`; both broke this build once). The last line of a value is
+`${value##*$'\n'}`. JSON is
 never parsed in zsh: read a ticket with `pm get <id> <field>` (one value per line), change
 it with `pm take`, `pm done`, `pm park`, `pm drop`, keep wt's facts with
 `pm emit <id> wt.<name> key=value`, read them back with `pm get <id> wt.<key>`; every pm
