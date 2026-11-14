@@ -93,7 +93,11 @@ because five parallel step-2 workers build on it and may not edit it. Done:
 array (every `--store`/`--repo` call), the any-failure fallback, stderr mixed into
 values, untrimmed err text, fault-row escaping, changed output lines, and six helpers
 under principle 2's three-caller bar.
-3. `prompts/01c-review-fixes.md` -- all findings. In flight. Rulings: `config.zsh` is
+3. `prompts/01c-review-fixes.md` -- all findings. Done: 4635204. Overseer gate:
+   `zsh -n` on `cli/wt`, `pm.zsh`, `git.zsh`, `fail.zsh`, `teardown.zsh` all exit 0;
+   worker's full new-side run `passed 9, pending 114, skipped 2, failed 0`; check
+   structure ok. fc-122c0d accepted. The final function list is in
+   `reports/01c-review-fixes.md`. Rulings: `config.zsh` is
    deleted (gate and known red have one user, finish); `wt_findings_required` stays
    shared by finish and park, a proposed amendment to principle 2 for fc-121923; the
    one-line pm wrappers go, verbs call `wt_pm` directly.
