@@ -1,0 +1,10 @@
+#!/usr/bin/python3
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import pilot
+
+late = [t["id"] for t in pilot.open_pilots() if pilot.overdue(t)]
+if late:
+    print("pilots overdue: " + ", ".join(late))

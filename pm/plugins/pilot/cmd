@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+"""usage: pm pilot
+Lists open tickets labelled pilot whose review_by: line is missing or past."""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import pilot
+
+problems = [(t["id"], pilot.review_problem(t)) for t in pilot.open_pilots()]
+problems = [(i, p) for i, p in problems if p]
+for tid, problem in problems:
+    print("%s: %s" % (tid, problem))
+sys.exit(1 if problems else 0)

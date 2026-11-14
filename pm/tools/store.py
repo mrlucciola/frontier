@@ -1,4 +1,5 @@
 """The ticket store: the log, replay and the one write path."""
+import atexit
 import fcntl
 import json
 import os
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import time
 
+import plugins
 import registry
 import render
 import who
@@ -366,26 +368,65 @@ def _backup(s):
         sys.stderr.write("pm: warning: backup failed: %s\n" % reason)
 
 
+def _fill(events, actor):
+    stamp, by = now(), who.by(actor)
+    filled = []
+    for event in events:
+        event = dict(event)
+        event.setdefault("ts", stamp)
+        event.setdefault("by", by)
+        filled.append(event)
+    return filled
+
+
+def _pre(s, filled, tickets):
+    for event in filled:
+        for _name, path in plugins.with_file("pre-" + str(event["op"])):
+            env = plugins.hook_env(s, event, tickets.get(event["id"]))
+            code, text = plugins.run_hook(path, env, merge=True)
+            if code != 0:
+                sys.stderr.write(text if text.endswith("\n") or not text else text + "\n")
+                sys.exit(1)
+
+
+_post_text = []
+
+
+def _flush_post():
+    if _post_text:
+        sys.stdout.write("".join(_post_text))
+        del _post_text[:]
+
+
+def _post(s, filled, tickets):
+    for event in filled:
+        for _name, path in plugins.with_file("post-" + str(event["op"])):
+            env = plugins.hook_env(s, event, tickets.get(event["id"]))
+            _code, text = plugins.run_hook(path, env)
+            if text:
+                _post_text.append(text if text.endswith("\n") else text + "\n")
+    if _post_text:
+        atexit.register(_flush_post)
+
+
 def change(s, check, actor=None, dry_run=False):
     frozen = registry.read_only_path(s.root)
     if frozen is not None:
         render.refuse("store %s is read-only (%s)." % (s.prefix, frozen))
+    before = replay(read(s))
+    _pre(s, _fill(check(before), actor), before)
     fd = os.open(s.log, os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         tickets = replay(read(s))
-        events = check(tickets)
-        stamp, by = now(), who.by(actor)
-        filled = []
-        for event in events:
-            event = dict(event)
-            event.setdefault("ts", stamp)
-            event.setdefault("by", by)
-            filled.append(event)
-        if filled and not dry_run:
+        filled = _fill(check(tickets), actor)
+        written = bool(filled) and not dry_run
+        if written:
             data = "".join(_line(e) + "\n" for e in filled).encode("utf-8")
             os.write(fd, data)
             _backup(s)
-        return filled
     finally:
         os.close(fd)
+    if written:
+        _post(s, filled, tickets)
+    return filled

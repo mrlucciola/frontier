@@ -58,6 +58,10 @@ def help_all():
     out = [HEADER]
     for _, usage, summary in VERBS:
         out.append("  %s%s" % (usage.ljust(22), summary))
+    import plugins
+    found = plugins.names()
+    if found:
+        out.append("\nplugins: " + ", ".join(found))
     sys.stdout.write("\n".join(out) + "\n")
     return 0
 
@@ -78,9 +82,6 @@ def help_verb(word):
 
 def no_verb(word):
     import store
-    plugins = os.environ.get("PM_PLUGINS") or os.path.expanduser("~/.config/pm/plugins")
-    if os.path.isdir(plugins) and os.listdir(plugins):
-        store.unbuilt("plugins")
     names = [v[0] for v in VERBS] + list(ALIASES)
     close = difflib.get_close_matches(word, names, n=1)
     hint = " Closest: %s." % close[0] if close else ""
@@ -107,7 +108,12 @@ def main(argv):
         return help_verb(rest[0]) if rest else help_all()
     verb = ALIASES.get(word, word)
     if verb not in [v[0] for v in VERBS]:
-        return no_verb(word)
+        import plugins
+        path = plugins.command(word)
+        if not path:
+            return no_verb(word)
+        import store
+        return plugins.run_command(path, rest, store.find())
     return run_verb(verb, rest)
 
 

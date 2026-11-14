@@ -4,8 +4,7 @@ Orient: what you hold, what is ready and what is parked, each section only when 
 has entries. Ready and parked show five tickets and a count of the rest. With
 nothing to show it says how to file work.
 """
-import os
-
+import plugins
 import render
 import store
 import who
@@ -13,14 +12,6 @@ import who
 
 def _rank(t):
     return t["pri"]
-
-
-def _has_plugins():
-    root = os.environ.get("PM_PLUGINS") or os.path.expanduser("~/.config/pm/plugins")
-    try:
-        return bool(os.listdir(root))
-    except OSError:
-        return False
 
 
 def _section(name, rows, tickets, more):
@@ -34,8 +25,6 @@ def run(argv):
     p = render.parser(__doc__)
     p.parse_args(argv)
     s = store.require()
-    if _has_plugins():
-        store.unbuilt("plugins")
     tickets = store.replay(store.read(s))
     ordered = sorted(tickets.values(), key=_rank)
     yours = [t for t in ordered if t["status"] == "taken" and who.yours(t["holder"])]
@@ -49,5 +38,8 @@ def run(argv):
         out += _section("ready", ready, tickets, "pm ls ready")
     if parked:
         out += _section("parked", parked, tickets, "pm ls parked")
+    extra = plugins.orient_text()
+    if extra:
+        out.append(extra)
     print("\n".join(out) if out else 'nothing to do. File work: pm new "title"')
     return 0

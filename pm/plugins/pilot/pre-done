@@ -1,0 +1,18 @@
+#!/usr/bin/python3
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import pilot
+
+if "pilot" not in os.environ.get("PM_LABELS", "").split():
+    sys.exit(0)
+tid = os.environ["PM_ID"]
+notes = []
+for t in pilot.open_pilots():
+    if t["id"] == tid:
+        notes = t["notes"]
+if not (pilot.has_note(notes, "measured:") and pilot.has_note(notes, "ruling:")):
+    print('pilot: %s needs a note starting "measured:" and one starting "ruling:" before it is done.' % tid)
+    sys.exit(1)

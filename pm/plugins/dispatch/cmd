@@ -1,0 +1,18 @@
+#!/bin/sh
+# usage: pm dispatch id
+# Says whether the ticket body has the four headings a worker needs.
+[ $# -eq 1 ] || { echo "usage: pm dispatch id" >&2; exit 2; }
+body=$(pm get "$1" body) || exit 1
+missing=0
+check() {
+  if ! printf '%s\n' "$body" | grep -i -q -E "^[[:space:]]*($2):"; then
+    echo "missing: $1"
+    missing=1
+  fi
+}
+check "Done" "done|gate"
+check "Writes" "writes|files"
+check "Read first" "read first|inputs"
+check "Do not" "do not|not in scope"
+[ "$missing" -eq 0 ] || exit 1
+echo dispatchable
