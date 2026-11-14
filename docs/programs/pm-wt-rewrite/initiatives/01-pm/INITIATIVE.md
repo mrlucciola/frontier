@@ -11,37 +11,35 @@ blocked-by chain:
 epic subtree:
   fc-2b34c9  P2  closed        pm core: store module, ticket entry with the kept-verb table, verbs init create show
   fc-459fe0  P2  closed        pm routing: store registry, prefix routing, frozen stores, verbs where and stores
-  fc-d73327  P2  claimed       pm lifecycle verbs: claim hold release close reopen [@agent:claude/claude#8126bedd]
-  fc-739601  P2  claimed       pm read verbs: list ready tree summary [@agent:claude/claude#8126bedd]
-  fc-c10bcf  P2  claimed       pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard [@agent:claude/claude#8126bedd]
-  fc-c5e673  P2  claimed       pm history verb: status enable disable sync restore, commit modes [@agent:claude/claude#8126bedd]
-  fc-913d02  P2  open          pm checks and views: validate lint archive board overview
+  fc-d73327  P2  closed        pm lifecycle verbs: claim hold release close reopen
+  fc-739601  P2  closed        pm read verbs: list ready tree summary
+  fc-c10bcf  P2  closed        pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard
+  fc-c5e673  P2  closed        pm history verb: status enable disable sync restore, commit modes
+  fc-913d02  P2  claimed       pm checks and views: validate lint archive board overview [@agent:claude/claude#8126bedd held]
   fc-59011f  P2  open          pm integration: full parity green, golden diff on live stores, component docs, readability review
   fc-0817f6  P2  closed        pm parity: port upstream drift 505936d6..1ecfec0a (claim exit lines, lint <id>)
   fc-d659dd  P2  closed        pm parity: port upstream drift 1ecfec0a..7fd60e5c (pilot contract in lint and summary)
   fc-8acbe2  P2  closed        pm parity: port upstream drift 7fd60e5c..03b232d2 (refusal hints, claim --reopen, close --via wt)
+  fc-93ef2a  P2  closed        pm parity: port upstream drift 03b232d2..944f3cda (create --blocks/--blocked-by, dep several targets, dep --note)
+  fc-d43216  P2  claimed       pm claim --take-over: port upstream 90f8b81c (operator re-assigns a stale claim) [@agent:claude/claude#8126bedd held]
 ```
 
 ## Next batch
 
-Step 3, four lanes running from main 285a86f: fc-d73327 (`03a1` then `03a2`),
-fc-739601 (`03b1` then `03b2`), fc-c10bcf (`03c1` then `03c2`), fc-c5e673 (`03d`).
-fc-913d02 (`03e1`-`03e4`, serial) starts in the first lane that frees. Merge one at a
-time with `wt finish`, re-running the full `--allow-pending` gate from main after each;
-fc-c10bcf merges after fc-d73327 and fc-739601. A rebase conflict in `store.py`
-auto-parks: resume with `wt start` and hand the conflict to a worker. Re-run the drift
-command (pin `03b232d2`) before each merge.
+fc-913d02 `03e4` (lint) and fc-d43216 (claim --take-over; overseer ported its tests on
+the branch first) running. Merge each after its gate, re-running the full
+`--allow-pending` gate from main after each. Then fc-59011f: `04a` (remove unbuilt,
+pending 0), `04b` (golden diff, read-only, named skips), `04c` (docs), then an opus
+read-only review against the component principles with a fix worker, then close with
+the old-vs-new line counts. Re-run the drift command (pin `90f8b81c` once fc-d43216
+merges) before each merge.
 
-Parity baseline at main 285a86f: old CLI `passed 262, pending 0, failed 0, skipped 9`;
-new CLI `passed 21, pending 241, failed 0, skipped 9`.
+Main at 2026-11-14 after fc-c10bcf: `parity: passed 175, pending 90, failed 0,
+skipped 9`; unbuilt: archive, lint, validate (all on the fc-913d02 branch).
 
-**Known failure on main (2026-11-14):** after fc-d73327 merged, main reads `parity:
-passed 103, pending 161, failed 1, skipped 9`. The one failure is
-`TicketCliTest.test_create_writes_blocks_and_blocked_by_edges`: fc-93ef2a ported that
-upstream test before `create --blocks/--blocked-by` existed, so argparse exits 2
-instead of `unbuilt` exiting 70. fc-c10bcf `03c3` builds the flags. Until fc-c10bcf
-merges, a post-merge gate passes when its only failure is this test. Lesson for later
-drift ports: stub any new flag with `store.unbuilt` in the same commit as its test.
+Lesson recorded: a drift port that adds a test for a flag nobody has built breaks
+`failed 0` (fc-93ef2a did, one gate cycle, fixed by fc-c10bcf). Port the test on the
+branch that builds the flag, as fc-d43216 does.
 
 ## Owed operator actions
 
@@ -121,5 +119,5 @@ None.
   `overview.py` 165.
 - **`show --field`** is new surface, specified in fc-2b34c9 and tested in
   `test_cli_contract.py`, not in the parity suite.
-- **Root README.** The pm row in the component table is added by fc-59011f and by no
-  earlier ticket.
+- **Root README.** The pm row in the component table already exists (frontier-clean
+  984b25d); fc-59011f only corrects its purpose text if needed.
