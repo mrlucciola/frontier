@@ -23,7 +23,25 @@ epic subtree:
 
 ## Next batch
 
-fc-dac416, alone. Everything else is blocked behind it.
+fc-dac416, alone, as four serial workers on its branch: `prompts/01-core-a-move.md`,
+`01-core-b-dispatcher.md`, `01-core-c-store.md`, `01-core-d-render.md`, all under
+the rules of `prompts/00-common.md`. Everything else is blocked behind it.
+
+After fc-dac416: all five step-2 tickets at once is five workers; dispatch four
+(fc-195118, fc-ef483a, fc-8b871a, fc-e2d8c9), then fc-3f4bfa as the first finishes.
+
+## Decisions
+
+- **The module contract is fixed in `prompts/00-common.md`** (2026-11-14). Step-2
+  workers code against it in parallel; a signature change comes back here.
+- **Core writes `store.change()` and the default id**, not fc-195118 (2026-11-14):
+  `new` already needs the one mutating path, and with it in core the step-2 tickets
+  do not wait on fc-195118. fc-195118 keeps --force, --dry-run behavior, several ids,
+  findings and the epic rules. The seed's "merge fc-195118 first" no longer applies.
+- **The duplicate guard in core** (2026-11-14): `new.py` carries the copied
+  `find_duplicates` from the start and calls `store.unbuilt("duplicate")` only on a
+  match or `--new`, so transcript 11 stays pending and no other `new` is affected.
+  fc-8b871a writes the refusal.
 
 ## Owed operator actions
 
@@ -68,5 +86,11 @@ None yet. One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
   `routing.py` 435, `gitcommit.py` 293, `ticket` 135 lines. Count the whole of `pm/v2`
   at the commit before its removal.
 - **Upstream.** `git -C ~/frontier log 90f8b81c..HEAD -- runtime-tools/pm runtime-tools/wt`
-  printed nothing on 2026-11-14.
+  printed nothing on 2026-11-14, at the ledger's writing and again at the overseer's
+  first turn.
+- **The gate ran before any work:** `-k 01-init` ended
+  `transcripts: passed 0, pending 0, failed 1` against the ported dispatcher.
+- **`check_structure.py` on main** reports one violation that is not ours:
+  `docs/contributing.md:149: X-STALE exemption cwf L-ROOT`, caused by another
+  session's uncommitted cwf work. A worktree at HEAD may not show it.
 - **Not ours.** `pm/dash-ui/` is untracked and belongs to another session.
