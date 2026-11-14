@@ -88,8 +88,21 @@ fc-30c060 closed by `wt finish` with `--findings fc-f0cc16`.
    pending 114, skipped 2, failed 0`.
 
 Then a read-only check of the lib against component-principles and the old code,
-because five parallel step-2 workers build on it and may not edit it. In flight
-(design-reviewer); body goes to `reports/01-review.md`.
+because five parallel step-2 workers build on it and may not edit it. Done:
+`reports/01-review.md`, BROKEN: `local path=` in `pm.zsh` clobbers zsh's `$PATH`
+array (every `--store`/`--repo` call), the any-failure fallback, stderr mixed into
+values, untrimmed err text, fault-row escaping, changed output lines, and six helpers
+under principle 2's three-caller bar.
+3. `prompts/01c-review-fixes.md` -- all findings. In flight. Rulings: `config.zsh` is
+   deleted (gate and known red have one user, finish); `wt_findings_required` stays
+   shared by finish and park, a proposed amendment to principle 2 for fc-121923; the
+   one-line pm wrappers go, verbs call `wt_pm` directly.
+
+Step-2 order (overseer, 2026-11-14): every suite test starts with `wt start`, so batch A
+is fc-8ecb48 (start) and fc-347c67 (pm plugin); batch B, after start merges, is
+fc-917232 (park), fc-983ff4 (status, prune) and fc-249727 (finish); merge park before
+finish. `finish` auto-parks through `wt park <id> --auto` as a subprocess (interface in
+`prompts/02-common.md`).
 
 ## Owed operator actions
 

@@ -31,9 +31,11 @@ wins.
 calls `wt_verb "$@"`; your verb file defines `wt_verb` and returns its exit status.
 Globals for verbs: `WT_TOOLS`, `WT_COMPONENT`, `WT_VERB` (`land` is dispatched to
 `finish.zsh` with `WT_VERB=land`). The lib functions and their intended callers are listed
-in `docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/01a-core.md` and
-`01b-teardown.md` (main checkout). Read both and the lib files before writing; use the
-lib, do not re-implement it.
+in `docs/programs/pm-wt-rewrite/initiatives/02-wt/reports/01c-review-fixes.md` (main
+checkout; it supersedes the lists in `01a-core.md` and `01b-teardown.md`). Read it and
+the lib files before writing; use the lib, do not re-implement it. Verbs call pm as
+`wt_pm <store> <session> <pm verb> ...` and read with `wt_pm_get`. There is no
+`config.zsh`: `.wt/gate` and `.wt/known-red` live in `finish.zsh`.
 
 ## Rules for verb code
 
