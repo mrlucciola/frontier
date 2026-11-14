@@ -15,7 +15,7 @@ runs.
 | --- | --- | --- |
 | 01 pm port | fc-c3514f | Closed 2026-11-14. A faithful port of the old pm, at parity with it. |
 | 04 pm redesign | fc-2a6562 | Closed 2026-11-14. The event-log pm replaces the port; all 25 transcripts pass. |
-| 02 wt | fc-262fa8 | After 04. Rewritten on 2026-11-14 to build on the redesigned pm. |
+| 02 wt | fc-262fa8 | Closed 2026-11-14. A zsh wt on the redesigned pm; its 125-test black-box suite is green against the old wt and, with 2 old-side-only skips, the new one. |
 | 03 delivery | fc-ccecda | After 02. Reduced on 2026-11-14: the redesign took its hook work. |
 
 ## Rulings

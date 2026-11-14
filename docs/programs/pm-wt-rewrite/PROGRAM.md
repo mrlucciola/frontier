@@ -8,7 +8,7 @@ Launch them in the order of the last column; rule on each before the next.
 | --- | --- | --- | --- | --- |
 | 01 | pm port | fc-c3514f | closed 2026-11-14; initiative directory last tracked at `205a255` (`git show 205a255:docs/programs/pm-wt-rewrite/initiatives/01-pm/INITIATIVE.md`) | done |
 | 04 | pm redesign | fc-2a6562 | closed 2026-11-14; initiative directory last tracked at `523ae74` (`git show 523ae74:docs/programs/pm-wt-rewrite/initiatives/04-pm-log/INITIATIVE.md`) | done |
-| 02 | wt | fc-262fa8 | [seed](/docs/programs/pm-wt-rewrite/initiatives/02-wt/seed.md) | fc-2a6562 closed and accepted |
+| 02 | wt | fc-262fa8 | closed 2026-11-14; initiative directory last tracked at `bd6a9c5` (`git show bd6a9c5:docs/programs/pm-wt-rewrite/initiatives/02-wt/INITIATIVE.md`) | done |
 | 03 | delivery | fc-ccecda | [seed](/docs/programs/pm-wt-rewrite/initiatives/03-delivery/seed.md) | fc-262fa8 closed and accepted |
 
 State lives in the ticket store: `pm ticket tree <epic id>`. Each initiative's
