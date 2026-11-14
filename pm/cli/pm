@@ -77,6 +77,10 @@ def help_verb(word):
 
 
 def no_verb(word):
+    import store
+    plugins = os.environ.get("PM_PLUGINS") or os.path.expanduser("~/.config/pm/plugins")
+    if os.path.isdir(plugins) and os.listdir(plugins):
+        store.unbuilt("plugins")
     names = [v[0] for v in VERBS] + list(ALIASES)
     close = difflib.get_close_matches(word, names, n=1)
     hint = " Closest: %s." % close[0] if close else ""
