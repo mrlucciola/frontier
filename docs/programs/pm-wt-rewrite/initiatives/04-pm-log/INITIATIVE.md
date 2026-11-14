@@ -10,26 +10,28 @@ blocked-by chain:
   (none)
 epic subtree:
   fc-dac416  P2  closed        pm log core: quarantine the port to pm/v2, dispatcher, store module, verbs init new show help
-  fc-195118  P2  claimed       pm lifecycle verbs: take drop done park reopen hold, the default id, --force, --dry-run, findings [@agent:claude/claude#261b95c7]
-  fc-ef483a  P2  claimed       pm read verbs: bare pm, ls, get, log, emit, --json [@agent:claude/claude#261b95c7]
-  fc-8b871a  P2  claimed       pm structure verbs: note edit link unlink, new's link flags, the duplicate guard [@agent:claude/claude#261b95c7]
-  fc-e2d8c9  P2  claimed       pm stores: routing by prefix, links across stores, read-only stores, --all-stores, doctor [@agent:claude/claude#261b95c7]
-  fc-a731f4  P2  open          pm plugins: cmd, pre, post and orient files; the dispatch and pilot plugins
-  fc-3f4bfa  P2  open          pm backup: one blob at refs/pm/log after every append, restore, the store of a linked worktree
-  fc-4a8593  P2  open          pm import: fill a log from a spec v2 store, and check it against every registered store
-  fc-a761be  P2  open          pm harness hooks: pm hook for session start, prompt and stop; Claude and opencode wiring
+  fc-195118  P2  closed        pm lifecycle verbs: take drop done park reopen hold, the default id, --force, --dry-run, findings
+  fc-ef483a  P2  closed        pm read verbs: bare pm, ls, get, log, emit, --json
+  fc-8b871a  P2  closed        pm structure verbs: note edit link unlink, new's link flags, the duplicate guard
+  fc-e2d8c9  P2  closed        pm stores: routing by prefix, links across stores, read-only stores, --all-stores, doctor
+  fc-a731f4  P2  claimed       pm plugins: cmd, pre, post and orient files; the dispatch and pilot plugins [@agent:claude/claude#261b95c7]
+  fc-3f4bfa  P2  closed        pm backup: one blob at refs/pm/log after every append, restore, the store of a linked worktree
+  fc-4a8593  P2  claimed       pm import: fill a log from a spec v2 store, and check it against every registered store [@agent:claude/claude#261b95c7]
+  fc-a761be  P2  claimed       pm harness hooks: pm hook for session start, prompt and stop; Claude and opencode wiring [@agent:claude/claude#261b95c7]
   fc-d6c61c  P2  open          pm redesign integration: budgets, concurrency, remove pm/v2, component docs, readability review
+  fc-f3c2bd  P2  closed        pm redesign step-2 fixes: cross-ticket transcript failures after the step-2 merges
 ```
 
 ## Next batch
 
-fc-dac416 closed 2026-11-14 (four serial workers, reports `01-core-*`; on main
-`--allow-pending`: passed 2, pending 21, failed 0).
+Step 2 closed 2026-11-14. On main, transcripts 01 to 14, 18, 20 and 21 pass without
+`--allow-pending` (17 passed); `--allow-pending`: passed 18, pending 5, failed 0;
+unbuilt: hook, import, plugins.
 
-In flight: prompts `02a` to `02d` (fc-195118, fc-ef483a, fc-8b871a, fc-e2d8c9)
-at once, then `02e` (fc-3f4bfa) once fc-e2d8c9 is merged, since it adds the
-`backup:` line to `doctor.py`. Merge in the order they report, running the full
-`--allow-pending` gate from the main checkout after each.
+In flight: step 3, prompts `03a` (fc-a731f4), `03b` (fc-a761be), `03c` (fc-4a8593)
+at once. fc-a731f4 gets a read-only reviewer check on its branch before merge.
+After the last merge: transcripts 15, 16, 19, 22, 23 without `--allow-pending`,
+then fc-d6c61c (`04-integration-*`).
 
 ## Decisions
 
