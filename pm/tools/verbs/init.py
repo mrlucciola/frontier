@@ -40,16 +40,21 @@ def run(argv):
     registry.add(args.prefix, here)
     print("ready: %s (%s)" % (args.prefix, pm_dir))
     print("For agents without hooks, add to AGENTS.md: Tickets live in .pm/. Run `pm`.")
-    if _in_checkout(here):
-        store.unbuilt("backup")
+    if store.in_checkout(here):
+        _ignore_log(here)
     return 0
 
 
-def _in_checkout(path):
-    while True:
-        if os.path.exists(os.path.join(path, ".git")):
-            return True
-        parent = os.path.dirname(path)
-        if parent == path:
-            return False
-        path = parent
+def _ignore_log(here):
+    path = os.path.join(here, ".gitignore")
+    try:
+        with open(path) as f:
+            text = f.read()
+    except OSError:
+        text = ""
+    if ".pm/log.jsonl" in text.splitlines():
+        return
+    with open(path, "a") as f:
+        if text and not text.endswith("\n"):
+            f.write("\n")
+        f.write(".pm/log.jsonl\n")

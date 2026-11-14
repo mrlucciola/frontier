@@ -3,6 +3,7 @@ import fcntl
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -39,21 +40,55 @@ class Store:
         self.prefix = self.config.get("prefix", "")
 
 
-def find(start=None):
-    here = os.path.realpath(start or os.getcwd())
+def _ancestor(here, name):
     while True:
-        if os.path.isfile(os.path.join(here, ".pm", "log.jsonl")):
-            return Store(here)
+        if os.path.isfile(os.path.join(here, ".pm", name)):
+            return here
         parent = os.path.dirname(here)
         if parent == here:
             return None
         here = parent
 
 
+def _main_root(here):
+    try:
+        out = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=here,
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             universal_newlines=True)
+    except OSError:
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return os.path.dirname(os.path.realpath(os.path.join(here, out.stdout.strip())))
+
+
+def locate_dir(start=None):
+    """(Store, True) when the log exists, (Store, False) when only a config does."""
+    here = os.path.realpath(start or os.getcwd())
+    root = _ancestor(here, "log.jsonl")
+    if root is not None:
+        return Store(root), True
+    if in_checkout(here):
+        root = _main_root(here)
+        if root is not None and os.path.isfile(os.path.join(root, ".pm", "log.jsonl")):
+            return Store(root), True
+    root = _ancestor(here, "config.json")
+    if root is not None:
+        return Store(root), False
+    return None, False
+
+
+def find(start=None):
+    s, has_log = locate_dir(start)
+    return s if has_log else None
+
+
 def require():
-    s = find()
+    s, has_log = locate_dir()
     if s is None:
         render.refuse("no store here. Start one: pm init <prefix>")
+    if not has_log:
+        render.refuse("this store's log is missing. Bring it back from its git backup: pm restore")
     return s
 
 
@@ -290,6 +325,47 @@ def _line(event):
     return json.dumps(head, separators=(",", ":"), ensure_ascii=False)
 
 
+def in_checkout(path):
+    while True:
+        if os.path.exists(os.path.join(path, ".git")):
+            return True
+        parent = os.path.dirname(path)
+        if parent == path:
+            return False
+        path = parent
+
+
+def _git(s, *args):
+    out = subprocess.run(("git",) + args, cwd=s.root, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr.decode("utf-8", "replace").strip()
+                           or "git %s failed" % args[0])
+    return out.stdout
+
+
+def backup_blob(s):
+    """The log bytes stored at refs/pm/log, or None when there is no such ref."""
+    try:
+        subprocess.run(["git", "rev-parse", "--verify", "-q", "refs/pm/log"],
+                       cwd=s.root, check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return _git(s, "cat-file", "blob", "refs/pm/log")
+
+
+def _backup(s):
+    if not in_checkout(s.root):
+        return
+    try:
+        sha = _git(s, "hash-object", "-w", ".pm/log.jsonl").decode().strip()
+        _git(s, "update-ref", "refs/pm/log", sha)
+    except (OSError, RuntimeError) as e:
+        reason = (str(e).splitlines() or ["unknown"])[0]
+        sys.stderr.write("pm: warning: backup failed: %s\n" % reason)
+
+
 def change(s, check, actor=None, dry_run=False):
     frozen = registry.read_only_path(s.root)
     if frozen is not None:
@@ -309,6 +385,7 @@ def change(s, check, actor=None, dry_run=False):
         if filled and not dry_run:
             data = "".join(_line(e) + "\n" for e in filled).encode("utf-8")
             os.write(fd, data)
+            _backup(s)
         return filled
     finally:
         os.close(fd)

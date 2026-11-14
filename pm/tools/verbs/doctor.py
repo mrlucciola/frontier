@@ -61,6 +61,27 @@ def run(argv):
     problems.sort(key=lambda p: int(p.split()[1]))
     if problems:
         print("\n".join(problems))
-        return 1
-    print("ok: %s, %s, %s" % (s.prefix, _plural(len(known), "ticket"), _plural(count, "event")))
-    return 0
+    else:
+        print("ok: %s, %s, %s" % (s.prefix, _plural(len(known), "ticket"), _plural(count, "event")))
+    if store.in_checkout(s.root):
+        print(_backup_line(s, lines))
+    return 1 if problems else 0
+
+
+def _backup_line(s, lines):
+    try:
+        blob = store.backup_blob(s)
+    except (OSError, RuntimeError) as e:
+        return "backup: cannot read refs/pm/log: %s" % ((str(e).splitlines() or ["unknown"])[0])
+    if blob is None:
+        return "backup: refs/pm/log does not exist yet. The next change creates it."
+    text = blob.decode("utf-8", "replace")
+    if text.splitlines() == lines:
+        return "backup: refs/pm/log is current"
+    saved = len([x for x in text.splitlines() if x.strip()])
+    have = len([x for x in lines if x.strip()])
+    if saved > have:
+        return "backup: refs/pm/log has %d events and the log has %d. Bring them back: pm restore" \
+            % (saved, have)
+    return "backup: refs/pm/log has %d events and the log has %d. The next change updates it." \
+        % (saved, have)
