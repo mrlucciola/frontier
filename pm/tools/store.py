@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import shlex
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -241,6 +242,129 @@ class Store:
                     and tid not in self.archived_ids():
                 return tid
         raise TicketError("could not allocate a unique id")
+
+    def blockers_of(self, tid):
+        """Rows carrying a blocks-edge to `tid`."""
+        return [t for t in self.tickets
+                if any(e["type"] == "blocks" and e["to"] == tid for e in t["edges"])]
+
+    def children(self, tid):
+        return [t for t in self.tickets if t.get("parent") == tid]
+
+    def is_ready(self, t):
+        return (t["kind"] == "task" and t["status"] == "open"
+                and all(b["status"] == "closed" for b in self.blockers_of(t["id"])))
+
+
+TITLE_MAX = 200
+LABEL_MAX = 80
+LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9:_./-]*$")
+ID_RE = re.compile(r"^[a-z][a-z0-9]{1,7}-[0-9a-f]{6,11}$")
+
+
+def title_problem(title):
+    """Why `title` is not a valid row title, else None."""
+    if title == "" or "\n" in title or "\r" in title:
+        return "title must be a non-empty single line"
+    if len(title) > TITLE_MAX:
+        return f"title is {len(title)} chars; the limit is {TITLE_MAX}"
+    return None
+
+
+def label_problem(label):
+    """Why `label` is not a valid row label, else None."""
+    if not isinstance(label, str):
+        return f"label {label!r} is not a string"
+    if not LABEL_RE.match(label):
+        return f"label {label!r} does not match {LABEL_RE.pattern}"
+    if len(label) > LABEL_MAX:
+        return f"label {label!r} is {len(label)} chars; the limit is {LABEL_MAX}"
+    return None
+
+
+def make_note(text, kind=None, ts=None):
+    """A note row; `kind` is omitted when None."""
+    note = {"ts": ts or now(), "text": text}
+    if kind:
+        note["kind"] = kind
+    return note
+
+
+def session_token(explicit=None):
+    """First 8 hex of sha256 of the session id (explicit, PM_SESSION_ID, then
+    CLAUDE_CODE_SESSION_ID), or None when there is none."""
+    sid = explicit or os.environ.get("PM_SESSION_ID") \
+        or os.environ.get("CLAUDE_CODE_SESSION_ID")
+    return hashlib.sha256(sid.encode()).hexdigest()[:8] if sid else None
+
+
+def _agent_provider():
+    pm_agent = os.environ.get("PM_AGENT")
+    if pm_agent:
+        return pm_agent.partition("/")[0] or None
+    if os.environ.get("CLAUDECODE"):
+        return "claude"
+    if os.environ.get("CODEX_AGENT_IDENTITY"):
+        return "codex"
+    return None
+
+
+def session_assignee(name, explicit=None):
+    """`agent:<provider>/<name>#<token>` when a provider and a session id are
+    known, else `human:<name>` (spec v2 section 4)."""
+    tok = session_token(explicit)
+    provider = _agent_provider()
+    if provider and tok:
+        return f"agent:{provider}/{name}#{tok}"
+    return f"human:{name}"
+
+
+def owned_prefixes(config):
+    out = []
+    if isinstance(config.get("prefix"), str):
+        out.append(config["prefix"])
+    legacy = config.get("legacy_prefixes")
+    if isinstance(legacy, list):
+        out += [p for p in legacy if isinstance(p, str) and p not in out]
+    return out
+
+
+def ref_prefix(ref):
+    """Prefix of `lin-559399` or `lin/lin-559399`; None when neither shape."""
+    head, sep, _ = ref.partition("/")
+    if sep:
+        return head or None
+    head, sep, _ = ref.partition("-")
+    return head if sep and head else None
+
+
+def local_id(ref):
+    """`<prefix>/<id>` -> `<id>`; a bare id is returned unchanged."""
+    if ":" in ref:
+        head, _, tid = ref.partition(":")
+        raise TicketError(
+            f"{ref!r}: write a cross-store id as <prefix>/<id> "
+            f"({head}/{tid}), not <prefix>:<id>")
+    head, sep, tid = ref.partition("/")
+    if not sep:
+        return ref
+    if not head or ref_prefix(tid) != head:
+        raise TicketError(
+            f"{ref!r}: the part before '/' must be the id's own prefix "
+            f"(expected '{ref_prefix(tid) or '<prefix>'}/{tid}')")
+    return tid
+
+
+def is_remote_ref(store, raw):
+    """True when `raw` names a row outside `store`: a prefix the store does not
+    own, or a legacy prefix whose row the store does not hold."""
+    tid = local_id(raw)
+    pfx = ref_prefix(tid)
+    if not pfx:
+        return False
+    if pfx not in owned_prefixes(store.config):
+        return True
+    return pfx != store.config.get("prefix") and tid not in store.by_id
 
 
 def _located(repo):
