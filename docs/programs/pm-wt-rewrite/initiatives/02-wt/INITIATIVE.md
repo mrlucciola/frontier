@@ -44,8 +44,11 @@ fc-30c060, alone, in five serial worker parts on branch `fc-30c060` (fc-2a6562 c
    `passed 9, pending 83, skipped 1, failed 8`: a subtest table reusing prefix `tk`
    (the new `pm init` registers prefixes) and a `Pending` inside `subTest`, plus the
    two-owners case. In flight.
-7. Read-only reviewer (qa-engineer, opus) maps the suite to `wt/docs/contract.md`
-   section by section, in parallel with 6; its body goes to `reports/00-review.md`.
+7. Read-only reviewer (qa-engineer, opus) mapped the suite to `wt/docs/contract.md`:
+   `reports/00-review.md`, PARTIAL, about 20 gaps. All accepted. Closed by
+   `00-characterize-6a-review-finish.md` (finish, land, teardown, guard, fault rows)
+   then `00-characterize-6b-review-rest.md` (sessions, start hint, where failures,
+   refusal words, nested variants, selftest), serial after 6. Then a re-review.
 
 ## Owed operator actions
 
@@ -114,6 +117,9 @@ None.
   Every cross-repo call (`--store`/`--repo` to another repo, a prefix registered
   elsewhere) is refused unless `GIT_PAIRS_FILE` declares the pair; the suite declares
   pairs. The contract's resolution section does not mention it.
+- **The cross-repo guard is kept.** Ruling (overseer, 2026-11-14): the new wt refuses
+  an undeclared cross-repo mutation and reads the pairs from `$GIT_PAIRS_FILE` in the
+  old shape, so the suite pins one behavior on both sides.
 - **Old-side isolation knobs** (from the old `cmd_selftest`): `PM_STORES_FILE` (old
   registry), `PM_TELEMETRY_DIR=-`, `GIT_PAIRS_FILE` (old crossrepo guard). New pm:
   `PM_STORES`, `PM_PLUGINS`.
