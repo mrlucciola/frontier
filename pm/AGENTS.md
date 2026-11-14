@@ -17,6 +17,5 @@ Run from the repository root.
 | Any verb, event or output | [Design](/pm/docs/design.md), then the transcripts in `tests/t/` |
 | A transcript or the design that looks wrong | Stop and report what looks wrong. Never edit the design, `tests/t/` or `tests/fixtures/` |
 | The shipped plugins in `plugins/` (`dispatch`, `pilot`) or `tools/plugins.py` | The design's "Plugins" section, transcripts 15, 22 and 23 |
-| The ported pm in `pm/v2/` | Read-only reference; do not edit or run it |
 
 After a docs change, run `python3 -B docs/check_structure.py`.
