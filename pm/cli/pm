@@ -59,7 +59,8 @@ def help_all():
     for _, usage, summary in VERBS:
         out.append("  %s%s" % (usage.ljust(22), summary))
     import plugins
-    found = plugins.names()
+    taken = [v[0] for v in VERBS] + list(ALIASES)
+    found = [n for n in plugins.names() if n not in taken]
     if found:
         out.append("\nplugins: " + ", ".join(found))
     sys.stdout.write("\n".join(out) + "\n")

@@ -1,6 +1,9 @@
 """Plugins: directories of executables found by name. The one place that runs them."""
 import os
 import subprocess
+import sys
+
+import render
 
 
 def root():
@@ -23,7 +26,24 @@ def find(name, file):
 
 
 def with_file(file):
-    return [(n, find(n, file)) for n in names() if find(n, file)]
+    return [p for p in (find(n, file) for n in names()) if p]
+
+
+def any_pre():
+    for n in names():
+        for f in os.listdir(os.path.join(root(), n)):
+            if f.startswith("pre-") and find(n, f):
+                return True
+    return False
+
+
+def name_of(path):
+    return os.path.basename(os.path.dirname(path))
+
+
+def could_not_run(path, err):
+    return "plugin %s could not run %s: %s." % (
+        name_of(path), os.path.basename(path), err.strerror or err)
 
 
 def command(name):
@@ -48,7 +68,10 @@ def run_command(path, args, s=None):
     env = dict(os.environ)
     if s is not None:
         env["PM_STORE"] = s.root
-    return subprocess.call([path] + list(args), env=env)
+    try:
+        return subprocess.call([path] + list(args), env=env)
+    except OSError as e:
+        render.refuse(could_not_run(path, e))
 
 
 def run_hook(path, env, merge=False):
@@ -61,8 +84,12 @@ def run_hook(path, env, merge=False):
 
 def orient_text():
     parts = []
-    for _name, path in with_file("orient"):
-        _code, text = run_hook(path, dict(os.environ))
+    for path in with_file("orient"):
+        try:
+            _code, text = run_hook(path, dict(os.environ))
+        except OSError as e:
+            sys.stderr.write("pm: warning: %s\n" % could_not_run(path, e))
+            continue
         if text.strip():
             parts.append(text.rstrip("\n"))
     return "\n".join(parts)

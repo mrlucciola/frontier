@@ -381,11 +381,17 @@ def _fill(events, actor):
 
 def _pre(s, filled, tickets):
     for event in filled:
-        for _name, path in plugins.with_file("pre-" + str(event["op"])):
+        for path in plugins.with_file("pre-" + str(event["op"])):
             env = plugins.hook_env(s, event, tickets.get(event["id"]))
-            code, text = plugins.run_hook(path, env, merge=True)
+            try:
+                code, text = plugins.run_hook(path, env, merge=True)
+            except OSError as e:
+                render.refuse(plugins.could_not_run(path, e))
             if code != 0:
-                sys.stderr.write(text if text.endswith("\n") or not text else text + "\n")
+                if not text.strip():
+                    render.refuse("plugin %s refused %s %s." % (
+                        plugins.name_of(path), event["op"], event["id"]))
+                sys.stderr.write(text if text.endswith("\n") else text + "\n")
                 sys.exit(1)
 
 
@@ -399,14 +405,23 @@ def _flush_post():
 
 
 def _post(s, filled, tickets):
+    atexit.register(_flush_post)
     for event in filled:
-        for _name, path in plugins.with_file("post-" + str(event["op"])):
+        for path in plugins.with_file("post-" + str(event["op"])):
             env = plugins.hook_env(s, event, tickets.get(event["id"]))
-            _code, text = plugins.run_hook(path, env)
+            try:
+                _code, text = plugins.run_hook(path, env)
+            except OSError as e:
+                sys.stderr.write("pm: warning: %s\n" % plugins.could_not_run(path, e))
+                continue
             if text:
                 _post_text.append(text if text.endswith("\n") else text + "\n")
-    if _post_text:
-        atexit.register(_flush_post)
+
+
+def _same(a, b):
+    def bare(events):
+        return [{k: v for k, v in e.items() if k not in ("ts", "by")} for e in events]
+    return bare(a) == bare(b)
 
 
 def change(s, check, actor=None, dry_run=False):
@@ -414,12 +429,17 @@ def change(s, check, actor=None, dry_run=False):
     if frozen is not None:
         render.refuse("store %s is read-only (%s)." % (s.prefix, frozen))
     before = replay(read(s))
-    _pre(s, _fill(check(before), actor), before)
+    checked = None
+    if plugins.any_pre():
+        checked = _fill(check(before), actor)
+        _pre(s, checked, before)
     fd = os.open(s.log, os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         tickets = replay(read(s))
         filled = _fill(check(tickets), actor)
+        if checked is not None and not _same(checked, filled):
+            render.refuse("the store changed while pm was checking. Run the command again.")
         written = bool(filled) and not dry_run
         if written:
             data = "".join(_line(e) + "\n" for e in filled).encode("utf-8")

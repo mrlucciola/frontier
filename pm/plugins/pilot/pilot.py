@@ -17,7 +17,7 @@ def today():
 
 def open_pilots():
     out = subprocess.run(["pm", "ls", "label:pilot", "--json", "-n", "0"],
-                         stdout=subprocess.PIPE, universal_newlines=True)
+                         cwd=os.environ.get("PM_STORE") or None, stdout=subprocess.PIPE, universal_newlines=True)
     return [json.loads(line) for line in out.stdout.splitlines() if line.strip()]
 
 
