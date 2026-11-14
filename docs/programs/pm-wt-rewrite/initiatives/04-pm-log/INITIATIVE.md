@@ -81,6 +81,13 @@ One line per change to `pm/tests/t/`, `pm/tests/fixtures/` or
   `--allow-pending`, the `pending` count); the summary line is now
   `transcripts: passed N, failed M`. Why: fc-d6c61c removes the unbuilt mechanism
   from pm, so nothing can be pending; checked that a failing CLI still fails.
+- On branch fc-d6c61c, commit ac7748e: `pm/docs/design.md` rules that `ls --json`
+  with no match prints nothing, that import runs no plugin hook, and that a registry
+  path is the rest of its line and may contain spaces; `pm/tests/t/25-review-edges.t`
+  pins those plus the pilot plugin in a store without pilots, `new --blocks` on
+  another store's ticket (refused), and `log` of another store's ticket. Why: the
+  readability review (`reports/04-integration-e-review.md`) found each broken or
+  unruled; the transcript failed on all of them before the fix round.
 
 ## Unbuilt stubs and their owners
 
