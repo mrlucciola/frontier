@@ -1,0 +1,13 @@
+#!/bin/zsh
+emulate -L zsh
+local store="${PM_STORE:-$PWD}" d id
+local -a got
+[[ -d "$store/.worktrees" ]] || exit 0
+for d in "$store"/.worktrees/*(N/); do
+  id="${d:t}"
+  got=("${(@f)$(pm get "$id" status holder 2>/dev/null)}")
+  [[ "${got[1]}" == done ]] && { print -r -- "wt: $id is done but its worktree remains. Run: wt finish $id"; continue; }
+  [[ -z "${got[2]:-}" && -n "${got[1]:-}" ]] && \
+    print -r -- "wt: $id has a worktree and no holder. Run: wt start $id to resume it, or wt park $id to set it aside"
+done
+exit 0

@@ -1,0 +1,5 @@
+#!/bin/zsh
+[[ "${WT_CALLER:-}" == 1 ]] && exit 0
+[[ -d "$PM_STORE/.worktrees" ]] || exit 0
+print -r -- "next: wt start $PM_ID"
+exit 0
