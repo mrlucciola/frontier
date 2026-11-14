@@ -17,15 +17,32 @@ epic subtree:
   fc-c5e673  P2  open          pm history verb: status enable disable sync restore, commit modes
   fc-913d02  P2  open          pm checks and views: validate lint archive board overview
   fc-59011f  P2  open          pm integration: full parity green, golden diff on live stores, component docs, readability review
+  fc-0817f6  P2  closed        pm parity: port upstream drift 505936d6..1ecfec0a (claim exit lines, lint <id>)
 ```
 
 ## Next batch
 
-fc-2b34c9, alone. Everything else is blocked behind it.
+fc-2b34c9, alone, as four serial workers on its branch: `01-core-a` (entry, store,
+init; dispatched), `01-core-b` (gitcommit; written), `01-core-c` (create, show),
+`01-core-d` (test_cli_contract.py). Everything else is blocked behind it.
 
 ## Owed operator actions
 
 None.
+
+## Decisions (overseer)
+
+- **Duplicate guard moves into fc-2b34c9** (2026-11-13). Left unbuilt, the guard
+  would fire on nearly every `create` against a store with rows, so step-3 tests
+  would sit pending on it and their workers could not prove their own verbs.
+  `01-core-c` builds `find_duplicates`, the exit-2 refusal, `--new` and `--dup-of`
+  in `create.py`. fc-c10bcf keeps only the cross-store `--discovered-from` edge in
+  `create.py`.
+- **gitfault report writer dropped** (2026-11-13): recorded in `pm/docs/cut-list.md`
+  "What the cuts change".
+- **Reverse cross-store blockers in text `show`** (2026-11-13): until fc-459fe0, `show`
+  calls `store.unbuilt("routing")` only when the registry file lists a store; the
+  suite's default registry is empty, so ordinary `show` is not pending.
 
 ## Facts not to re-derive
 

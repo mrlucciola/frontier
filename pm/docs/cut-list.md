@@ -67,6 +67,14 @@ Empty output means no drift.
   on that id refuses. The parity suite has no test for this; the reference is
   the old `ticket/tests/test_ticket_core.py`, and the store-core ticket adds the
   CLI tests to `tests/test_cli_contract.py`.
+- **A failed commit no longer files an infra-fault report.** Overseer ruling,
+  2026-11-13. The old `gitfault.py` imported `signing_failure_report` from
+  `~/.claude/hooks` to append a deduplicated report under frontier's
+  `docs/backlog/inbox/infra-faults/`. A component does not import another's
+  internals ([component principles](/docs/component-principles.md) rule 9), so
+  that writer is dropped. The classifier stays in `tools/gitcommit.py`: an
+  identity or signing failure still prints its one remedy line and a failed
+  commit still exits 3.
 
 ## Parity suite
 
