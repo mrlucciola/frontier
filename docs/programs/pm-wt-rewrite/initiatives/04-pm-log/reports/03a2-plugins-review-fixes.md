@@ -33,3 +33,19 @@ None.
 
 ARTIFACTS
 /Users/matthias/projects/frontier-clean/.worktrees/fc-a731f4/.tmp/prove.py
+
+ROUND 2 (from reports/03a-review-2.md; commit "pm plugins: second review fixes")
+
+DID
+1. store._pre returns whether a hook ran; change compares the outside and locked checks only then. any_pre stays as the cheap gate and its listdir is now guarded against OSError.
+2. run_hook passes errors="replace" (the only text-capturing subprocess in plugins.py).
+3. orient_text(s) runs hooks with PM_STORE set to the store root bare `pm` shows (orient.py passes s).
+4. emit regex allows uppercase. The refusal text is unchanged for every malformed name: transcript 24 line 29 pins "emit takes a namespaced name such as wt.start. Plain names belong to pm." for `wt/x.y`, which has a dot, so a second text would contradict it.
+`pm help <plugin>` left as told.
+
+EVIDENCE
+Gate 1: passed 5, pending 0, failed 0. Gate 2: passed 22, pending 2, failed 0. By hand (.tmp/prove2.py, racing `new` injected between the two checks by wrapping store._pre):
+- Only pre-done installed: `new "mine"` printed a-2, exit 0 (racer a-9 landed first).
+- With a pre-new that runs: "pm: the store changed while pm was checking. Run the command again." exit 1.
+- post-take printing \377: "a-9  P2  taken  racer  @claude" then "bad ? byte", exit 0.
+- `PM_STORE=/elsewhere pm` with an orient plugin: "orient store: .../.tmp/proof2/a", the store shown.
