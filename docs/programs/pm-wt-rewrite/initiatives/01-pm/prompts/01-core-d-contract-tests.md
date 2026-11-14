@@ -41,8 +41,9 @@ defect in this ticket's surface, and you say so.
   registry via `PM_STORES_FILE`, `run()`), and `pm/tools/store.py` for the compacted
   and archived refusal texts.
 - Old core tests, read-only, for the compacted-row fixture and expectations:
-  `/Users/matthias/frontier/runtime-tools/pm/ticket/tests/test_ticket_core.py`
-  1541-1660. The old fixture builds compacted rows with the sweep, which is deferred;
+  `/Users/matthias/frontier/runtime-tools/pm/ticket/tests/test_ticket_core.py`,
+  `compacted_fixture` and the tests that use it (find them with
+  `rg -n 'compacted_fixture'`; line numbers shift as the old pm keeps changing). The old fixture builds compacted rows with the sweep, which is deferred;
   yours writes the epic's `subtasks` entry into `.pm/tickets.jsonl` directly, in the
   shape SPEC.md section 4 gives.
 

@@ -23,9 +23,14 @@ epic subtree:
 ## Next batch
 
 fc-2b34c9, alone, as four serial workers on its branch: `01-core-a` (entry, store,
-init; verified, branch c7f2484), `01-core-b` (gitcommit; dispatched), `01-core-c`
-(create, show), `01-core-d` (test_cli_contract.py). Everything else is blocked
-behind it.
+init; verified, branch c7f2484), `01-core-b` (gitcommit; verified, 2d14d4b),
+`01-core-c` (create, show; dispatched), `01-core-d` (test_cli_contract.py).
+Everything else is blocked behind it.
+
+Owed before step 3: port upstream frontier 7fd60e5c (fr-a0a004, pilot contract in
+`lint` and `summary`; test `test_lint_and_summary_enforce_the_pilot_contract`) in a
+ticket of its own after fc-2b34c9 merges, then re-run the drift command from
+`7fd60e5c`. fr-a0a004 is still claimed upstream, so expect more.
 
 ## Owed operator actions
 
