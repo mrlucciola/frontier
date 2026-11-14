@@ -276,7 +276,7 @@ def resolve_store(ref, explicit=None, cwd=None, read=False, _ctx=None):
         raise TicketError(
             f"prefix '{prefix}' is owned by two registered stores: "
             f"{live[0]['path']}, {live[1]['path']}; fix "
-            f"{registry_path()} or pass --store")
+            "runtime-tools/pm/stores.json or pass --store")
     if len(live) == 1:
         if read and tid not in st.Store(live[0]["store"]).by_id:
             found = frozen_with_row()
@@ -289,7 +289,7 @@ def resolve_store(ref, explicit=None, cwd=None, read=False, _ctx=None):
         raise TicketError(
             f"prefix '{prefix}' is owned by two registered stores: "
             f"{frozen[0]['path']}, {frozen[1]['path']}; fix "
-            f"{registry_path()} or pass --store")
+            "runtime-tools/pm/stores.json or pass --store")
     raise TicketError(
         f"no registered store owns prefix '{prefix}'; pass --store <repo>, or "
         f"{NO_OWNER_TAIL}")
@@ -325,8 +325,8 @@ def route_ids(ids, explicit=None, cwd=None, mutate=False):
         succ = (registry_entry(first.root) or {}).get("successor")
         use = f"; use {succ}/.pm" if isinstance(succ, str) and succ else ""
         raise TicketError(
-            f"store {first.repo} is frozen (read-only in {registry_path()}); "
-            f"mutations are refused{use}")
+            f"store {first.repo} is frozen (read-only in "
+            f"runtime-tools/pm/stores.json); mutations are refused{use}")
     if ctx.get("cwd_root") and os.path.realpath(ctx["cwd_root"]) == next(iter(roots)):
         return None
     return first.repo
