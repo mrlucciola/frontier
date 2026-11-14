@@ -9,8 +9,8 @@ impacts (transitively blocks):
 blocked-by chain:
   (none)
 epic subtree:
-  fc-2b34c9  P2  open          pm core: store module, ticket entry with the kept-verb table, verbs init create show
-  fc-459fe0  P2  open          pm routing: store registry, prefix routing, frozen stores, verbs where and stores
+  fc-2b34c9  P2  closed        pm core: store module, ticket entry with the kept-verb table, verbs init create show
+  fc-459fe0  P2  claimed       pm routing: store registry, prefix routing, frozen stores, verbs where and stores [@agent:claude/claude#8126bedd]
   fc-d73327  P2  open          pm lifecycle verbs: claim hold release close reopen
   fc-739601  P2  open          pm read verbs: list ready tree summary
   fc-c10bcf  P2  open          pm structure verbs: dep unlink reparent edit note, cross-store edges, create duplicate guard
@@ -18,19 +18,18 @@ epic subtree:
   fc-913d02  P2  open          pm checks and views: validate lint archive board overview
   fc-59011f  P2  open          pm integration: full parity green, golden diff on live stores, component docs, readability review
   fc-0817f6  P2  closed        pm parity: port upstream drift 505936d6..1ecfec0a (claim exit lines, lint <id>)
+  fc-d659dd  P2  closed        pm parity: port upstream drift 1ecfec0a..7fd60e5c (pilot contract in lint and summary)
 ```
 
 ## Next batch
 
-fc-2b34c9, alone, as four serial workers on its branch: `01-core-a` (entry, store,
-init; verified, branch c7f2484), `01-core-b` (gitcommit; verified, 2d14d4b),
-`01-core-c` (create, show; dispatched), `01-core-d` (test_cli_contract.py).
-Everything else is blocked behind it.
+fc-459fe0, alone, as two serial workers on its branch: `02a` (routing.py and call
+sites; dispatched from main d1f9da9), `02b` (where, stores). Then step 3: the five
+verb tickets, at most four workers at once, prompts `03a`-`03e` written after
+fc-459fe0 merges. Re-run the drift command (pin `7fd60e5c`) before dispatching step 3.
 
-Owed before step 3: port upstream frontier 7fd60e5c (fr-a0a004, pilot contract in
-`lint` and `summary`; test `test_lint_and_summary_enforce_the_pilot_contract`) in a
-ticket of its own after fc-2b34c9 merges, then re-run the drift command from
-`7fd60e5c`. fr-a0a004 is still claimed upstream, so expect more.
+Parity baseline at main d1f9da9: old CLI `passed 262, pending 0, failed 0, skipped 9`;
+new CLI `passed 20, pending 242, failed 0, skipped 9`.
 
 ## Owed operator actions
 
