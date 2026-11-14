@@ -196,11 +196,22 @@ _wt_park_check_findings() {
     fi
     wt_say "$text"
   elif [[ ${findings//[[:space:]]/} == none ]] && wt_findings_required "$store" \
-       && [[ -z ${note//[[:space:]]/} ]]; then
+       && [[ -z ${note//[[:space:]]/} ]] && ! _wt_park_has_note "$store" "$id"; then
     wt_say "--findings none needs a non-empty --note or an existing ticket note: 'none' is a statement, not a default. Nothing was merged or removed; re-run \`wt park $id --findings none --note <text>\`."
     return 1
   fi
   return 0
+}
+
+# True when `pm show` prints a notes heading (design.md "Output").
+_wt_park_has_note() {
+  emulate -L zsh
+  local shown ln
+  shown=$(wt_pm "$1" "" show "$2" 2>/dev/null) || return 1
+  for ln in "${(@f)shown}"; do
+    [[ $ln == "notes:"* || $ln == "notes (last"* ]] && return 0
+  done
+  return 1
 }
 
 # _wt_park_record_wait <repo> <store> <session> <id> <waits-on>: a ticket-id waits-on is also
