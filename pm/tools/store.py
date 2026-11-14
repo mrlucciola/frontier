@@ -277,6 +277,13 @@ class Store:
                 and all(b["status"] == "closed" for b in self.blockers_of(t["id"]))
                 and not routing.unsatisfied_cross(self, t))
 
+    @property
+    def prefix(self):
+        return self.config.get("prefix")
+
+    def is_semaphore(self, t):
+        return t["priority"] == 0 or "semaphore" in t["labels"]
+
 
 TITLE_MAX = 200
 LABEL_MAX = 80
@@ -725,3 +732,82 @@ def _history_ref(root):
             return json.load(f).get("history_ref")
     except (OSError, ValueError):
         return None
+
+
+PROJECTION_VERSION = 1
+
+
+def project(store, include_closed=False):
+    """The versioned projection board and overview render.
+
+    Keys: schema_version, generated, scope {root, prefix, include_closed},
+    counts {total, active, ready, claimed, unmerged, closed, semaphores},
+    tickets (each row plus ready, semaphore, blocked_by, blocks, children,
+    discovered_from, related), order (ids by priority, created), by_status,
+    by_priority ("P0".."P4"), epics [{id, title, status, children,
+    open_children, hidden_children}], orphans (task ids with no visible parent).
+    `children`, `order`, `by_*`, `epics[].children` and `orphans` resolve in
+    `tickets`; `blocks`, `discovered_from` and `related` are raw edge targets
+    and may not.
+    """
+    tickets = store.tickets if include_closed else [
+        t for t in store.tickets if t["status"] != "closed"]
+    visible = {t["id"] for t in tickets}
+
+    enriched = []
+    for t in tickets:
+        edges = t.get("edges", [])
+        enriched.append(dict(
+            t,
+            ready=store.is_ready(t),
+            semaphore=store.is_semaphore(t),
+            blocked_by=[b["id"] for b in store.blockers_of(t["id"])
+                        if b["status"] != "closed"],
+            blocks=[e["to"] for e in edges if e["type"] == "blocks"],
+            children=[c["id"] for c in store.children(t["id"])
+                      if c["id"] in visible],
+            discovered_from=[e["to"] for e in edges if e["type"] == "discovered-from"],
+            related=[e["to"] for e in edges if e["type"] == "related"],
+        ))
+    enriched.sort(key=lambda t: (t["priority"], t["created"]))
+
+    by_status, by_priority = {}, {}
+    for t in enriched:
+        by_status.setdefault(t["status"], []).append(t["id"])
+        by_priority.setdefault(f"P{t['priority']}", []).append(t["id"])
+
+    epics = [{
+        "id": t["id"],
+        "title": t["title"],
+        "status": t["status"],
+        "children": t["children"],
+        "open_children": sum(
+            1 for c in t["children"]
+            if c in store.by_id and store.by_id[c]["status"] != "closed"),
+        "hidden_children": sum(
+            1 for c in store.children(t["id"]) if c["id"] not in visible),
+    } for t in enriched if t["kind"] == "epic"]
+
+    return {
+        "schema_version": PROJECTION_VERSION,
+        "generated": now(),
+        "scope": {"root": store.root, "prefix": store.prefix,
+                  "include_closed": include_closed},
+        "counts": {
+            "total": len(store.tickets),
+            "active": sum(1 for t in store.tickets if t["status"] != "closed"),
+            "ready": sum(1 for t in enriched if t["ready"]),
+            "claimed": len(by_status.get("claimed", [])),
+            "unmerged": len(by_status.get("done-unmerged", [])),
+            "closed": sum(1 for t in store.tickets if t["status"] == "closed"),
+            "semaphores": sum(1 for t in enriched if t["semaphore"]),
+        },
+        "tickets": enriched,
+        "order": [t["id"] for t in enriched],
+        "by_status": by_status,
+        "by_priority": by_priority,
+        "epics": epics,
+        "orphans": [t["id"] for t in enriched
+                    if t["kind"] == "task"
+                    and (t.get("parent") is None or t["parent"] not in visible)],
+    }
