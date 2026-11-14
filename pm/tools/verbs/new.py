@@ -57,7 +57,7 @@ def find_duplicates(tickets, title, body, now_ts=None):
     now_dt = datetime.strptime(now_ts or now(), "%Y-%m-%dT%H:%M:%SZ")
     out = []
     for t, toks in rows:
-        if t["status"] == "closed":
+        if t["status"] == "done":
             age = now_dt - datetime.strptime(t["updated"], "%Y-%m-%dT%H:%M:%SZ")
             if age.days > DUP_CLOSED_WINDOW_DAYS:
                 continue
@@ -99,13 +99,16 @@ def run(argv):
         render.usage_error(__doc__, "new needs a title.")
 
     s = store.require()
-    if args.source or args.blocks or args.blocked_by:
-        store.unbuilt("link")
-    existing = store.replay(store.read(s))
-    if args.new or find_duplicates(list(existing.values()), args.title, args.body or ""):
-        store.unbuilt("duplicate")
 
     def check(tickets):
+        if not args.new:
+            found = find_duplicates(list(tickets.values()), args.title, args.body or "")
+            if found:
+                match = tickets[found[0]["id"]]
+                render.refuse(
+                    'this looks like %s\nSame work: pm note %s "seen again: <where>"\n'
+                    "Different work: repeat with --new"
+                    % (render.line(match, tickets), match["id"]))
         event = {"op": "new", "id": store.next_id(s, tickets), "title": args.title}
         if args.body:
             event["body"] = args.body
@@ -121,10 +124,20 @@ def run(argv):
                 render.refuse('%s is not an epic. Make one: pm new "title" --epic'
                               % parent["id"])
             event["under"] = parent["id"]
+        links = []
+        if args.source:
+            links.append({"op": "link", "id": event["id"], "rel": "from",
+                          "to": store.ticket(s, tickets, args.source)["id"]})
+        if args.blocked_by:
+            links.append({"op": "link", "id": event["id"], "rel": "blocked-by",
+                          "to": store.ticket(s, tickets, args.blocked_by)["id"]})
+        if args.blocks:
+            links.append({"op": "link", "id": store.ticket(s, tickets, args.blocks)["id"],
+                          "rel": "blocked-by", "to": event["id"]})
         events = [event]
         if args.take:
             events.append({"op": "take", "id": event["id"]})
-        return events
+        return events + links
 
     events = store.change(s, check, actor=args.as_name)
     print(events[0]["id"])
