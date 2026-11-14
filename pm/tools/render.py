@@ -103,3 +103,11 @@ def show(t, tickets, all_notes=False):
         for n in shown:
             out += _note_lines(n)
     return "\n".join(out)
+
+
+def as_json(t, store_root=None):
+    import json
+    data = {k: v for k, v in t.items() if k != "events"}
+    if store_root is not None:
+        data["store"] = store_root
+    return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
