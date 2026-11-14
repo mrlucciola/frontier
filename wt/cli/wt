@@ -1,0 +1,47 @@
+#!/bin/zsh
+# wt: one worktree per ticket. Finds the verb's file under tools/verbs/ and runs it.
+
+typeset -r WT_COMPONENT=${${0:A}:h:h}
+typeset -r WT_TOOLS=$WT_COMPONENT/tools
+typeset -ra WT_VERBS=(start finish land park status prune selftest)
+
+wt_usage() {
+  print -u2 -r -- "usage: wt <${(j:|:)WT_VERBS}> ...  (what each does: $WT_COMPONENT/docs/contract.md)"
+}
+
+main() {
+  local verb=${1:-} file lib
+  if [[ -z $verb ]]; then
+    wt_usage
+    return 2
+  fi
+  shift
+  if [[ $verb == pending ]]; then
+    print -u2 -r -- "wt: no verb 'pending'. Parked tickets are listed by: pm ls parked"
+    wt_usage
+    return 2
+  fi
+  if (( ! ${WT_VERBS[(Ie)$verb]} )); then
+    print -u2 -r -- "wt: no verb '$verb'."
+    wt_usage
+    return 2
+  fi
+
+  # `land` is `finish --keep-open`: finish.zsh serves both and reads WT_VERB.
+  file=$WT_TOOLS/verbs/${verb/land/finish}.zsh
+  if [[ ! -f $file ]]; then
+    [[ -n ${WT_UNBUILT_LOG:-} ]] && print -r -- "$verb" >> "$WT_UNBUILT_LOG"
+    print -u2 -r -- "wt: '$verb' is not built yet"
+    return 70
+  fi
+
+  for lib in "$WT_TOOLS"/lib/*.zsh(N); do
+    source "$lib"
+  done
+  typeset -g WT_VERB=$verb
+  source "$file"
+  wt_verb "$@"
+}
+
+main "$@"
+exit $?
