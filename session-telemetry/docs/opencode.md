@@ -171,11 +171,12 @@ fc-3868ea) showed:
   reported the session in `--cwd`.
 - With the prompt passed as one argument, the user message was the prompt
   wrapped in double quotes (the digests match exactly). Passing it one word per
-  argument, rerun on a resume row (2026-11-13), gave `prompt_echoed` true, empty
-  `diagnostics`, `location_is_cwd` true, and a user message digest equal to
-  `prompt_sha256`. The
-  fresh and resume phases share one delivery path, but no fresh row has been
-  recorded since that fix (its attempt hit `session_already_exists`).
+  argument, rerun on a fresh row and resume rows (2026-11-13), gave
+  `prompt_echoed` true, empty `diagnostics`, `location_is_cwd` true, and a user
+  message digest equal to `prompt_sha256`.
+- The same fresh prompt arrived as 503 input plus 8,192 cache-read tokens in one
+  row and 4,622 plus 4,096 in another, about 8,700 either way. The split between
+  `input` and `cache_read` follows the provider's cache state, not the workload.
 
 Not checked against the client: pagination, tool and skill messages, failed and
 interrupted turns, and permission requests.
