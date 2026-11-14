@@ -43,7 +43,9 @@ them (`new.py` already holds the copied `find_duplicates` and `dup_tokens`).
 5. In `new.py`: replace `store.unbuilt("link")` with `--from`, `--blocks` and
    `--blocked-by`, appended in the same `change` as the `new` event; replace
    `store.unbuilt("duplicate")` with the refusal of transcript 11 and `--new`, which
-   files anyway. The duplicate measure stays the copied code, unchanged.
+   files anyway. The duplicate measure stays the copied code, with one change the
+   overseer ruled: its age filter tests `status == "closed"`, the port's word; make
+   it `"done"`, so a done ticket counts only within 30 days of its `updated`.
 
 ## Gate
 

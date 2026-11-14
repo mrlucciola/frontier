@@ -41,7 +41,8 @@ especially "Module contract" and "Shared files in a parallel step".
 3. `pm/tools/verbs/restore.py`: writes the blob at `refs/pm/log` back when the log is
    missing or shorter, with the output and refusal of transcript 18.
 4. `init` adds `.pm/log.jsonl` to `.gitignore` (creating it, or appending the line
-   when absent), only inside a git checkout.
+   when absent), only inside a git checkout. Remove the `store.unbuilt("backup")`
+   call core left in `init.py` for a git checkout.
 5. `doctor` adds `backup: refs/pm/log is current`, or says how it differs, inside a
    git checkout.
 
