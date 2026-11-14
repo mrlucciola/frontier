@@ -64,8 +64,18 @@ Empty output means no drift.
   `~/frontier/runtime-tools/pm` is the tool for that until cutover.
 - **`validate` fix hints must not name a dropped verb.** Three hints did:
   I-02 on a pre-v2 config and a missing required key (`run: pm ticket upgrade`),
-  and I-10 unsorted labels (`run: pm ticket fix-labels <id>`). The ticket that
-  ports `validate` writes the replacement text.
+  and I-10 unsorted labels (`run: pm ticket fix-labels <id>`). The replacements
+  (all `operator:` steps, so `agent_may_fix` is false):
+  - I-02 pre-v2 config: old `run: pm ticket upgrade`; new `operator: migrate it
+    with the old pm: ~/frontier/runtime-tools/pm/ticket/src/ticket upgrade`.
+  - Missing required key (assignee, body, closure_reason, edges, labels, notes,
+    parent): old `run: pm ticket upgrade`; new `operator: <line> <pointer>: missing
+    required key '<key>'; add the key by hand with the value <default JSON>`.
+  - I-10 unsorted labels: old `run: pm ticket fix-labels <id>`; new `operator:
+    rewrite the labels array of <id> sorted and without duplicates`.
+  - Also changed, a fourth hint naming `fix-labels` (I-10 invalid label): old
+    `... pm ticket fix-labels <id> lowercases it, or drops it if still invalid`;
+    new `... rewrite it lowercase or remove it`.
 - **Deferred keys stay legal.** They are in the frozen
   [config schema](/pm/docs/spec/v2/config.schema.json), so `validate` still type-checks
   them. They have no effect: every mutating op snapshots history, and closed
