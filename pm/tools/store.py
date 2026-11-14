@@ -380,8 +380,11 @@ def _fill(events, actor):
 
 
 def _pre(s, filled, tickets):
+    """True when at least one pre hook ran."""
+    ran = False
     for event in filled:
         for path in plugins.with_file("pre-" + str(event["op"])):
+            ran = True
             env = plugins.hook_env(s, event, tickets.get(event["id"]))
             try:
                 code, text = plugins.run_hook(path, env, merge=True)
@@ -393,6 +396,7 @@ def _pre(s, filled, tickets):
                         plugins.name_of(path), event["op"], event["id"]))
                 sys.stderr.write(text if text.endswith("\n") else text + "\n")
                 sys.exit(1)
+    return ran
 
 
 _post_text = []
@@ -432,7 +436,8 @@ def change(s, check, actor=None, dry_run=False):
     checked = None
     if plugins.any_pre():
         checked = _fill(check(before), actor)
-        _pre(s, checked, before)
+        if not _pre(s, checked, before):
+            checked = None
     fd = os.open(s.log, os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)

@@ -9,7 +9,7 @@ import re
 import render
 import store
 
-NAME = re.compile(r"^[a-z0-9_-]+(\.[a-z0-9_-]+)+$")
+NAME = re.compile(r"^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$")
 RESERVED = ("ts", "by", "op", "id")
 
 

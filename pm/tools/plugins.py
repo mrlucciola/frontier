@@ -31,9 +31,12 @@ def with_file(file):
 
 def any_pre():
     for n in names():
-        for f in os.listdir(os.path.join(root(), n)):
-            if f.startswith("pre-") and find(n, f):
-                return True
+        try:
+            files = os.listdir(os.path.join(root(), n))
+        except OSError:
+            continue
+        if any(f.startswith("pre-") and find(n, f) for f in files):
+            return True
     return False
 
 
@@ -78,15 +81,16 @@ def run_hook(path, env, merge=False):
     """(exit code, output). Output is stdout, with stderr folded in when merge is set."""
     out = subprocess.run([path], env=env, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT if merge else None,
-                         universal_newlines=True)
+                         universal_newlines=True, errors="replace")
     return out.returncode, out.stdout
 
 
-def orient_text():
+def orient_text(s):
     parts = []
+    env = dict(os.environ, PM_STORE=s.root)
     for path in with_file("orient"):
         try:
-            _code, text = run_hook(path, dict(os.environ))
+            _code, text = run_hook(path, env)
         except OSError as e:
             sys.stderr.write("pm: warning: %s\n" % could_not_run(path, e))
             continue

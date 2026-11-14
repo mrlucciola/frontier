@@ -38,7 +38,7 @@ def run(argv):
         out += _section("ready", ready, tickets, "pm ls ready")
     if parked:
         out += _section("parked", parked, tickets, "pm ls parked")
-    extra = plugins.orient_text()
+    extra = plugins.orient_text(s)
     if extra:
         out.append(extra)
     print("\n".join(out) if out else 'nothing to do. File work: pm new "title"')
