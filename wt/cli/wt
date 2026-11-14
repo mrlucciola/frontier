@@ -30,9 +30,8 @@ main() {
   # `land` is `finish --keep-open`: finish.zsh serves both and reads WT_VERB.
   file=$WT_TOOLS/verbs/${verb/land/finish}.zsh
   if [[ ! -f $file ]]; then
-    [[ -n ${WT_UNBUILT_LOG:-} ]] && print -r -- "$verb" >> "$WT_UNBUILT_LOG"
-    print -u2 -r -- "wt: '$verb' is not built yet"
-    return 70
+    print -u2 -r -- "wt: missing $file; reinstall wt."
+    return 1
   fi
 
   for lib in "$WT_TOOLS"/lib/*.zsh(N); do
