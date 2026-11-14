@@ -1,12 +1,10 @@
 # pm setup
 
-The new pm is not ready to install. Until the operator's cutover, the `pm` on `PATH` is
-the frontier deployment at `~/.local/libexec/pm`; use that.
-
-Once the build lands, `pm/cli/pm` is a standard-library Python script that needs only
-`/usr/bin/python3`. It finds its component through its own symlink, so one link in
-`~/.local/bin` named `pm-next` is a side install that leaves the existing `pm`
-untouched.
+`pm/cli/pm` is a standard-library Python script that needs only `/usr/bin/python3`. It
+finds its component through its own symlink, so one link in `~/.local/bin` is the whole
+install. Until the operator's cutover the `pm` on `PATH` is the frontier deployment at
+`~/.local/libexec/pm`; the link is named `pm-next` so that one is untouched. At cutover
+the link is named `pm` instead.
 
 ## Prerequisites
 
@@ -23,29 +21,45 @@ mkdir -p ~/.local/bin
 ln -s ~/projects/frontier-clean/pm/cli/pm ~/.local/bin/pm-next
 ```
 
-## Verify
+### Plugins
 
-Works once the `pm/cli/pm` dispatcher exists.
+A plugin is a directory under `~/.config/pm/plugins/` (or `$PM_PLUGINS`); its name is
+the subcommand. Link the two shipped ones:
+
+```sh
+mkdir -p ~/.config/pm/plugins
+ln -s ~/projects/frontier-clean/pm/plugins/dispatch ~/.config/pm/plugins/dispatch
+ln -s ~/projects/frontier-clean/pm/plugins/pilot ~/.config/pm/plugins/pilot
+```
+
+`pm-next dispatch <id>` and `pm-next pilot` then work. Plugin scripts call `pm` by
+name, so they reach the frontier pm until the cutover.
+
+## Verify
 
 ```sh
 pm-next help
 ```
 
-It prints the verb list.
+It prints the verb table, starting with `pm keeps this repo's tickets in .pm/.` and
+listing `take [id]` through `hook event`.
 
 ## Disable
 
-Remove the link; the component directory is untouched.
+Remove the link; the component directory is untouched. A plugin is disabled by
+removing its link.
 
 ```sh
 rm ~/.local/bin/pm-next
+rm ~/.config/pm/plugins/dispatch ~/.config/pm/plugins/pilot
 ```
 
 ## Remove
 
-Remove the link as above, then delete the repository checkout if you no longer want
+Remove the links as above, then delete the repository checkout if you no longer want
 it. Removal changes no ticket data: each store is plain files under `.pm/` inside its
-own repository.
+own repository, and a plugin's events stay in the log and are ignored. The registry
+`~/.config/pm/stores` is not touched; delete it, or a line of it, by hand.
 
 ## Harness hooks
 
