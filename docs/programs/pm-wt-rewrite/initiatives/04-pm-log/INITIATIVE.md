@@ -28,10 +28,16 @@ Step 2 closed 2026-11-14. On main, transcripts 01 to 14, 18, 20 and 21 pass with
 `--allow-pending` (17 passed); `--allow-pending`: passed 18, pending 5, failed 0;
 unbuilt: hook, import, plugins.
 
-In flight: step 3, prompts `03a` (fc-a731f4), `03b` (fc-a761be), `03c` (fc-4a8593)
-at once. fc-a731f4 gets a read-only reviewer check on its branch before merge.
-After the last merge: transcripts 15, 16, 19, 22, 23 without `--allow-pending`,
-then fc-d6c61c (`04-integration-*`).
+Step 3 closed 2026-11-14: fc-a761be, fc-4a8593, and fc-a731f4 after two review
+rounds (`reports/03a-review*.md`). On main, all 24 transcripts pass without
+`--allow-pending`; `import_check.py` matched all 10 registered stores.
+
+In flight: fc-d6c61c, five serial workers `04-integration-a` to `-e`. Before `04c`, a
+read-only reviewer lists every reference to `pm/v2` (written to
+`reports/04-integration-c-review.md`); before `04e`, a read-only reviewer reads
+`pm/cli`, `pm/tools`, `pm/plugins` against the principles
+(`reports/04-integration-e-review.md`). After `04a`, the overseer updates the
+runner's docstring (no unbuilt mechanism) as a gate change.
 
 ## Decisions
 
