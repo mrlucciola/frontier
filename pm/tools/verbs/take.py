@@ -23,7 +23,7 @@ def run(argv):
     p.add_argument("--as", dest="as_name")
     p.add_argument("--dry-run", dest="dry_run", action="store_true")
     args = p.parse_intermixed_args(argv)
-    s = store.require()
+    s = store.home_of(store.require(), args.ids)
     chosen = []
 
     def check(tickets):
@@ -55,8 +55,8 @@ def run(argv):
             else:
                 blockers = _blockers(t, tickets)
                 if blockers and not args.force:
-                    render.refuse("%s is blocked by %s. Finish %s first: pm take %s"
-                                  % (t["id"], ", ".join(blockers), blockers[0], blockers[0]))
+                    render.refuse("%s is blocked by %s. Pick another: pm ls ready"
+                                  % (t["id"], ", ".join(blockers)))
             events.append(event)
         chosen[:] = [t["id"] for t in unique]
         return events

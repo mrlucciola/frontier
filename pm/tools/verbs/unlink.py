@@ -18,7 +18,7 @@ def run(argv):
     if len(args.words) != 2:
         render.usage_error(__doc__, "unlink needs two tickets.")
 
-    s = store.require()
+    s = store.home_of(store.require(), args.words)
     names = []
 
     def check(tickets):

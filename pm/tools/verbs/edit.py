@@ -35,7 +35,7 @@ def run(argv):
     if not fields:
         render.usage_error(__doc__, "edit needs something to change.")
 
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
     target = []
 
     def check(tickets):

@@ -14,7 +14,7 @@ def run(argv):
     args = p.parse_args(argv)
     if not args.id:
         render.usage_error(__doc__, "reopen needs a ticket id.")
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
 
     def check(tickets):
         t = store.ticket(s, tickets, args.id)

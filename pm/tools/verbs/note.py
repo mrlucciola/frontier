@@ -28,7 +28,7 @@ def run(argv):
         render.usage_error(__doc__, "note needs text.")
     text = words[0]
 
-    s = store.require()
+    s = store.home_of(store.require(), [word])
     target = []
 
     def check(tickets):

@@ -33,6 +33,7 @@ def run(argv):
     rel = words[1]
 
     s = store.require()
+    s = store.home_of(s, words[2:] if rel == "blocks" else words[:1])
     lines = []
 
     def check(tickets):

@@ -233,6 +233,21 @@ def home(s, tid):
     return s
 
 
+def home_of(s, words):
+    homes = {}
+    for word in words:
+        if word is None:
+            continue
+        if word.isdigit():
+            word = "%s-%s" % (s.prefix, word)
+        h = home(s, word)
+        homes[h.root] = h
+    if len(homes) > 1:
+        render.refuse("%s are in different stores. Name them one store at a time."
+                      % ", ".join(words))
+    return next(iter(homes.values())) if homes else s
+
+
 def next_id(s, tickets):
     n = len(tickets) + 1
     while "%s-%d" % (s.prefix, n) in tickets:

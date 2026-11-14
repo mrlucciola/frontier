@@ -23,7 +23,7 @@ def run(argv):
     args = p.parse_intermixed_args(argv)
     if args.reason and args.reason not in REASONS:
         render.usage_error(__doc__, "--reason is one of %s." % ", ".join(REASONS))
-    s = store.require()
+    s = store.home_of(store.require(), args.ids)
     chosen = []
 
     def check(tickets):

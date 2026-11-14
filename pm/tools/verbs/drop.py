@@ -17,7 +17,7 @@ def run(argv):
     p.add_argument("--force", action="store_true")
     p.add_argument("--dry-run", dest="dry_run", action="store_true")
     args = p.parse_intermixed_args(argv)
-    s = store.require()
+    s = store.home_of(store.require(), args.ids)
     chosen = []
 
     def check(tickets):

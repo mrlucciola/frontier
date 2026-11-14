@@ -28,7 +28,7 @@ def run(argv):
         if key in RESERVED:
             render.refuse("%s is reserved. Use another key." % key)
         data[key] = value
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
 
     def check(tickets):
         t = store.ticket(s, tickets, args.id)

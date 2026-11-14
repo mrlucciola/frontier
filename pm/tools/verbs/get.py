@@ -18,7 +18,7 @@ def _text(value):
     if value is None:
         return ""
     if isinstance(value, list):
-        return ", ".join(str(v) for v in value)
+        return " ".join(str(v) for v in value)
     if isinstance(value, (dict, bool)):
         return json.dumps(value, separators=(",", ":"), sort_keys=True)
     return str(value)
@@ -48,7 +48,7 @@ def run(argv):
     t = store.ticket(s, tickets, args.id)
     for f in args.fields:
         if f == "store":
-            value = s.root
+            value = store.home_of(s, [t["id"]]).root
         elif f == "blocked-by":
             value = t["blocked_by"]
         elif f in FIELDS:

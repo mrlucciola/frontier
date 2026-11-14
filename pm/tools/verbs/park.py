@@ -16,7 +16,7 @@ def run(argv):
     args = p.parse_args(argv)
     if not args.text or not args.text.strip():
         render.usage_error(__doc__, 'park needs -m "what it waits on".')
-    s = store.require()
+    s = store.home_of(store.require(), [args.id])
 
     def check(tickets):
         t = store.ticket(s, tickets, args.id)
