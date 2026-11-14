@@ -1,4 +1,6 @@
 """pm ticket summary: the session-start briefing. Reads only; never writes."""
+import contextlib
+import fcntl
 import json
 import os
 import re
@@ -98,7 +100,16 @@ def store_dirty_line(store):
     ref = store.config.get("history_ref")
     if ref:
         if os.path.exists(os.path.join(store.root, st.HISTORY_PENDING)):
-            st.unbuilt("history")
+            with open(os.path.join(store.root, "lock"), "w") as lk:
+                fcntl.flock(lk, fcntl.LOCK_EX)
+                failed = gitcommit.commit_store(store.root, "pm: history sync")
+                if not failed:
+                    with contextlib.suppress(OSError):
+                        os.remove(os.path.join(store.root, st.HISTORY_PENDING))
+            if failed:
+                return ("note: ticket history is pending (a snapshot to "
+                        f"{ref} failed); retried on "
+                        "every write and summary, or run: pm ticket history sync")
         try:
             behind = history_behind(repo_dir, rel, ref)
         except (OSError, subprocess.SubprocessError):
