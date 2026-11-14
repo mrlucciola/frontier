@@ -3,6 +3,7 @@
 Layout and row format are spec v2 (pm/docs/spec/v2/SPEC.md); this module never
 changes them. Verbs read through `open_store` and mutate through `locked_store`.
 """
+import argparse
 import contextlib
 import fcntl
 import hashlib
@@ -281,6 +282,37 @@ TITLE_MAX = 200
 LABEL_MAX = 80
 ID_RE = re.compile(r"^[a-z][a-z0-9]{1,7}-[0-9a-f]{6,11}$")
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9:_./-]*$")
+
+
+def priority_type(raw):
+    """argparse type: 0-4 or P0-P4, case-insensitive."""
+    s = raw[1:] if raw and raw[0] in "Pp" else raw
+    try:
+        n = int(s)
+    except ValueError:
+        n = -1
+    if n not in range(5):
+        raise argparse.ArgumentTypeError(
+            f"invalid priority: {raw!r} (expected 0-4 or P0-P4)")
+    return n
+
+
+def would_cycle(store, src, dst):
+    """True if adding src --blocks--> dst creates a blocks-cycle."""
+    seen, stack = set(), [dst]
+    while stack:
+        cur = stack.pop()
+        if cur == src:
+            return True
+        if cur in seen:
+            continue
+        seen.add(cur)
+        row = store.by_id.get(cur)
+        if row is None and (cur in store.archived_ids() or cur in store.compacted):
+            continue
+        stack.extend(e["to"] for e in (row or store.get(cur))["edges"]
+                     if e["type"] == "blocks")
+    return False
 
 
 def title_problem(title):

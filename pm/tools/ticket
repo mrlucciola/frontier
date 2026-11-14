@@ -59,12 +59,14 @@ def route_edge(args):
     """dep/unlink: normalise both ids, then route to the store that holds the
     edge: the blocked ticket's for `blocks` across stores, else the source's."""
     args.src = store.local_id(args.src)
-    args.dst = store.local_id(args.dst)
+    multi = isinstance(args.dst, list)
+    args.dst = [store.local_id(d) for d in args.dst] if multi \
+        else store.local_id(args.dst)
     if getattr(args, "repo", None):
         return
     by = args.src
     if args.cmd == "dep" and args.type == "blocks":
-        by = args.dst
+        by = args.dst[0] if multi else args.dst
     elif args.cmd == "unlink" and args.type == "blocks":
         dpfx = store.ref_prefix(args.dst)
         if dpfx and store.ref_prefix(args.src):

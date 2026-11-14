@@ -2,8 +2,7 @@
 import json
 
 import store as st
-from store import TicketError
-from verbs.create import priority_type
+from store import TicketError, priority_type
 
 
 def register(subparsers):

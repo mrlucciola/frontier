@@ -1,5 +1,4 @@
 """pm ticket create: file a ticket; prints its id."""
-import argparse
 import json
 import math
 import re
@@ -7,7 +6,7 @@ import sys
 from datetime import datetime
 
 import store as st
-from store import TicketError, now
+from store import TicketError, now, priority_type
 
 KINDS = ("task", "epic")
 
@@ -30,19 +29,6 @@ _DUP_PATH_RE = re.compile(
 _DUP_QUOTE_RE = re.compile(r"""(?<!\w)(['"])([^'"\n]{12,}?)\1(?!\w)""")
 
 
-def priority_type(raw):
-    """0-4 or P0-P4, case-insensitive."""
-    s = raw[1:] if raw and raw[0] in "Pp" else raw
-    try:
-        n = int(s)
-    except ValueError:
-        n = -1
-    if n not in range(5):
-        raise argparse.ArgumentTypeError(
-            f"invalid priority: {raw!r} (expected 0-4 or P0-P4)")
-    return n
-
-
 def register(subparsers):
     sp = subparsers.add_parser("create", help="file a ticket; prints its id")
     sp.add_argument("title")
@@ -53,6 +39,10 @@ def register(subparsers):
     sp.add_argument("--discovered-from", dest="discovered_from",
                     help="ticket being worked when this was discovered")
     sp.add_argument("--label", action="append")
+    sp.add_argument("--blocks", action="append", metavar="ID",
+                    help="the new ticket blocks ID (repeatable; same write as the row)")
+    sp.add_argument("--blocked-by", dest="blocked_by", action="append", metavar="ID",
+                    help="ID blocks the new ticket (repeatable; same write as the row)")
     sp.add_argument("--id-file", dest="id_file", metavar="PATH",
                     help="also write the new id to PATH, so a follow-up command "
                          "can read it without $(...) command substitution")
@@ -142,6 +132,27 @@ def _create(args, store, minted):
             raise TicketError(veto)
     if args.dup_of and args.new:
         raise TicketError("--dup-of and --new are mutually exclusive")
+    if args.dup_of and (args.blocks or args.blocked_by):
+        raise TicketError("--dup-of files no ticket; --blocks/--blocked-by need one")
+    blocks_to = []
+    for raw in dict.fromkeys(args.blocks or []):
+        if st.is_remote_ref(store, raw):
+            raise TicketError(
+                f"--blocks {raw}: a cross-store block is held by the blocked ticket's "
+                "store; run `pm ticket dep <new> blocks <id>` there; nothing written")
+        blocks_to.append(st.edge_target(store, raw))
+    blocked_by = []
+    for raw in dict.fromkeys(args.blocked_by or []):
+        ref = st.edge_target(store, raw)
+        if ref in blocks_to:
+            raise TicketError(f"{raw} is both --blocks and --blocked-by; nothing written")
+        blocked_by.append(ref)
+    for up in blocked_by:
+        for down in blocks_to:
+            if "/" not in up and st.would_cycle(store, up, down):
+                raise TicketError(
+                    f"refused: {up} blocks {down} through the new ticket would "
+                    "create a cycle; nothing written")
     if args.dup_of:
         dup = store.get(args.dup_of)
         dup["notes"].append(st.make_note(
@@ -183,6 +194,15 @@ def _create(args, store, minted):
         t["dedupe_overridden"] = True
     if args.discovered_from:
         t["edges"].append({"type": "discovered-from", "to": discovered})
+    for to in blocks_to:
+        t["edges"].append({"type": "blocks", "to": to})
+    for ref in blocked_by:
+        if "/" in ref:
+            t["edges"].append({"type": "blocked-by", "to": ref})
+        else:
+            up = store.get(ref)
+            up["edges"].append({"type": "blocks", "to": t["id"]})
+            up["updated"] = now()
     store.tickets.append(t)
     store.by_id[t["id"]] = t
     minted.append(t["id"])
