@@ -35,6 +35,14 @@ command (pin `03b232d2`) before each merge.
 Parity baseline at main 285a86f: old CLI `passed 262, pending 0, failed 0, skipped 9`;
 new CLI `passed 21, pending 241, failed 0, skipped 9`.
 
+**Known failure on main (2026-11-14):** after fc-d73327 merged, main reads `parity:
+passed 103, pending 161, failed 1, skipped 9`. The one failure is
+`TicketCliTest.test_create_writes_blocks_and_blocked_by_edges`: fc-93ef2a ported that
+upstream test before `create --blocks/--blocked-by` existed, so argparse exits 2
+instead of `unbuilt` exiting 70. fc-c10bcf `03c3` builds the flags. Until fc-c10bcf
+merges, a post-merge gate passes when its only failure is this test. Lesson for later
+drift ports: stub any new flag with `store.unbuilt` in the same commit as its test.
+
 ## Owed operator actions
 
 None.
