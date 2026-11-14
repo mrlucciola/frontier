@@ -18,6 +18,8 @@ import gitcommit
 
 STORE_DIR = ".pm"
 TICKET_FILE = "tickets.jsonl"
+NO_SUCH_TICKET_HINT = ("`pm ticket list` shows this store's ids, "
+                       "`pm ticket create` files a new one")
 HISTORY_PENDING = "history-pending"
 UNBUILT_EXIT = 70
 GIT_COMMIT_FAILED_EXIT = 3
@@ -193,7 +195,7 @@ class Store:
                 f"({entry.get('closed')}); it cannot be changed. File a new ticket.")
         if tid in self.archived_ids():
             raise TicketError(f"{tid} is archived; it cannot be changed. File a new ticket.")
-        raise TicketError(f"no such ticket: {tid}")
+        raise TicketError(f"no such ticket: {tid}; {NO_SUCH_TICKET_HINT}")
 
     def read(self, tid):
         """The row for a read: live, the synthesized closed row of a compacted
@@ -206,7 +208,7 @@ class Store:
         for idx in self.archive_index():
             if idx.get("id") == tid and idx.get("source") == "self":
                 return self._read_archived(tid, idx)
-        raise TicketError(f"no such ticket: {tid}")
+        raise TicketError(f"no such ticket: {tid}; {NO_SUCH_TICKET_HINT}")
 
     def _read_archived(self, tid, idx):
         path = idx.get("path")
@@ -412,15 +414,22 @@ def fmt_line(t):
     return f"{t['id']}  P{t['priority']}  {t['status']:<13} {t['title']}{tail}"
 
 
-def claim_veto(t):
+def claim_veto(t, reopen=False):
     """Why `t` may not be claimed, ignoring readiness, else None. One rule set for
-    `claim` and `create --claim-as`, so a write cannot produce a claimed epic."""
+    `claim` and `create --claim-as`, so a write cannot produce a claimed epic.
+    `reopen` lets `claim --reopen` take a done-unmerged ticket back."""
     if t["kind"] == "epic":
         return "epics aggregate work and cannot be claimed; claim a child task"
     if t["status"] == "claimed":
-        return f"already claimed by {t['assignee']}"
+        return (f"already claimed by {t['assignee']}; "
+                f"`pm ticket release {t['id']}` first if the claim is yours to drop")
+    if t["status"] == "done-unmerged" and reopen:
+        return None
+    if t["status"] == "done-unmerged":
+        return (f"cannot claim a done-unmerged ticket; resume it with "
+                f"`pm ticket claim {t['id']} --as <name> --reopen` (or `wt start {t['id']}`)")
     if t["status"] != "open":
-        return f"cannot claim a {t['status']} ticket"
+        return f"cannot claim a {t['status']} ticket; {status_hint(t)}"
     return None
 
 

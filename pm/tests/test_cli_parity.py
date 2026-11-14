@@ -2440,7 +2440,7 @@ class StoreRoutingTest(unittest.TestCase):
         _, real = self.pm(self.a, "close", tid, "--findings", "none", rc=1)
         self.assertEqual(err, real)
         _, err = self.pm(self.a, "where", "--mutate", "--verb", "release", tid, rc=1)
-        self.assertIn("not claimed (status: closed)", err)
+        self.assertIn(f"not claimed (status: closed); `pm ticket reopen {tid}`", err)
 
     def test_where_mutate_refuses_an_epic_with_open_children_like_close(self):
         epic = run(self.a, "create", "epic", "--kind", "epic")
@@ -2456,7 +2456,7 @@ class StoreRoutingTest(unittest.TestCase):
 
     def test_where_mutate_release_needs_a_claim_like_release(self):
         _, err = self.pm(self.a, "where", "--mutate", "--verb", "release", self.a_id, rc=1)
-        self.assertIn("not claimed (status: open)", err)
+        self.assertIn(f"not claimed (status: open); `pm ticket claim {self.a_id} --as <name>`", err)
         _, real = self.pm(self.a, "release", self.a_id, rc=1)
         self.assertEqual(err, real)
         self.pm(self.a, "claim", self.a_id, "--as", "x")
