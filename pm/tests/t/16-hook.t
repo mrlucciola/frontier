@@ -21,6 +21,16 @@ A prompt that names existing tickets gets one line for each, at most three.
     t-2  P2  open  write the parser
   $ printf '{"cwd":"%s","prompt":"nothing here"}' "$PWD" | pm hook prompt
 
+Each ticket is mentioned once per session. Another session sees it again.
+
+  $ printf '{"cwd":"%s","prompt":"t-2 again, and t-1"}' "$PWD" | pm hook prompt
+  mentioned:
+    t-1  P2  taken  write the lexer  @ada
+  $ printf '{"cwd":"%s","prompt":"t-1 and t-2"}' "$PWD" | pm hook prompt
+  $ printf '{"cwd":"%s","session_id":"s2","prompt":"t-2"}' "$PWD" | pm hook prompt
+  mentioned:
+    t-2  P2  open  write the parser
+
 Stopping while holding a ticket is blocked once, with the four ways out.
 
   $ printf '{"cwd":"%s","session_id":"s1"}' "$PWD" | pm hook stop
