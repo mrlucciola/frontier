@@ -4,7 +4,8 @@ Operator-run. Nothing here was run by the worker that wrote it; every coordinate
 read on 2026-11-15 and is named where it matters. Plan:
 [PLAN.md](/docs/programs/pm-wt-rewrite/PLAN.md) "Cutover". Ticket fc-10981e, epic
 fc-ccecda. Part A (steps 1 to 6 and 10) switches over; steps 7 to 9 retire the frontier
-side and are written by Part B. Run in numeric order. Paths starting `/Users/matthias`
+side and are written by Part B; step 4A (frontier readers of the new pm) is Part B's
+8.0 moved up to run right after step 4. Run in numeric order (4, 4A, 5, ...). Paths starting `/Users/matthias`
 are absolute; run every block from a plain terminal, not from a Claude session, because
 steps 4 and 6 change the hooks and the `pm` that a live session is using.
 
@@ -41,6 +42,9 @@ steps 4 and 6 change the hooks and the `pm` that a live session is using.
    the frozen side becomes. They need none of this runbook's results except that step 2
    runs before step 8 retires `runtime-tools/pm/stores.json`, which
    `pm/tests/import_check.py:18` reads.
+5. Overseer ticket fc-5e5a20 fixes pm's resolution of nested stores. It is not required:
+   step 2.2 imports deepest path first, which is the only guard until it lands. Check
+   `pm ticket show fc-5e5a20`; if it is closed, the order in step 2.2 is still correct.
 
 ## Before and after
 
@@ -83,7 +87,9 @@ D2. The old pm's refusal texts ("add the repo to ~/frontier/runtime-tools/pm/sto
 and deploy pm", "fix runtime-tools/pm/stores.json or pass --store"). The ticket note of
 2026-11-14T02:40 says the rewrite kept them byte-identical. I searched `pm/` and `wt/`
 for `no registered store`, `owns prefix`, `add the repo`, `fix runtime-tools` and
-`stores.json`: the only hit in a pm or wt file is `pm/tests/import_check.py:18`; `wt/tools/lib/pm.zsh:56` says `pass --store <ticket repo>`, a different text. The
+`stores.json`: the only hits for the old registry path in a pm or wt file are
+`pm/AGENTS.md:18` (prose naming the file `import_check.py` reads) and
+`pm/tests/import_check.py:18`; `wt/tools/lib/pm.zsh:56` says `pass --store <ticket repo>`, a different text. The
 redesigned pm has no such texts, so there is nothing to change or keep. Recommendation:
 do nothing. Re-check before step 4:
 
@@ -91,29 +97,19 @@ do nothing. Re-check before step 4:
 rg -n 'runtime-tools/pm/stores.json|add the repo to' /Users/matthias/projects/frontier-clean/pm /Users/matthias/projects/frontier-clean/wt
 ```
 
-Expect exactly one hit, `pm/tests/import_check.py`. If another appears, stop and tell
-me.
+Expect exactly two hits, `pm/AGENTS.md:18` and `pm/tests/import_check.py:18`. If a
+third appears, stop and tell me.
 
 ## Step 1. Freeze the old pm and wt
 
 Buys: the log you import is the whole story. Anything the old pm writes after step 2
 exists only in the old `tickets.jsonl`.
 
-1. Close every agent session that uses pm, and stop any other writer. Then record the
-   state to prove nothing moved.
-
-   ```sh
-   git --no-pager -C /Users/matthias/frontier log -1 --format=%h -- runtime-tools/pm runtime-tools/wt
-   git --no-pager -C /Users/matthias/frontier status --short runtime-tools/pm runtime-tools/wt
-   mkdir -p /Users/matthias/projects/frontier-clean/.tmp
-   shasum -a 256 /Users/matthias/frontier/.pm/tickets.jsonl /Users/matthias/frontier/.pm/archive/tickets-2026.jsonl /Users/matthias/work/lai/.pm/tickets.jsonl /Users/matthias/work/lai/00-initialization/.pm/tickets.jsonl /Users/matthias/work/lai/loop/.pm/tickets.jsonl /Users/matthias/work/lai/99-local-deployment/.pm/tickets.jsonl /Users/matthias/work/portside/.pm/tickets.jsonl /Users/matthias/work/portside/engineering/.pm/tickets.jsonl /Users/matthias/projects/macos-orchestration/.pm/tickets.jsonl /Users/matthias/claude/.pm/tickets.jsonl /Users/matthias/projects/frontier-clean/.pm/tickets.jsonl > /Users/matthias/projects/frontier-clean/.tmp/cutover-before.sha256
-   ```
-
-   The second command prints nothing. Keep the first command's hash: no commit may
-   touch those two directories until step 8.
-2. Finish or park every worktree the old wt started, with the old wt, so none is open
-   when the new wt takes over. I have not checked whether the new `wt finish` accepts a
-   worktree the old wt started, so this removes the question.
+1. Close every agent session that uses pm, and stop any other writer. Then finish or
+   park every worktree the old wt started, with the old wt, so none is open when the new
+   wt takes over. I have not checked whether the new `wt finish` accepts a worktree the
+   old wt started, so this removes the question. Do this before item 2: `finish` and
+   `park` rewrite `tickets.jsonl`, and item 2 hashes it.
 
    ```sh
    git -C /Users/matthias/projects/frontier-clean worktree list
@@ -126,6 +122,19 @@ exists only in the old `tickets.jsonl`.
    `/Users/matthias/work/lai`, `/Users/matthias/work/lai/00-initialization`,
    `/Users/matthias/work/lai/loop`, `/Users/matthias/work/portside`,
    `/Users/matthias/work/portside/engineering`, `/Users/matthias/projects/macos-orchestration`.
+   `/Users/matthias/work/lai/00-initialization/.worktrees/lin-381db0` exists today
+   (read 2026-11-15): finish or park it here.
+2. Record the state to prove nothing moved, after item 1 and with no writer running.
+
+   ```sh
+   git --no-pager -C /Users/matthias/frontier log -1 --format=%h -- runtime-tools/pm runtime-tools/wt
+   git --no-pager -C /Users/matthias/frontier status --short runtime-tools/pm runtime-tools/wt
+   mkdir -p /Users/matthias/projects/frontier-clean/.tmp
+   shasum -a 256 /Users/matthias/frontier/.pm/tickets.jsonl /Users/matthias/frontier/.pm/archive/tickets-2026.jsonl /Users/matthias/work/lai/.pm/tickets.jsonl /Users/matthias/work/lai/00-initialization/.pm/tickets.jsonl /Users/matthias/work/lai/loop/.pm/tickets.jsonl /Users/matthias/work/lai/99-local-deployment/.pm/tickets.jsonl /Users/matthias/work/portside/.pm/tickets.jsonl /Users/matthias/work/portside/engineering/.pm/tickets.jsonl /Users/matthias/projects/macos-orchestration/.pm/tickets.jsonl /Users/matthias/claude/.pm/tickets.jsonl /Users/matthias/projects/frontier-clean/.pm/tickets.jsonl > /Users/matthias/projects/frontier-clean/.tmp/cutover-before.sha256
+   ```
+
+   The second command prints nothing. Keep the first command's hash: no commit may
+   touch those two directories until step 8.
 
 ## Step 2. Import every store
 
@@ -160,17 +169,28 @@ imports use a scratch registry; step 3 writes the real one.
 
    Expect ten `ok   <path> (<N> tickets)` lines and the last line
    `stores: 10, differing: 0`; exit 0. Any `DIFF` line: stop, send me the output.
-2. Import for real. The loop stops at the first failure.
+2. Import for real, deepest path first: pm resolves a directory to the nearest
+   `.pm/log.jsonl` walking up (`pm/tools/store.py:36-43,61`), so once `~/work/lai` has a
+   log, `pm import` run inside `~/work/lai/00-initialization` finds lai's log and refuses
+   (`this store already has events`, `pm/tools/verbs/import.py:173-174`). The loop below
+   lists `lin`, `lop`, `obs` and `pse` before their parents `lai` and `ps`; do not
+   reorder it. The loop stops at the first failure.
 
    ```sh
    export PM_STORES=/Users/matthias/projects/frontier-clean/.tmp/cutover-import-registry
-   for s in /Users/matthias/frontier /Users/matthias/work/lai /Users/matthias/work/lai/00-initialization /Users/matthias/work/lai/loop /Users/matthias/work/lai/99-local-deployment /Users/matthias/work/portside /Users/matthias/work/portside/engineering /Users/matthias/projects/macos-orchestration /Users/matthias/claude /Users/matthias/projects/frontier-clean; do (cd "$s" && /Users/matthias/projects/frontier-clean/pm/cli/pm import) || break; done
+   for s in /Users/matthias/work/lai/00-initialization /Users/matthias/work/lai/loop /Users/matthias/work/lai/99-local-deployment /Users/matthias/work/portside/engineering /Users/matthias/work/lai /Users/matthias/work/portside /Users/matthias/frontier /Users/matthias/projects/macos-orchestration /Users/matthias/claude /Users/matthias/projects/frontier-clean; do (cd "$s" && /Users/matthias/projects/frontier-clean/pm/cli/pm import) || break; done
    unset PM_STORES
    ```
 
-   Expect ten `imported N tickets: ...` lines, each N equal to the `(<N> tickets)` of
-   the same store in step 2.1. A repeat run is safe: a store that already has events
-   answers `this store already has events` (`pm/tools/verbs/import.py:173-174`); skip it.
+   Expect ten `imported N tickets: ...` lines in that order (`lin`, `lop`, `obs`, `pse`,
+   `lai`, `ps`, `fr`, `mo`, `cl`, `fc`), each N equal to the `(<N> tickets)` of the same
+   store in step 2.1. On a repeat run the stores already done answer
+   `this store already has events`: remove those paths from the `for` list and run it
+   again, keeping the order. Never import a parent before its children.
+   Until overseer ticket fc-5e5a20 (it fixes pm's nearest-log resolution) lands, this
+   order is the only guard. After this step a lost child log makes pm resolve to the
+   parent and write there silently; the sign is `pm doctor` in the child printing the
+   parent's prefix (I have not checked `pm restore` from a child with no log).
 3. Keep `.pm/log.jsonl` out of git status. Import does not add it to `.gitignore`
    (only `pm init` does, `pm/tools/verbs/init.py:49`), and the log is not tracked
    (`pm/docs/design.md:32`). This writes each repo's local exclude file, no commit.
@@ -191,11 +211,13 @@ imports use a scratch registry; step 3 writes the real one.
    Expect `OK` on all eleven files (every `tickets.jsonl` and the archive are
    byte-identical, so no writer ran in between) and no `.pm/log.jsonl` line in
    `status`. Then run `/Users/matthias/projects/frontier-clean/pm/cli/pm doctor` inside
-   each of the ten paths; each prints a clean report with the prefix and counts.
+   each of the ten paths and expect `ok: <prefix>, <N> tickets, <N> events` with that
+   store's own prefix from the step 2 table (`pm/tools/verbs/doctor.py:65`): `lin`,
+   `lop`, `obs` and `pse` must not print `lai` or `ps`.
 
 ## Step 3. Write the registry
 
-Buys: `pm` routes an id to its store from any directory. The file is
+Buys: `pm` routes an id to its store from any directory inside a store. The file is
 `~/.config/pm/stores`, or `$PM_STORES` (`pm/docs/design.md:102`); the ticket body's
 `~/.config/pm/stores.json` is the old name and is wrong. `~/.config/pm` does not exist
 today (I listed it). Paths are absolute because the registry does not expand `~`
@@ -230,6 +252,7 @@ only and refuses changes (`pm/tools/store.py:430-432`).
    switched `pm` yet).
 
    ```sh
+   cd /Users/matthias/frontier
    /Users/matthias/projects/frontier-clean/pm/cli/pm stores
    /Users/matthias/projects/frontier-clean/pm/cli/pm show cl-03817e
    /Users/matthias/projects/frontier-clean/pm/cli/pm show cl-21e0f2
@@ -238,14 +261,18 @@ only and refuses changes (`pm/tools/store.py:430-432`).
 
    Expect `stores` to list the 11 lines; both `show` calls to print a ticket
    (`cl-03817e` is in both stores and reads from `~/frontier`; `cl-21e0f2` only in
-   `~/claude`); and `note` to refuse with `store cl is read-only`. I did not run any of
+   `~/claude`); and `note` to refuse with `store cl is read-only`. Run the block from
+   inside a store, as shown: `show` and `note` print `no store here` elsewhere
+   (`pm/tools/store.py:79-82`) and only then route the id by prefix. I did not run any of
    these (the registry does not exist yet).
 
 ## Step 4. Switch the symlinks and link the plugins
 
 Buys: `pm` and `wt` on `PATH` are the new ones. After this the old frontier hooks
-(`session_start.py`, `stop.py`) call `pm ticket summary`, which no longer exists, so do
-step 6.1 to 6.3 straight after, with no Claude session started between. `ln -sfn`
+(`session_start.py`, `stop.py`) call `pm ticket summary`, which no longer exists, and the
+frontier readers of the old pm (`done_gate.py`, `session-title.py`,
+`posture/render/check.py`) fail open or fail, so do step 4A straight after, then step 6.1
+to 6.3, with no Claude session started between. `ln -sfn`
 replaces the existing links, `~/.local/bin/pm` -> `~/.local/libexec/pm/cli/pm` and
 `~/.local/bin/wt` -> `~/.local/libexec/wt/cli/wt` (both read 2026-11-15); those two
 targets stay for step 10. Install text: `pm/INSTALL.md:15-36` and `wt/INSTALL.md:13-22`.
@@ -273,10 +300,105 @@ targets stay for step 10. Install text: `pm/INSTALL.md:15-36` and `wt/INSTALL.md
 
    Expect the two component paths under `/Users/matthias/projects/frontier-clean`;
    `dispatch pilot wt`; the `pm keeps this repo's tickets in .pm/.` table; and
-   `wt selftest` ending `SELFTEST PASSED`.
+   `wt selftest` ending `SELFTEST PASSED`. `wt selftest` drives the `pm` next to the `wt`
+   it runs (`wt/tools/verbs/selftest.zsh:124`, `${WT_COMPONENT:h}/pm/cli/pm`), not the
+   `pm` on `PATH`; `readlink` and `pm help` prove the `PATH` side.
 
 Consequence of the `wt` plugin (note 2026-11-14T18:26): a direct `pm done` on a ticket
 whose worktree exists is refused unless `WT_CALLER=1`; `wt finish` sets it. Not a step.
+
+## Step 4A. Deploy the frontier readers of the new pm
+
+Buys: the frontier code that calls `pm ticket ...` or loads the old `hooks/pm` keeps
+working once `pm` on `PATH` is the new pm. Do it straight after step 4. The window
+that remains is from the step 4 switch to the `deploy core-hooks` in item 1: in it
+`done_gate.py` (`:129`, `:141`) and `session-title.py` (`:198`) get a failing `pm`, raise
+`Unavailable` or fall through, and fail open (`done_gate.py:133,144`), so the Stop-side
+done gate and the session title are off. Step 1 closed every agent session, so
+nothing is gated in that window; keep it that way and start no agent session until
+item 1 is deployed.
+
+Each row is a change in a frontier package, so it needs a frontier ticket and worktree
+(start it with the new wt, after step 4: step 1 finished every worktree the old wt
+started), and the tests of the package it changes (`bin/test --hermetic` for the repo;
+for core-hooks every test file its `.deploy.json` lists). The `bin/test` and
+`done_gate.py` rows were found by reading what the hit lines load, not by the ticket's
+patterns alone. `posture/render/check.py` was found by the review of this runbook.
+
+| Where | What it does today | Exact change |
+| --- | --- | --- |
+| `bin/test:55` | `sys.path.insert(0, .../runtime-tools/wt/src)` to import `wt_core`; used at `:125` (`known_red_scan`) and `:180` (`read_known_red`) | `wt_core` has no successor: the new wt reads `.wt/known-red` in zsh. No store sets `known_red` today (Part A, step 5), so remove the known-red path from `bin/test` (lines 34-40, 55, 121-125, 180, 258-264) or give it a new reader; a decision for the frontier ticket, I have not read `bin/test` past the hit lines |
+| `bin/test:166`, `:28-29`, `:135-136`, `:152-203` | `pm_validate_step` runs `runtime-tools/pm/cli/pm ticket --store <main checkout> lint` | the new pm has `pm doctor` and no `ticket` verb or `--store` flag (`pm help`); run `/Users/matthias/projects/frontier-clean/pm/cli/pm doctor` in the main checkout and keep exit 1 or 2 as FAIL. I have not run `pm doctor` on a real store |
+| `tests/test_bin_test_pm_validate.py:25` | `PM = REPO/runtime-tools/pm/cli/pm` | same target as the row above |
+| `hooks/core-hooks/policies/done_gate.py:92-99` | `_load_pm_stop` imports `hooks/pm/stop.py` for `token_of` (`:253`) and `split_assignee` (`:257`); raises `Unavailable` when missing, which fails open | copy the two functions (`hooks/pm/stop.py` `token_of`: first 8 hex of sha256 of the session id) into the policy, or drop the claim check. I have not checked that the new pm computes its `by` token the same way (`pm/tools`); do that first |
+| `hooks/core-hooks/policies/done_gate.py:129` | `pm ticket show <id> --json` | `pm show <id> --json` |
+| `done_gate.py:131` | looks for `no such ticket` in stderr | I have not found what the new pm prints for an unknown id; read `pm/tools` refusal text before editing |
+| `done_gate.py:141` | `pm ticket list --status claimed --json`; the old list spanned every store (`pm/docs/cost.md:179`) | `pm ls taken -n 0 --all-stores --json`: plain `pm ls` reads only the local store and shows 20 rows (`pm ls` usage, `pm/tools/verbs/ls.py:56-58`) |
+| `done_gate.py:248` | ticket counts as closed when `status == "closed"` | `"done"` (`pm/docs/design.md:51-55,74`); the `Ticket: <id> <pm status>` closing line then ends `done` (step 9) |
+| `done_gate.py:257` | `row.get("assignee")` | `row.get("holder")` (`pm/tools/store.py:113,148`); the value is `by` (`name#token`, `pm/docs/design.md:44`) |
+| `done_gate.py:15-16` | docstring names `pm ticket show --json` and `hooks/pm/stop.py` | update the words |
+| `done_gate.py` fields `kind`, `labels`, `findings`, `notes`, `parent` | read from the old ticket JSON (fixture `tests/test-policy-done-gate.py:30-32`) | I have not compared them with `pm show --json`; the new key for the parent is `under` (`pm/tools/store.py:118`) |
+| `tests/test-policy-done-gate.py:29,30-32,114,117` | fixtures use `closed`, `claimed`, `done-unmerged`, `parent`, `assignee` | the new words: `done`, `taken`, no `done-unmerged`, `under`, `holder`; line 29 imports `gate._load_pm_stop` |
+| `hooks/core-hooks/session-title.py:198`, `:202` | `pm ticket show <id> --json`, then `.get("parent")` | `pm show <id> --json`, `.get("under")`; fail-open stays (`:195`, `:203`) |
+| `posture/render/check.py:43`, `:45`, `:103`, `:117` | the posture gate: `PM = ["pm", "ticket"]`, runs `PM + ["show", tid]` in `/Users/matthias/frontier` and reads the third word of the first line as the state; `OPEN_STATES = {"open", "claimed", "blocked"}`; the error text at `:117` says `pm ticket show` | `PM = ["pm"]`; the first line of `pm show` is `<id>  P<pri>  <status>  <title>` (`pm/docs/design.md:189`), so `first[2]` still reads the status; `OPEN_STATES = {"open", "taken", "parked"}` (the new words, `pm/docs/design.md:172`; I have not read what A10b means by `blocked`, decide it in the ticket); text `pm show`. `tests/test_posture.py:312-334` fake `ticket_state` and need no change; `:578-580` list `pm ticket` argvs, I have not opened what they test |
+| `session-title.py:68`, `:182` | comments cite `runtime-tools/pm/ticket/src/ticket_core.py ID_RE` and `pm ticket` | cite `pm/docs/design.md` "Ids and the registry" |
+| `hooks/core-hooks/policies/continuity_nudge.py:27` | tells the agent to run `pm ticket note <id>` | `pm note <id>` |
+| `hooks/core-hooks/policies/git_identity_guard.py:130` | message example `pm ticket show cl-85dadd` | `pm show cl-85dadd` |
+| `hooks/core-hooks/policies/eval_ask.py:31`, `sensitive_paths.py:4`, `:29`; `tests/test-policy-sensitive-bash-bands.py:139` | prose naming `pm ticket` as a data command | `pm` (the test pins the same sentence) |
+| `hooks/core-hooks/policies/README.md:38`, `:54`; `lib/frontier.py:10` | `pm ticket show`, `pm ticket notes` in prose | `pm show`, `pm note` |
+| `hooks/core-hooks/policies/git_branch_guard.py:81` | message ends `See the worktree-lifecycle skill.` | `Run wt help.`; `:28` and `:78` name `wt finish`, still a verb, unchanged |
+| `hooks/core-hooks/policies/destructive_ops.py:900` | `See the worktree-lifecycle skill.` | `Run wt help.`; `:59` comment `skills/worktree-lifecycle:` to `wt/docs/contract.md`; `:881`, `:888-889` name `wt finish`, `wt park`, `wt status`, all current verbs |
+| `hooks/core-hooks/tests/command-shape-corpus.jsonl:91` (`cs-092`) | `pm ticket show cl-6cd301`, expect `none` | `pm show cl-6cd301`; `:92` (`cs-093`) and `:120` (`cs-121`) are `wt start` and `wt finish --repo`, unchanged |
+| `runtime-tools/session-cost` (`rule_cost.py:69,82`, `touches.py:12-13`, `claims.py:98,107`) | matches only `pm ticket <verb>`, reads `refs/heads/pm-store` and `pm ticket stores` | not repeated here: owned by fr-453840, a trigger of this runbook |
+
+The core-hooks policies that match `pm ticket` or `wt` command lines, and what each must
+match now:
+
+- `lib/sensitive.py:59-69` (data words for `pm`): matches the command name `pm`, not the
+  verb, so `pm show`, `pm note` and `pm new` stay data. Its one special case is `--repo`
+  (names a directory pm opens); the new pm has no `--repo` or `--store` flag (I searched
+  `pm/tools` and `pm/cli`), so the case is dead but safe. Recommendation: leave it;
+  its tests (`tests/test_hooks.py:107-108`,
+  `tests/test-policy-sensitive-bash-block.py:93-94`) still pass. `wt` is not in that
+  list, so `wt start <id> --repo <path>` words are examined, which fails safe.
+- `done_gate.py` (Stop): calls `pm`, not matches a command line; rows above.
+- `session-title.py` (hook, not a policy): calls `pm`; rows above.
+- `git_branch_guard.py`, `destructive_ops.py`: do not match `wt` lines; they print `wt
+  finish`, `wt park`, `wt status` in remedies. The new wt has all three
+  (`wt/docs/instruction-map.md:46,54`); `wt pending` is not printed by either, and is
+  gone from the new wt, so nothing to change.
+- No policy matches `pm ticket` or a `wt` verb as a command shape; `rg` finds the
+  command-shape corpus rows 91, 92, 120 only as test inputs, whose `expect` is `none`.
+- Permission posture (`posture/posture.json:3574` `wt`, and the bare `pm` rule its text
+  names) is verb-agnostic by its own `why`; I have not opened the patterns. No edit is
+  required, and `posture.json:1332,1365,1904,3574` are prose in `why` fields.
+
+1. Do the table above as one frontier ticket, merge it, deploy `core-hooks`, and prove
+   it. Agent-run. Capture the pre-merge tip before `wt finish`, run the deploy after the
+   merge, and keep both hashes: the revert range in step 10.6 is the merge, not the
+   registry commit that `deploy` adds (`deploy/engine.py:2482`, `_commit_registry`).
+
+   ```sh
+   git -C /Users/matthias/frontier branch --show-current
+   git --no-pager -C /Users/matthias/frontier rev-parse --short HEAD
+   wt finish <the frontier ticket id>
+   git --no-pager -C /Users/matthias/frontier rev-parse --short HEAD
+   /usr/bin/python3 /Users/matthias/frontier/bin/test --hermetic
+   /usr/bin/python3 /Users/matthias/frontier/posture/render/check.py
+   python3 /Users/matthias/frontier/bin/deploy deploy core-hooks --provider claude
+   python3 /Users/matthias/frontier/bin/deploy verify core-hooks --provider claude
+   rg -n 'runtime-tools/(pm|wt)|hooks/pm|pm ticket|worktree-lifecycle' /Users/matthias/frontier/bin /Users/matthias/frontier/hooks/core-hooks /Users/matthias/frontier/posture/render --glob '!tests/**'
+   ```
+
+   Run `wt finish` from `/Users/matthias/frontier`. The first `rev-parse` prints
+   `<before>`, the second prints `<merged>`: the 8.0 merge range is `<before>..<merged>`
+   (`wt finish` may merge several commits). Write both into the ticket's close note.
+   Step 10.6 reverts `<before>..<merged>`, newest commit first.
+
+   Expect exit 0 from the test run and from `check.py` (its owner checks now call
+   `pm show`), `verify` ok, and `rg` printing only the `wt finish`-style comments you
+   chose to keep: no `runtime-tools/`, `hooks/pm`, `pm ticket` or `worktree-lifecycle`.
+   I have not run `check.py` against the new pm.
 
 ## Step 5. Move the config keys
 
@@ -583,79 +705,23 @@ registry records for the package and prunes the directories that leaves empty, t
 the registry record; a package whose source is already gone is still retirable by name
 (`:3238`). It does not touch `~/.local/bin/pm` or `~/.local/bin/wt`: those now link into
 frontier-clean (step 4), and the old `postdeploy` link (`ln -sf` from `.deploy.json`)
-only runs on deploy. I have not run `retire` or its `--dry-run` (it writes the
-registry).
+only runs on deploy. `retire` has no `--dry-run` flag (`engine.py:3446-3448`) and I have
+not run it; it writes the registry.
 
-### 8.0 Prerequisite: frontier code that still reads the old components
+### 8.0 Prerequisite: the frontier readers are already updated
 
-Retiring first would break these today. Each is a change in a frontier package, so it
-needs a frontier ticket and worktree, and the tests of the package it changes
-(`bin/test --hermetic` for the repo; for core-hooks every test file its
-`.deploy.json` lists). Nothing from item 2 onward runs until item 1 is merged and
-deployed. The `bin/test` and `done_gate.py` rows were found by reading what the hit
-lines load, not by the ticket's patterns alone.
+The frontier code that read the old components moved to step 4A, right after the
+`PATH` switch. Item 1 only proves that it did.
 
-| Where | What it does today | Exact change |
-| --- | --- | --- |
-| `bin/test:55` | `sys.path.insert(0, .../runtime-tools/wt/src)` to import `wt_core`; used at `:125` (`known_red_scan`) and `:180` (`read_known_red`) | `wt_core` has no successor: the new wt reads `.wt/known-red` in zsh. No store sets `known_red` today (Part A, step 5), so remove the known-red path from `bin/test` (lines 34-40, 55, 121-125, 180, 258-264) or give it a new reader; a decision for the frontier ticket, I have not read `bin/test` past the hit lines |
-| `bin/test:166`, `:28-29`, `:135-136`, `:152-203` | `pm_validate_step` runs `runtime-tools/pm/cli/pm ticket --store <main checkout> lint` | the new pm has `pm doctor` and no `ticket` verb or `--store` flag (`pm help`); run `/Users/matthias/projects/frontier-clean/pm/cli/pm doctor` in the main checkout and keep exit 1 or 2 as FAIL. I have not run `pm doctor` on a real store |
-| `tests/test_bin_test_pm_validate.py:25` | `PM = REPO/runtime-tools/pm/cli/pm` | same target as the row above |
-| `hooks/core-hooks/policies/done_gate.py:92-99` | `_load_pm_stop` imports `hooks/pm/stop.py` for `token_of` (`:253`) and `split_assignee` (`:257`); raises `Unavailable` when missing, which fails open | copy the two functions (`hooks/pm/stop.py` `token_of`: first 8 hex of sha256 of the session id) into the policy, or drop the claim check. I have not checked that the new pm computes its `by` token the same way (`pm/tools`); do that first |
-| `hooks/core-hooks/policies/done_gate.py:129` | `pm ticket show <id> --json` | `pm show <id> --json` |
-| `done_gate.py:131` | looks for `no such ticket` in stderr | I have not found what the new pm prints for an unknown id; read `pm/tools` refusal text before editing |
-| `done_gate.py:141` | `pm ticket list --status claimed --json` | `pm ls taken --json` |
-| `done_gate.py:248` | ticket counts as closed when `status == "closed"` | `"done"` (`pm/docs/design.md:51-55,74`); the `Ticket: <id> <pm status>` closing line then ends `done` (step 9) |
-| `done_gate.py:257` | `row.get("assignee")` | `row.get("holder")` (`pm/tools/store.py:113,148`); the value is `by` (`name#token`, `pm/docs/design.md:44`) |
-| `done_gate.py:15-16` | docstring names `pm ticket show --json` and `hooks/pm/stop.py` | update the words |
-| `done_gate.py` fields `kind`, `labels`, `findings`, `notes`, `parent` | read from the old ticket JSON (fixture `tests/test-policy-done-gate.py:30-32`) | I have not compared them with `pm show --json`; the new key for the parent is `under` (`pm/tools/store.py:118`) |
-| `tests/test-policy-done-gate.py:29,30-32,114,117` | fixtures use `closed`, `claimed`, `done-unmerged`, `parent`, `assignee` | the new words: `done`, `taken`, no `done-unmerged`, `under`, `holder`; line 29 imports `gate._load_pm_stop` |
-| `hooks/core-hooks/session-title.py:198`, `:202` | `pm ticket show <id> --json`, then `.get("parent")` | `pm show <id> --json`, `.get("under")`; fail-open stays (`:195`, `:203`) |
-| `session-title.py:68`, `:182` | comments cite `runtime-tools/pm/ticket/src/ticket_core.py ID_RE` and `pm ticket` | cite `pm/docs/design.md` "Ids and the registry" |
-| `hooks/core-hooks/policies/continuity_nudge.py:27` | tells the agent to run `pm ticket note <id>` | `pm note <id>` |
-| `hooks/core-hooks/policies/git_identity_guard.py:130` | message example `pm ticket show cl-85dadd` | `pm show cl-85dadd` |
-| `hooks/core-hooks/policies/eval_ask.py:31`, `sensitive_paths.py:4`, `:29`; `tests/test-policy-sensitive-bash-bands.py:139` | prose naming `pm ticket` as a data command | `pm` (the test pins the same sentence) |
-| `hooks/core-hooks/policies/README.md:38`, `:54`; `lib/frontier.py:10` | `pm ticket show`, `pm ticket notes` in prose | `pm show`, `pm note` |
-| `hooks/core-hooks/policies/git_branch_guard.py:81` | message ends `See the worktree-lifecycle skill.` | `Run wt help.`; `:28` and `:78` name `wt finish`, still a verb, unchanged |
-| `hooks/core-hooks/policies/destructive_ops.py:900` | `See the worktree-lifecycle skill.` | `Run wt help.`; `:59` comment `skills/worktree-lifecycle:` to `wt/docs/contract.md`; `:881`, `:888-889` name `wt finish`, `wt park`, `wt status`, all current verbs |
-| `hooks/core-hooks/tests/command-shape-corpus.jsonl:91` (`cs-092`) | `pm ticket show cl-6cd301`, expect `none` | `pm show cl-6cd301`; `:92` (`cs-093`) and `:120` (`cs-121`) are `wt start` and `wt finish --repo`, unchanged |
-| `runtime-tools/session-cost` (`rule_cost.py:69,82`, `touches.py:12-13`, `claims.py:98,107`) | matches only `pm ticket <verb>`, reads `refs/heads/pm-store` and `pm ticket stores` | not repeated here: owned by fr-453840, a trigger of this runbook |
-
-The core-hooks policies that match `pm ticket` or `wt` command lines, and what each must
-match now:
-
-- `lib/sensitive.py:59-69` (data words for `pm`): matches the command name `pm`, not the
-  verb, so `pm show`, `pm note` and `pm new` stay data. Its one special case is `--repo`
-  (names a directory pm opens); the new pm has no `--repo` or `--store` flag (I searched
-  `pm/tools` and `pm/cli`), so the case is dead but safe. Recommendation: leave it;
-  its tests (`tests/test_hooks.py:107-108`,
-  `tests/test-policy-sensitive-bash-block.py:93-94`) still pass. `wt` is not in that
-  list, so `wt start <id> --repo <path>` words are examined, which fails safe.
-- `done_gate.py` (Stop): calls `pm`, not matches a command line; rows above.
-- `session-title.py` (hook, not a policy): calls `pm`; rows above.
-- `git_branch_guard.py`, `destructive_ops.py`: do not match `wt` lines; they print `wt
-  finish`, `wt park`, `wt status` in remedies. The new wt has all three
-  (`wt/docs/instruction-map.md:46,54`); `wt pending` is not printed by either, and is
-  gone from the new wt, so nothing to change.
-- No policy matches `pm ticket` or a `wt` verb as a command shape; `rg` finds the
-  command-shape corpus rows 91, 92, 120 only as test inputs, whose `expect` is `none`.
-- Permission posture (`posture/posture.json:3574` `wt`, and the bare `pm` rule its text
-  names) is verb-agnostic by its own `why`; I have not opened the patterns. No edit is
-  required, and `posture.json:1332,1365,1904,3574` are prose in `why` fields.
-
-1. Do the 8.0 table as one frontier ticket, deploy `core-hooks`, and prove it. Agent-run.
+1. Prove step 4A landed. Agent-run.
 
    ```sh
-   /usr/bin/python3 /Users/matthias/frontier/bin/test --hermetic
-   python3 /Users/matthias/frontier/bin/deploy deploy core-hooks --provider claude
-   python3 /Users/matthias/frontier/bin/deploy verify core-hooks --provider claude
-   rg -n 'runtime-tools/(pm|wt)|hooks/pm|pm ticket|worktree-lifecycle' /Users/matthias/frontier/bin /Users/matthias/frontier/hooks/core-hooks --glob '!tests/**'
-   git --no-pager -C /Users/matthias/frontier log -1 --format=%h
+   rg -n 'runtime-tools/(pm|wt)|hooks/pm|pm ticket|worktree-lifecycle' /Users/matthias/frontier/bin /Users/matthias/frontier/hooks/core-hooks /Users/matthias/frontier/posture/render --glob '!tests/**'
    ```
 
-   Keep the printed hash (the merge of this ticket): step 10.6 reverts it.
-
-   Expect exit 0, `verify` ok, and `rg` printing only the `wt finish`-style comments you
-   chose to keep: no `runtime-tools/`, `hooks/pm`, `pm ticket` or `worktree-lifecycle`.
+   Expect no `runtime-tools/`, `hooks/pm`, `pm ticket` or `worktree-lifecycle` hit, apart
+   from `wt finish`-style comments you chose to keep. If one appears, step 4A is not
+   done: stop, do not retire.
 
 ### 8.1 Retire the deployed artifacts
 
@@ -678,7 +744,8 @@ match now:
    ```
 
    Expect `<key>: retired (live artifacts and manifest removed)` seven times, the two
-   frontier-clean paths from `readlink`, `pm help` and `wt selftest` as in step 4, and no
+   frontier-clean paths from `readlink`, `pm help` and `wt selftest` as in step 4 (the
+   `PATH` side is proved by `readlink` and `pm help`, not by `selftest`), and no
    `pm` or `wt` under `libexec`. A `<key>: not in the registry` line means that provider
    never had it; read it and go on. From here the old pm is gone from the machine.
    `~/.claude/skills/pm`, `~/.claude/skills/worktree-lifecycle` and `~/.claude/hooks/pm`
@@ -695,7 +762,8 @@ match now:
    ```
 
    Expect only `D` lines under those five paths, plus `deploy/registry.json` if `retire`
-   left it dirty (item 7's `add` stages it). A directory left on disk holding
+   left it dirty (item 7's `add` stages it). `git rm` already staged the deletions, so
+   item 7 does not name those five paths again. A directory left on disk holding
    only ignored files (`__pycache__`) is harmless; do not delete it by hand.
 4. Delete the three allowlist entries for removed files.
 
@@ -779,7 +847,7 @@ read:
 | `docs/backlog/inbox/infra-faults/README.md:12` | `~/frontier/runtime-tools/wt` is the reporter | `~/projects/frontier-clean/wt` (D1 keeps the directory itself) |
 | `docs/policy/package-manager-permission-policy.md:42`, `tools/audit/model_id_drift.py:76`, `tools/audit/test_model_id_drift.py:130` | the strings are a backlog file name and an archive directory name that contain `worktree-lifecycle`; not references to the skill | no change |
 | `docs/design/`, `docs/programs/`, `docs/audit/`, `docs/rollback/`, `docs/deprecation-notices/`, `docs/pm-reorg.md`, `docs/skill-wishlist-initiative/`, `docs/design/2026-11-07-pm-first-principles/` | plans, reports, prompts, audits and rollback records that quote what existed | no change: they are dated records. I did not list their several hundred lines one by one; the command above prints them. `docs/rollback/codex-worktree-workctl-stack.pre-cl-93e398.md` is the input of `gen_instructions.py --rollback-codex-worktree` and must stay |
-| `hooks/core-hooks/**` | `rg` second search | the 8.0 table above, line by line |
+| `hooks/core-hooks/**` | `rg` second search | the step 4A table, line by line |
 
 6. Prove the sweep, after the edits above.
 
@@ -796,14 +864,16 @@ read:
 
    ```sh
    git -C /Users/matthias/frontier branch --show-current
-   git -C /Users/matthias/frontier add runtime-tools/pm runtime-tools/wt hooks/pm skills/pm skills/worktree-lifecycle deploy/registry.json tools/audit/retired_roots_allowlist.json hooks/core-hooks/config/deprecated-sources.json deploy/gitfault.py deploy/gitcommit.py docs/backlog/TRIAGE.md docs/backlog/inbox/infra-faults/README.md skills/initiative-overseer/SKILL.md runtime-tools/env-doctor/env_doctor.py runtime-tools/env-doctor/README.md
+   git -C /Users/matthias/frontier add deploy/registry.json tools/audit/retired_roots_allowlist.json hooks/core-hooks/config/deprecated-sources.json deploy/gitfault.py deploy/gitcommit.py docs/backlog/TRIAGE.md docs/backlog/inbox/infra-faults/README.md skills/initiative-overseer/SKILL.md runtime-tools/env-doctor/env_doctor.py runtime-tools/env-doctor/README.md
    git -C /Users/matthias/frontier commit -m "retire pm, wt, pm-hooks and the pm and worktree-lifecycle skills: replaced by frontier-clean"
    git --no-pager -C /Users/matthias/frontier log -1 --format=%h
    ```
 
-   Keep the printed hash: step 10.6 reverts it. If `retire` already committed
-   `deploy/registry.json`, `add` skips it. The commit must contain no 8.0 code edit (item 1), so
-   that revert restores only the old components.
+   Keep the printed hash: step 10.6 reverts it. The commit holds the five staged
+   deletions from item 3 and the edits named in `add`. If `retire` already committed
+   `deploy/registry.json`, `add` skips it. The commit must contain no step 4A code edit,
+   so that revert restores only the old components. Step 10.6 excludes
+   `deploy/registry.json` from the revert (the redeploys rewrite it).
 
 ## Step 9. Shrink the pm and wt text in the global instructions to pointers
 
@@ -839,8 +909,10 @@ which I re-read today and found unchanged at 142-145 and 160-170):
 - `:169-170` go: the skill is retired (map line 93).
 - `:42` stays but its example word changes, because the status word is `done`
   (`pm/docs/design.md:51-55`): `(\`Ticket: fr-0279f9 closed\`)` becomes
-  `(\`Ticket: fr-0279f9 done\`)`. The Stop-side gate reads that word (`done_gate.py:248`,
-  8.0), so land both in the same deploy.
+  `(\`Ticket: fr-0279f9 done\`)`. The Stop-side gate's status check (`done_gate.py:248`,
+  step 4A) deploys earlier, with `core-hooks` at step 4A item 1; this word deploys with
+  the instructions at item 5 below. They are two deploys, so between them agents still
+  print `closed`; I have not read whether the gate compares the printed word.
 
 Replacement text. The Command-recipes rows (CLAUDE.md lines 142-145) become:
 
@@ -855,7 +927,7 @@ and the section at lines 160-170 becomes:
 ## Branches and worktrees (shared checkouts)
 
 A repo's main checkout stays on its default branch and nobody switches it. Before every commit run `git branch --show-current`; if the main checkout is not on its default branch, stop and report it instead of committing or switching.
-Work that is not a commit to the default branch happens in a worktree entered and left only through `wt` (`wt help`; tickets: `pm help`). Before your session's final response, finish, park, or release every ticket you still hold. In a multi-agent run only the orchestrator runs `wt`.
+Work that is not a commit to the default branch happens in a worktree entered and left only through `wt` (`wt help`; tickets: `pm help`). Before your session's final response, finish, park, or drop every ticket you still hold. In a multi-agent run only the orchestrator runs `wt`.
 What `wt` does not enforce, and the sandbox notes: `wt/docs/contract.md` in the frontier-clean repository.
 ```
 
@@ -879,7 +951,7 @@ Edits, in `/Users/matthias/frontier` (a frontier ticket, in a worktree; the edit
 3. `tests/test_parity.py:61-81`: replace `WORKTREE_CLAUSES` with the clauses the new text
    carries: `("pre-commit", "Before every commit run \`git branch --show-current\`")`,
    `("through-wt", "entered and left only through \`wt\` (\`wt help\`; tickets: \`pm help\`)")`,
-   `("final-response", "Before your session's final response, finish, park, or release every ticket you still hold.")`,
+   `("final-response", "Before your session's final response, finish, park, or drop every ticket you still hold.")`,
    `("orchestrator", "only the orchestrator runs \`wt\`")`,
    `("contract", "\`wt/docs/contract.md\`")`.
 4. Regenerate and prove.
@@ -971,7 +1043,7 @@ packages. After step 8, do item 6 first and then items 1 to 5, as item 6 says.
 
    Expect the ten-store registry and the old session briefing.
 6. Rolling back after step 8. The libexec copies, the hook files, both skills and their
-   registry records are gone, and the frontier code that reads pm (step 8 item 1) now
+   registry records are gone, and the frontier code that reads pm (step 4A) now
    calls the new pm's verbs, which the old pm does not have. Rollback is therefore a
    re-deploy, not a re-link. Do items 2 and 3 only after this item, since the deploys
    below put `~/.local/bin/pm` and `~/.local/bin/wt` back (each package's `postdeploy`
@@ -980,13 +1052,21 @@ packages. After step 8, do item 6 first and then items 1 to 5, as item 6 says.
    with every agent session closed.
 
    Revert newest first, each hash from the step that printed it: step 9 item 5, step 8
-   item 7, then the merge of the step 8 item 1 ticket (its hash, from step 8 item 1).
+   item 7, then the step 4A range `<before>..<merged>` (both hashes, from step 4A
+   item 1; not a `git log -1` taken after a deploy, which is the deploy's own registry
+   commit, `deploy/engine.py:2482`). `deploy/registry.json` stays out of the step 8
+   item 7 revert: every later deploy rewrites it, including `updated_at`
+   (`engine.py:932-937`), so reverting its hunks would conflict; the redeploys below
+   write it back. That revert is therefore a reverse patch without that file.
 
    ```sh
    git -C /Users/matthias/frontier branch --show-current
    git -C /Users/matthias/frontier revert --no-edit <step 9 hash>
-   git -C /Users/matthias/frontier revert --no-edit <step 8 item 7 hash>
-   git -C /Users/matthias/frontier revert --no-edit <step 8 item 1 hash>
+   git --no-pager -C /Users/matthias/frontier diff --binary <step 8 item 7 hash>^ <step 8 item 7 hash> -- . ':(exclude)deploy/registry.json' > /Users/matthias/frontier/.tmp/step8-item7.patch
+   git -C /Users/matthias/frontier apply -R --index /Users/matthias/frontier/.tmp/step8-item7.patch
+   git -C /Users/matthias/frontier commit -m "revert step 8 item 7: restore pm, wt, pm-hooks and the two skills (registry.json left to the redeploys)"
+   git --no-pager -C /Users/matthias/frontier log --merges --format=%h <before>..<merged>
+   git -C /Users/matthias/frontier revert --no-edit <before>..<merged>
    python3 /Users/matthias/frontier/bin/deploy deploy pm --provider shared
    python3 /Users/matthias/frontier/bin/deploy deploy wt --provider shared
    python3 /Users/matthias/frontier/bin/deploy deploy pm-hooks --provider claude
@@ -999,7 +1079,9 @@ packages. After step 8, do item 6 first and then items 1 to 5, as item 6 says.
    python3 /Users/matthias/frontier/bin/deploy deploy instructions-codex --provider codex
    ```
 
-   Then item 3 (hooks and opencode, with `config-claude`, operator-run), item 1 (the
+   If the `log --merges` line prints a hash, the `revert <before>..<merged>` line fails
+   on it: instead run `git -C /Users/matthias/frontier revert --no-edit -m 1 <that
+   hash>`. Then item 3 (hooks and opencode, with `config-claude`, operator-run), item 1 (the
    links; harmless if the deploys already made them), and item 2 (config keys). Prove
    every package.
 
@@ -1008,15 +1090,18 @@ packages. After step 8, do item 6 first and then items 1 to 5, as item 6 says.
    python3 /Users/matthias/frontier/bin/deploy verify wt --provider shared
    python3 /Users/matthias/frontier/bin/deploy verify pm-hooks --provider claude
    python3 /Users/matthias/frontier/bin/deploy verify skill-pm --provider claude
+   python3 /Users/matthias/frontier/bin/deploy verify skill-pm --provider codex
    python3 /Users/matthias/frontier/bin/deploy verify skill-worktree-lifecycle --provider claude
+   python3 /Users/matthias/frontier/bin/deploy verify skill-worktree-lifecycle --provider codex
    python3 /Users/matthias/frontier/bin/deploy verify core-hooks --provider claude
    python3 /Users/matthias/frontier/bin/deploy verify instructions-claude --provider claude
+   python3 /Users/matthias/frontier/bin/deploy verify instructions-codex --provider codex
    readlink /Users/matthias/.local/bin/pm /Users/matthias/.local/bin/wt
    ```
 
    Expect every `verify` ok and the two `libexec` paths. The step 7 plugin needs no
    rollback: the old pm ignores `~/.config/pm` and keeps its own close-check.
    What cannot be rolled back is item 4's loss: tickets filed or changed in the new pm
-   after step 4 are in `.pm/log.jsonl` only. I have not run any of this, and a revert of
-   step 8 item 7 can conflict if frontier changed the same files since; stop and send me
-   the conflict.
+   after step 4 are in `.pm/log.jsonl` only. I have not run any of this, and a revert or
+   reverse patch can still conflict on a file other than `deploy/registry.json` if
+   frontier changed it since; stop and send me the conflict.
