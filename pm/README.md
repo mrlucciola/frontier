@@ -73,4 +73,3 @@ text. Registrations for Claude Code are `pm/config/claude/hooks.json`; opencode 
 | `pm/tests/t/` and `pm/tests/run_transcripts.py` | Checking a build against the transcripts that gate it |
 | [Maintenance](/pm/AGENTS.md) | Changing code or tests here |
 | [Setup](/pm/INSTALL.md) | Installing, verifying, disabling or removing |
-| [dash-ui](/pm/dash-ui/README.md) | Running the read-only web board over a ticket store |
