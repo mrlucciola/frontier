@@ -12,19 +12,20 @@ epic subtree:
   fc-42f64c  P2  closed        pm hook command: session-start, prompt and stop events from one provider-neutral source
   fc-dfcc49  P2  closed        pm Claude integration: hook adapter, registration fragment, setup steps
   fc-5ac03b  P2  closed        pm opencode integration: plugin owned by the component, calling pm hook
-  fc-03292e  P2  open          wt instruction delivery: help that teaches, plugin hints, no skill
+  fc-03292e  P2  closed        wt instruction delivery: help that teaches, plugin hints, no skill
   fc-f9ab11  P2  open          Measure pm/wt instruction cost before and after hook delivery
-  fc-2c0656  P2  open          Codex: record what lifecycle hooks exist and wire pm guidance to what is supported
-  fc-121923  P2  open          Finalize component principles and the behavioral contract from the pm and wt builds
+  fc-2c0656  P2  claimed       Codex: record what lifecycle hooks exist and wire pm guidance to what is supported [@agent:claude/opus-5-5#68fa5f05]
+  fc-121923  P2  closed        Finalize component principles and the behavioral contract from the pm and wt builds
   fc-10981e  P2  open          Cutover runbook: operator steps to switch pm and wt to frontier-clean and retire the frontier packages
 ```
 
 ## Next batch
 
-In flight (turn 1, 2026-11-14): fc-03292e (`prompts/01-wt-help.md`), fc-121923
-(`prompts/02-principles.md`), fc-2c0656 (`prompts/03-codex.md`); prerequisites
-fc-2a6562 and fc-262fa8 confirmed closed. Then fc-f9ab11 (`04-measure.md`) after
-fc-03292e closes; fc-10981e (`05-cutover-runbook.md`) last.
+In flight: fc-2c0656 (`prompts/03-codex.md`), fc-f9ab11 (`prompts/04-measure.md`).
+Then fc-10981e (`05-cutover-runbook.md`), last: it folds in the Codex registration
+and the measured numbers, and its notes carry routed findings from 02-wt and
+fc-03292e. Follow-up outside the epic: fc-53fc6e (pm/AGENTS.md two-verb helper record,
+from fc-121923).
 
 ## Owed operator actions
 
@@ -35,6 +36,9 @@ None yet. Expected by the end: the Codex probe, and the cutover runbook itself.
 - **Reduced 2026-11-14.** The pm redesign took the hook command and the Claude and
   opencode wiring into its own ticket, fc-a761be, and removed the pm skill. The three
   tickets for those here are closed as superseded. Nothing was built under them.
+- **Scratch git repos.** Any worker that runs `git init` puts it under the main
+  checkout's `.tmp/` and checks `rev-parse --show-toplevel` before the next git
+  command (02-wt incident: a refused init let git act on the real repo).
 - **What exists before cutover.** Claude: `~/frontier/hooks/pm/session_start.py`
   injects `pm ticket summary` when the working directory is inside a repo with `.pm/`;
   `stop.py` blocks once on a claim this session holds. opencode: a plugin written in
