@@ -1,8 +1,9 @@
-"""usage: pm link a blocks|related b [c ...]
+"""usage: pm link a blocks|related b [c ...] [--note "text"]
 
 Link ticket a to one or more others. "a blocks b" keeps b out of ready until a is
 done; a link that would make a cycle is refused. "related" shows on both tickets and
-gates nothing. A link that already exists is printed and not added again.
+gates nothing. A link that already exists is printed and not added again. --note
+adds the text as a note on each ticket after the relation, even for an existing link.
 """
 import render
 import store
@@ -24,8 +25,11 @@ def _reaches(tickets, start, goal):
 def run(argv):
     p = render.parser(__doc__)
     p.add_argument("words", nargs="*")
+    p.add_argument("--note", dest="note")
     args = p.parse_args(argv)
     words = args.words
+    if args.note is not None and not args.note.strip():
+        render.usage_error(__doc__, "--note needs text.")
     if len(words) < 3:
         render.usage_error(__doc__, "link needs two tickets and a relation.")
     if words[1] not in ("blocks", "related"):
@@ -61,6 +65,9 @@ def run(argv):
                 pending.add(key)
                 events.append({"op": "link", "id": a["id"], "rel": "related",
                                "to": b["id"]})
+        if args.note is not None:
+            for tid in dict.fromkeys([a["id"]] + [b["id"] for b in others]):
+                events.append({"op": "note", "id": tid, "text": args.note})
         return events
 
     store.change(s, check)
