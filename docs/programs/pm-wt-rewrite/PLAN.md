@@ -135,7 +135,8 @@ fc-42f64c, fc-dfcc49 and fc-5ac03b were closed as superseded by fc-a761be.
 
 ## Cutover
 
-Operator-run, after Run 03, from the runbook fc-10981e writes. It imports each
+Operator-run, after Run 03, from [the runbook](/docs/programs/pm-wt-rewrite/CUTOVER.md)
+fc-10981e writes. It imports each
 store, writes the registry, switches the `~/.local/bin` symlinks, links the
 plugins, registers hooks, and retires the frontier packages and skills. Import
 leaves every `tickets.jsonl` untouched, so rollback is re-pointing two symlinks.
