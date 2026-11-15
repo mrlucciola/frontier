@@ -40,3 +40,16 @@ A linked worktree uses the main checkout's store.
   t-1  P2  open  write the lexer
   t-2  P2  open  write the parser
   t-3  P2  open  found in the worktree
+
+A store below the top of the checkout, such as a scratch copy, has no backup, and it
+leaves the checkout's backup alone.
+
+  $ mkdir scratch && cd scratch && pm init s >/dev/null
+  $ pm new "scratch ticket" >/dev/null
+  $ pm doctor
+  ok: s, 1 ticket, 1 event
+  $ pm restore
+  pm: this store is not at the top of a git checkout, so it has no backup.
+  [1]
+  $ cd .. && git cat-file -p refs/pm/log | wc -l | tr -d ' '
+  3
