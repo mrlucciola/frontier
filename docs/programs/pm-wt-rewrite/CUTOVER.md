@@ -6,7 +6,7 @@ read on 2026-11-15 and is named where it matters. Plan:
 fc-ccecda. Part A (steps 1 to 6 and 10) switches over; steps 7 to 9 retire the frontier
 side and are written by Part B; the frontier readers of the new pm are prepared in step
 0 (before the cutover, in a normal agent session with the old tools) and merged in step
-4A (operator-only, right after step 4). Run in numeric order (0, 1, 2, 3, 4, 4A, 5, ...).
+4A (operator-only, right after step 4). Run in numeric order (0, 1, 2, 3, 4, 4A, 5, ...), with step 1A between 1 and 2.
 Paths starting `/Users/matthias` are absolute; except step 0 item 2, run every block from
 a plain terminal, not from a Claude session, because steps 4 and 6 change the hooks and
 the `pm` that a live session is using.
@@ -53,6 +53,16 @@ the `pm` that a live session is using.
 6. Overseer ticket fc-5e5a20 fixes pm's resolution of nested stores. It is not required:
    step 2.2 imports deepest path first, which is the only guard until it lands. Check
    `pm ticket show fc-5e5a20`; if it is closed, the order in step 2.2 is still correct.
+7. fc-359b5b is closed. It covers fc-5e5a20 (item 6) and fc-c8212a, which makes pm's
+   git backup ref per store instead of per repo; step 1A deletes the two stray backup
+   refs that bug left behind, and without its fix a scratch store inside a repo
+   overwrites that repo's `refs/pm/log` again.
+
+   ```sh
+   pm ticket show fc-359b5b
+   ```
+
+   Expect the first line to read `closed`.
 
 ## Before and after
 
@@ -107,6 +117,11 @@ rg -n 'runtime-tools/pm/stores.json|add the repo to' /Users/matthias/projects/fr
 
 Expect exactly two hits, `pm/AGENTS.md:18` and `pm/tests/import_check.py:18`. If a
 third appears, stop and tell me.
+
+D3. Settled by the operator on 2026-11-15, nothing to decide: sharing tickets across
+clones is dropped. Each store's old `refs/heads/pm-store` stays where it is as a local
+archive and is not synced; the new pm keeps its log in `.pm/log.jsonl`, local to the
+clone.
 
 ## Step 0. Prepare the frontier reader changes on a parked branch
 
@@ -231,6 +246,35 @@ exists only in the old `tickets.jsonl`.
 
    The second command prints nothing. Keep the first command's hash: no commit may
    touch those two directories until step 8.
+
+## Step 1A. Delete the two stray backup refs
+
+Buys: `refs/pm/log` in these two repos is the backup of the store's log. Today each
+holds a scratch log (ticket fc-c8212a): `~/frontier` a 789-byte test log of 2026-11-15,
+`~/projects/frontier-clean` a 1081385-byte copy of the `fc` store. Neither repo has a
+`.pm/log.jsonl` yet. Left in place, `pm restore` would install the scratch log as the
+real one. Runs after step 1 and before step 2, with no writer running. Nothing is
+committed: a ref is not a tracked file, so no repo gets a commit.
+
+1. Delete both refs, each only if it still points at the sha read on 2026-11-15
+   (`update-ref -d <ref> <old>` refuses when the ref has moved), then prove both are
+   empty.
+
+   ```sh
+   git --no-pager -C /Users/matthias/frontier rev-parse refs/pm/log
+   git --no-pager -C /Users/matthias/projects/frontier-clean rev-parse refs/pm/log
+   git -C /Users/matthias/frontier update-ref -d refs/pm/log f5775a9f4d1f2499808e372073ef278e94d050fd
+   git -C /Users/matthias/projects/frontier-clean update-ref -d refs/pm/log d5fe02f404b4b0568ee16d653b48f9f526a35139
+   git --no-pager -C /Users/matthias/frontier for-each-ref refs/pm
+   git --no-pager -C /Users/matthias/projects/frontier-clean for-each-ref refs/pm
+   ```
+
+   Expect the two `rev-parse` lines to print `f5775a9f4d1f2499808e372073ef278e94d050fd`
+   and `d5fe02f404b4b0568ee16d653b48f9f526a35139`, the two `update-ref` lines to print
+   nothing, and both `for-each-ref` lines to print nothing. A `rev-parse` printing
+   another sha, or an `update-ref` refusing with `is at <sha> but expected`, means the
+   ref was rewritten since: stop and send me both lines. I wrote this step without
+   running any of it; I read both shas with `rev-parse` on 2026-11-15.
 
 ## Step 2. Import every store
 
@@ -382,6 +426,10 @@ to 6.3, with no Claude session started between. `ln -sfn`
 replaces the existing links, `~/.local/bin/pm` -> `~/.local/libexec/pm/cli/pm` and
 `~/.local/bin/wt` -> `~/.local/libexec/wt/cli/wt` (both read 2026-11-15); those two
 targets stay for step 10. Install text: `pm/INSTALL.md:15-36` and `wt/INSTALL.md:13-22`.
+
+Removed at the switch, with no replacement inside pm: `pm view board`, `pm view overview`
+and `pm ticket overview`. The separate tool at `/Users/matthias/projects/frontier-clean/dash-ui`
+reads pm on its own.
 
 1. Link both components and the three plugins. The plugin directory does not exist
    today.
