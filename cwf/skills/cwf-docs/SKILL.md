@@ -5,7 +5,7 @@ description: "Create or reconcile professional documentation against authoritati
 
 # CWF Docs
 
-Read [shared patterns](../../patterns/core.md) only for the relevant questions; read [tool usage](../../patterns/tools.md) when invoking CWF tools. Do not load every domain.
+Read [shared patterns](patterns/core.md) only for the relevant questions; read [tool usage](patterns/tools.md) when invoking CWF tools. Do not load every domain.
 
 Use existing team skills and instructions when applicable; add missing context or checks without duplicating their workflow. Respect current permissions and the user's explore/plan/execute intent.
 

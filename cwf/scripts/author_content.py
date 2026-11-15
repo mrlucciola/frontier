@@ -50,7 +50,7 @@ STEPS={
 6. Record deviations, executed tests, and untested target environments. No readiness scores or unmeasured token-saving claims."""
 }
 
-COMMON="""Read [shared patterns](../../patterns/core.md) only for the relevant questions; read [tool usage](../../patterns/tools.md) when invoking CWF tools. Do not load every domain.
+COMMON="""Read [shared patterns](patterns/core.md) only for the relevant questions; read [tool usage](patterns/tools.md) when invoking CWF tools. Do not load every domain.
 
 Use existing team skills and instructions when applicable; add missing context or checks without duplicating their workflow. Respect current permissions and the user's explore/plan/execute intent.
 
@@ -68,6 +68,8 @@ def main():
  for d,description in DESCRIPTIONS.items():
   text=f'---\nname: cwf-{d}\ndescription: "{description}"\n---\n\n# CWF {d.title()}\n\n'+COMMON+'\n## Procedure\n\n'+STEPS[d]+"\n"
   write(f'skills/cwf-{d}/SKILL.md',text)
+  write(f'skills/cwf-{d}/patterns/core.md',CORE)
+  write(f'skills/cwf-{d}/patterns/tools.md',TOOLS)
  for name,schema in SCHEMAS.items():
   write(f'schemas/{name}.schema.json',json.dumps({"$schema":"https://json-schema.org/draft/2020-12/schema","$id":f"https://cwf.local/schemas/{name}.schema.json",**schema},indent=2)+"\n")
  write('patterns/core.md',CORE)

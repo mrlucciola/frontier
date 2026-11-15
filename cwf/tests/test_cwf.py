@@ -354,8 +354,11 @@ class ContractTests(Environment):
         for d in ['product','design','docs','plan','build','maintain']:
             p=ROOT/f'skills/cwf-{d}/SKILL.md'; text=p.read_text()
             self.assertTrue(text.startswith('---\nname: cwf-'+d)); self.assertIn('description:',text)
-            for ref in ['../../patterns/core.md','../../patterns/tools.md']:
-                self.assertTrue((p.parent/ref).resolve().is_file())
+            for name in ['core','tools']:
+                ref=f'patterns/{name}.md'
+                self.assertIn(f']({ref})',text)
+                self.assertNotIn('../',text)
+                self.assertEqual((p.parent/ref).read_bytes(),(ROOT/ref).read_bytes())
             self.assertNotIn('TODO',text)
     def test_cli_invalid_json_and_exit(self):
         code,out=self.cli('discover',request={'scope':str(self.repo),'domain':'wrong','query':'x'})
