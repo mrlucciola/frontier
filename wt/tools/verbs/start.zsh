@@ -1,6 +1,10 @@
 # wt start <id> [--as NAME] [--session ID] [--store PATH] [--repo PATH] [--force]
-# Claims the ticket through pm (or adopts the caller's own claim) and adds or resumes the
-# worktree at <repo>/.worktrees/<id> on branch <id>.
+# Takes the ticket through pm (or adopts your own claim: same --as and session) and adds
+# the worktree at <repo>/.worktrees/<id> on branch <id>. An existing branch is a parked
+# resume, rebased onto the default branch. --as defaults to $WT_ACTOR.
+# Run it from the main checkout before your first edit; then edit only under the worktree
+# and commit with git -C <path>, explicit paths. "not claimable": pick other work, never
+# retry. --force takes a blocked ticket (operator only); end it with wt park.
 
 wt_verb() {
   emulate -L zsh
@@ -145,6 +149,7 @@ wt_verb() {
 
   wt_pm "$store" "$session" emit "$id" wt.start "branch=$id" "path=$wt_path" >/dev/null 2>&1
   print -r -- "OK: $id -> $wt_path"
+  print -r -- "Edit only under it; commit with git -C $wt_path (explicit paths); end with wt finish $id or wt park $id."
   return 0
 }
 

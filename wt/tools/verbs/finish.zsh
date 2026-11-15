@@ -1,8 +1,12 @@
-# wt finish <id> [--note TEXT] [--findings VALUE] [--keep-open] [--no-gate] [--session ID]
-#               [--store PATH] [--repo PATH]
-# wt land <id> [--no-gate] [--session ID] [--store PATH] [--repo PATH]   (WT_VERB=land)
-# Gate, rebase onto the default branch, ff-only merge from the main checkout, teardown,
-# then `pm done`. land is finish --keep-open: the ticket stays claimed.
+# wt finish <id> [--note TEXT] [--findings VALUE] [--no-gate] [--keep-open]
+# wt land <id> [--no-gate]      both also take --session ID, --store PATH, --repo PATH
+# Runs <repo>/.wt/gate if present (--no-gate for doc-only tickets), rebases onto the
+# default branch, merges ff-only, removes worktree and branch, then `pm done`
+# (--note and --findings go there). Gate line "SKIP lines: K": list K under NOT PROVEN.
+# A rebase conflict or lost ff-only race parks the ticket; resume with wt start.
+# land = finish --keep-open: no pm done, the ticket stays taken; wt start <id> again from
+# the same session to go on. On .git/index.lock wait a few seconds and re-run.
+
 # `land` arrives here from the dispatcher with WT_VERB=land. wt_merged_route returns 0
 # when the branch is already merged (only teardown remains), 1 when it still has to be
 # merged, and 2 when it refused and printed why.

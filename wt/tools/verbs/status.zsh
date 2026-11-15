@@ -1,5 +1,7 @@
 # wt status [--store PATH] [--repo PATH]
-# Lists the worktrees of the repo joined against the tickets of the store.
+# Lists the live worktrees of the repo joined against the tickets of the store.
+# FOREIGN/ORPHAN has no ticket here: report it, never remove it. A parked ticket has no
+# worktree, so it is not listed; pm ls parked lists it.
 
 wt_verb() {
   emulate -L zsh

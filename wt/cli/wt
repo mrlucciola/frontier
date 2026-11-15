@@ -1,31 +1,86 @@
 #!/bin/zsh
 # wt: one worktree per ticket. Finds the verb's file under tools/verbs/ and runs it.
+# `wt help` prints the table below; `wt help <verb>` prints the leading comment of the
+# verb's file.
 
 typeset -r WT_COMPONENT=${${0:A}:h:h}
 typeset -r WT_TOOLS=$WT_COMPONENT/tools
-typeset -ra WT_VERBS=(start finish land park status prune selftest)
 
-wt_usage() {
+# verb|usage|summary. The one place verbs are listed; a `land` row shares finish's file.
+typeset -ra WT_TABLE=(
+  "start|start <id> [--as NAME]|take the ticket, add its worktree (or resume it)"
+  "finish|finish <id> [--note T]|gate, merge into the default branch, remove, close"
+  "land|land <id>|finish, but the ticket stays taken"
+  "park|park <id> [--waits-on X]|commit WIP, remove the worktree, park the ticket"
+  "status|status|worktrees joined to their tickets"
+  "prune|prune|clear leftover registrations of removed worktrees"
+  "selftest|selftest|run the whole lifecycle in a scratch repo"
+)
+typeset -ra WT_VERBS=(${WT_TABLE%%\|*})
+
+wt_help() {
   emulate -L zsh
-  print -u2 -r -- "usage: wt <${(j:|:)WT_VERBS}> ...  (what each does: $WT_COMPONENT/docs/contract.md)"
+  local row usage summary
+  print -r -- "wt keeps one worktree per ticket: <repo>/.worktrees/<id> on branch <id>."
+  print -r -- "Run it from the main checkout. Enter with start, leave with finish or park;"
+  print -r -- "never rm, switch or force-remove a worktree by hand. One verb: wt help <verb>"
+  print
+  for row in "${WT_TABLE[@]}"; do
+    usage=${${row#*\|}%%\|*}
+    summary=${row##*\|}
+    print -r -- "  ${(r:28:)usage}$summary"
+  done
+}
+
+# wt_help_verb <verb>: the leading comment block of the verb's file, without the `# `.
+wt_help_verb() {
+  emulate -L zsh
+  local file=$WT_TOOLS/verbs/${1/land/finish}.zsh line
+  [[ -f $file ]] || { print -u2 -r -- "wt: missing $file; reinstall wt."; return 1 }
+  while IFS= read -r line; do
+    [[ $line == '#'* ]] || break
+    line=${line#\#}
+    print -r -- "${line# }"
+  done < "$file"
+}
+
+wt_no_verb() {
+  emulate -L zsh
+  print -u2 -r -- "wt: no verb '$1'. Verbs: ${WT_VERBS}. Detail: wt help"
 }
 
 main() {
   emulate -L zsh
   local verb=${1:-} file lib
   if [[ -z $verb ]]; then
-    wt_usage
+    wt_help >&2
     return 2
   fi
   shift
-  if [[ $verb == pending ]]; then
-    print -u2 -r -- "wt: no verb 'pending'. Parked tickets are listed by: pm ls parked"
-    wt_usage
-    return 2
-  fi
+  case $verb in
+    help|-h|--help)
+      if [[ -z ${1:-} ]]; then
+        wt_help
+        return 0
+      fi
+      if [[ $1 == pending ]]; then
+        print -u2 -r -- "wt: no verb 'pending'. Parked tickets are listed by: pm ls parked"
+        return 2
+      fi
+      if (( ! ${WT_VERBS[(Ie)$1]} )); then
+        wt_no_verb "$1"
+        return 2
+      fi
+      wt_help_verb "$1"
+      return $?
+      ;;
+    pending)
+      print -u2 -r -- "wt: no verb 'pending'. Parked tickets are listed by: pm ls parked"
+      return 2
+      ;;
+  esac
   if (( ! ${WT_VERBS[(Ie)$verb]} )); then
-    print -u2 -r -- "wt: no verb '$verb'."
-    wt_usage
+    wt_no_verb "$verb"
     return 2
   fi
 

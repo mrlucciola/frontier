@@ -1,5 +1,7 @@
 # wt prune [--store PATH] [--repo PATH]
 # Clears deferred-teardown registrations and the merged branches they leave behind.
+# Run it after a "gone but its leftover registration" line. If registrations remain, hand
+# the operator the `!git -C <repo> worktree prune` line it prints. Never prune by hand.
 
 wt_verb() {
   emulate -L zsh

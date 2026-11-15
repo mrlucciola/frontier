@@ -11,6 +11,7 @@ Run from the repository root.
 /usr/bin/python3 -B wt/tests/run_wt.py --cli <old wt> --pm old
 /usr/bin/python3 -B wt/tests/run_wt.py --cli wt/cli/wt --pm new -k StartTest
 /usr/bin/python3 -B pm/tests/run_transcripts.py --dir wt/tests/t
+/usr/bin/python3 -B -m unittest discover -s wt/tests -p 'test_budgets.py'
 ```
 
 The first line is the gate: exit 0 with `pending 0, failed 0`. The `--pm old` run
@@ -21,6 +22,7 @@ plugin transcripts.
 | Work | Read |
 | --- | --- |
 | A verb | [Contract](/wt/docs/contract.md), then that verb's cases in `tests/test_wt_cli.py` |
+| Help text, byte ceilings, or what an agent is told | [Instruction map](/wt/docs/instruction-map.md), then `tests/test_budgets.py` |
 | The plugin in `pm-plugin/` | `tests/t/`, and pm's design section "Plugins" |
 | A characterization test that looks wrong | Stop and report it. `tests/test_wt_cli.py` is accepted; edit it only on an explicit ruling |
 

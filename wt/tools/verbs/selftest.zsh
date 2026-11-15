@@ -1,5 +1,6 @@
 # wt selftest
 # Runs a short ticket lifecycle in a throwaway repo through the real wt and the new pm.
+# Prints SELFTEST PASSED when wt is healthy on this machine.
 
 typeset -gi WT_ST_FAILS=0
 

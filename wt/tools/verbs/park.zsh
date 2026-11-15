@@ -1,8 +1,14 @@
 # wt park <id> [--waits-on <id-or-note>] [--note TEXT] [--findings VALUE] [--auto]
 #   [--session ID] [--store PATH] [--repo PATH]
 # Commits WIP, parks the ticket through pm (or drops it when the branch holds nothing),
-# removes the worktree and keeps the branch. --auto is finish's interface: only the note
-# on stdout, no OK line, findings default to none.
+# removes the worktree and keeps the branch. Use it when work must wait: a blocker, a
+# conflict you must not resolve alone, another session's dirty file.
+# The worktree directory is gone at once by design; wt status will not list it, pm ls
+# parked does. Do not recreate it. Resume with wt start <id>.
+# A non-empty <worktree>/.local blocks the park: that is operator content, report it.
+# --note is prepended to the resume note. --auto is finish's interface (not for you).
+
+# --auto: only the note on stdout, no OK line, findings default to none.
 
 wt_verb() {
   emulate -L zsh

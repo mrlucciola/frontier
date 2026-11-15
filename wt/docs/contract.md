@@ -174,10 +174,44 @@ agent's. `wt status` labels such an entry `deferred-teardown`.
 - On `.git/index.lock` (a `pm` commit collided with yours): wait a few seconds and
   re-run the verb. Never delete the lock file.
 
+## Rules wt does not enforce
+
+An agent follows these; wt cannot check them. `wt help` and `wt start` print the short
+forms.
+
+- The main checkout stays on its default branch and nobody switches it. Before every
+  commit `git branch --show-current` prints the default branch there, or `<id>` in a
+  worktree; if the main checkout is off its default branch, stop and report it.
+- One ticket, one worktree, one branch, at `<repo>/.worktrees/<id>`: never under `.tmp/`,
+  `.claude/`, `.codex/`, `.agents/` or outside the repo. Start it before the first edit;
+  edit only under it. Never work a ticket you do not hold.
+- Run `wt` from the main checkout (it resolves the main checkout from inside a linked
+  worktree too). In a multi-agent run only the orchestrator runs `wt`; a worker edits and
+  commits only in the worktree it was handed.
+- Git in the worktree is `git -C <worktree> ...`, with explicit paths: never `git add -A`,
+  `git add .` or `git commit -a`. Never `git stash` or `git switch` in the main checkout.
+- `git branch -D` is allowed only when `git cherry <default> <branch>` prints no `+`
+  line, with the command and its output in the ticket note.
+- Before the session's final response, finish, park or release every ticket you hold,
+  except one a failed teardown left taken: report that one.
+- `<repo>/.tmp/` is disposable scratch (teardown takes it; never `rm` it). `<repo>/.local/`
+  is durable uncommitted state: never delete, move or `git clean` it unless the user
+  names that path. A fresh worktree has no installs or env files; whoever starts it makes
+  it runnable and never copies secrets (`.env*`, `*.pem`, `*.key`, credentials) in.
+  Gitignore `.tmp/`, `.local/` and `.worktrees/`.
+- Claude Code's built-in worktrees (`isolation: worktree`, `EnterWorktree`,
+  `claude --worktree`) are for throwaway work that is never merged.
+- A worktree with no ticket behind it is an orphan: report it, never remove it; only the
+  session that created it or the operator removes it.
+
 ## Sandbox notes
 
 Claude:
 
+- `wt` is allow-listed (`wt *` in posture) and runs with no prompt. Each registered
+  worktree adds about three deny paths to the Bash sandbox profile; near 220 every
+  sandboxed command fails `E2BIG`. The list is built at session start, so budget one
+  session restart into any phase that churns more than two or three worktrees.
 - Admin dirs `.git/worktrees/<id>` may be undeletable depending on when the sandbox was
   last rebuilt (`EPERM` on `rmdir`); that is the deferred teardown above.
 - The sandbox denies any literal `.vscode` path segment for writes and deletes. A
@@ -199,3 +233,19 @@ Codex:
   `--session <id>`, or the claim is a bare `codex` name.
 - If a teardown reports `failed to delete '...': Operation not permitted`, the sandbox
   policy regressed; report it, do not `rm -rf`.
+- `wt` and the git and pm commands it runs work inside the sandbox with no rule. An
+  escalation prompt for one of them means the session root or profile is wrong; never ask
+  for an allow rule, which would run the command outside the sandbox.
+
+## Help and byte ceilings
+
+`wt help` prints the verb table in `cli/wt`; `wt help <verb>` prints the leading comment
+block of that verb's file under `tools/verbs/` (`land` prints finish's). Ceilings, all
+bytes: `wt help` 1200, one verb's help 700, any failure line 400. The test
+`tests/test_budgets.py` measures the first two and the usage failures on the real CLI and
+every `wt_say` and `wt_fail` template in `tools/` with 24-byte stand-ins for variables;
+it runs with
+`/usr/bin/python3 -B -m unittest discover -s wt/tests -p 'test_budgets.py' -v`. Failure
+lines that carry git's own error or an operator command list can exceed the ceiling with
+long paths; the test does not see those. Where each line of the retired skill and of the
+global instructions went: [instruction map](/wt/docs/instruction-map.md).
