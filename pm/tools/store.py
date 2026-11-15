@@ -33,9 +33,9 @@ class Store:
         self.prefix = self.config.get("prefix", "")
 
 
-def _ancestor(here, name):
+def _ancestor(here, *names):
     while True:
-        if os.path.isfile(os.path.join(here, ".pm", name)):
+        if any(os.path.isfile(os.path.join(here, ".pm", n)) for n in names):
             return here
         parent = os.path.dirname(here)
         if parent == here:
@@ -55,17 +55,28 @@ def _main_root(here):
     return os.path.dirname(os.path.realpath(os.path.join(here, out.stdout.strip())))
 
 
+def _toplevel(here):
+    try:
+        out = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=here,
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             universal_newlines=True)
+    except OSError:
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return os.path.realpath(out.stdout.strip())
+
+
 def locate_dir(start=None):
     """(Store, True) when the log exists, (Store, False) when only a config does."""
     here = os.path.realpath(start or os.getcwd())
-    root = _ancestor(here, "log.jsonl")
-    if root is not None:
+    root = _ancestor(here, "config.json", "log.jsonl")
+    if root is not None and os.path.isfile(os.path.join(root, ".pm", "log.jsonl")):
         return Store(root), True
-    if in_checkout(here):
-        root = _main_root(here)
-        if root is not None and os.path.isfile(os.path.join(root, ".pm", "log.jsonl")):
-            return Store(root), True
-    root = _ancestor(here, "config.json")
+    if (root is None or _toplevel(root) == root) and in_checkout(here):
+        main = _main_root(here)
+        if main is not None and os.path.isfile(os.path.join(main, ".pm", "log.jsonl")):
+            return Store(main), True
     if root is not None:
         return Store(root), False
     return None, False
@@ -81,6 +92,8 @@ def require():
     if s is None:
         render.refuse("no store here. Start one: pm init <prefix>")
     if not has_log:
+        if os.path.isfile(os.path.join(s.dir, "tickets.jsonl")):
+            render.refuse("this store has not been imported yet. Fill its log: pm import")
         render.refuse("this store's log is missing. Bring it back from its git backup: pm restore")
     return s
 
