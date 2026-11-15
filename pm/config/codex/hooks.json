@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook prompt",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook stop",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
