@@ -1,7 +1,8 @@
 # pm design: an event log, a CLI that teaches itself, plugins by file presence
 
-Status: ruled by the operator 2026-11-14; not built. This page is the specification
-for the pm that replaces the ported one. The transcripts under `pm/tests/t/` are the
+Status: ruled by the operator 2026-11-14; built 2026-11-14 (epic fc-2a6562), amended
+2026-11-15 (epic fc-359b5b). This page is the specification for the pm that replaces
+the ported one. The transcripts under `pm/tests/t/` are the
 same specification in executable form and are the gate. Where the two disagree, the
 overseer decides and fixes one of them; a worker changes neither.
 
@@ -30,10 +31,14 @@ A store is a directory `.pm/` holding two files.
 | `config.json` | yes | `{"prefix":"t"}`, plus `"findings_required": true` when set. Other keys belong to plugins and are ignored. |
 | `log.jsonl` | no | One event per line. Never rewritten, only appended to. |
 
-The store for a command is the nearest ancestor of the working directory that has
-`.pm/log.jsonl`. When none has it and the directory is in a git checkout, the main
-checkout's root is tried, which is how a linked worktree finds its store. pm works
-in a directory that is not a git repository.
+The store for a command is the nearest ancestor of the working directory that has a
+`.pm/config.json` or a `.pm/log.jsonl`, so a store inside another store's directory
+is its own store even before it has a log. When that store has no log and the
+directory is in a linked worktree, the main checkout's store is used if it has one,
+which is how a linked worktree finds its store. A store with a config and no log is
+refused: with a spec v2 `.pm/tickets.jsonl` beside it, `pm: this store has not been
+imported yet. Fill its log: pm import`; otherwise the restore line under "Backup". pm
+works in a directory that is not a git repository.
 
 ### Events
 
@@ -112,13 +117,16 @@ A blocker that cannot be found counts as not done.
 
 ### Backup
 
-When the store is inside a git checkout, every append is followed by
-`git hash-object -w .pm/log.jsonl` and `git update-ref refs/pm/log <sha>`. Because
-the log only grows, the one blob is a complete backup: no commit, no tree, no
-index, no signing. Superseded blobs are unreachable and git collects them. A
-failure prints one warning line and never fails the verb. `pm restore` writes the
-blob back when the log is missing or shorter. `pm init` adds `.pm/log.jsonl` to
-`.gitignore`.
+When the store's directory is the top of a git checkout (`git rev-parse
+--show-toplevel`), every append is followed by `git hash-object -w .pm/log.jsonl`
+and `git update-ref refs/pm/log <sha>`. Because the log only grows, the one blob is
+a complete backup: no commit, no tree, no index, no signing. Superseded blobs are
+unreachable and git collects them. A failure prints one warning line and never
+fails the verb. A store anywhere else inside a checkout, such as a scratch copy
+under `.tmp/`, has no backup, so it can never replace the checkout's: `pm doctor`
+prints no backup line for it and `pm restore` refuses with `pm: this store is not at
+the top of a git checkout, so it has no backup.` `pm restore` writes the blob back
+when the log is missing or shorter. `pm init` adds `.pm/log.jsonl` to `.gitignore`.
 
 ## Verbs
 
@@ -137,7 +145,7 @@ holds. These aliases work silently: `claim` for `take`, `release` for `drop`,
 | `pm hold [id] -m "text"` | Keep across a pause |
 | `pm new "title" [-b body] [-p 0-4] [-l label] [--epic] [--under id] [--from id] [--blocks id] [--blocked-by id] [--take] [--as name] [--new]` | File a ticket and print its id |
 | `pm edit id [--title text] [--body text] [-p 0-4] [-l label] [--unlabel label] [--under id\|none]` | Change fields |
-| `pm link a blocks\|related b [c ...]` | Add links |
+| `pm link a blocks\|related b [c ...] [--note "text"]` | Add links; `--note` adds the text as a note on each ticket after the relation, in the same write |
 | `pm unlink a b` | Remove every link between two tickets |
 | `pm reopen id` | Make a done or parked ticket open |
 | `pm show [id] [--notes] [--json]` | One ticket |
@@ -280,7 +288,7 @@ key names; another harness sends the same shape.
 | Event | Prints | Exit |
 | --- | --- | --- |
 | `session-start` | Nothing outside a store. Inside: `pm tickets in this repo:`, the bare `pm` output, `All verbs: pm help` | 0 |
-| `prompt` | For up to three ticket ids in the prompt that exist: `mentioned:` and one line each | 0 |
+| `prompt` | For up to three ticket ids in the prompt that exist and this session has not been shown: `mentioned:` and one line each. Shown ids are kept in `$TMPDIR/pm-mentioned-<token>`, one per line; with no session token nothing is kept, and a failed write still prints | 0 |
 | `stop` | When this session holds a ticket with no `hold`, and `stop_hook_active` is not true: the tickets and the four exits, on stderr | 2 |
 
 There is no skill and no global instruction text. A harness without hooks is
@@ -333,6 +341,7 @@ it. Each verb file holds its own arguments, logic and full help. Bare `pm` runs
 | --- | --- |
 | `ticket` and `view` families | Verbs directly under `pm` |
 | `history`, the `pm-store` ref, a commit per change | The log, and one blob ref as backup |
+| sharing a store across clones through the `pm-store` ref | Dropped by operator ruling 2026-11-15: a log belongs to one checkout, and no `pm sync` is planned |
 | `archive`, compaction, auto-archive, interval batching | Not needed: nothing is rewritten |
 | `validate`, `lint`, invariants I-01 to I-19 | `doctor`; a change that would break state is refused before it is written |
 | `lint <id>` dispatch headings; the pilot contract in `lint` and `summary` | Plugins `dispatch` and `pilot`, shipped in `pm/plugins/` |

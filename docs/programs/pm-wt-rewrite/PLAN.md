@@ -42,6 +42,16 @@ Superseded by that ruling: the port as the end state, the parity suite as the
 gate, and fc-9076a6, the three write-reduction config keys, which solve a problem
 the log does not have.
 
+Operator, 2026-11-15, after delivery:
+
+- **No sharing across clones.** A store's log belongs to one checkout; no `pm sync`.
+- **dash-ui is its own tool.** It lives at `dash-ui/`, a nested repo ignored here.
+  It reads tickets through the `pm` command, and pm has no knowledge of it. When pm
+  changes, the agents working in dash-ui keep it current. This supersedes
+  "Dashboards ... reached as plugins" above.
+- **Follow-ups** run as epic fc-359b5b: nested stores, the per-store backup, the
+  prompt hook once per session, `link --note`, and runbook additions.
+
 ## How "done" is decided
 
 Each run has a command that exits 0.
