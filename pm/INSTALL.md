@@ -282,7 +282,21 @@ session and reads what Codex sent. Nothing in `~/.codex` changes. Start after th
    holds `cwd` and `session_id`, `UserPromptSubmit` holds `prompt`, and `Stop` holds
    `stop_hook_active`. Send me the file.
 
-Unregister by not setting `CODEX_HOME`; the scratch home is ignored by git and may stay.
+5. Sign the scratch home out, so no login stays in the repository's `.tmp/`. `codex
+   --help` lists `logout` ("Remove stored authentication credentials"). I have not
+   checked how Codex stores the login: if the `ls` still shows a login file (for
+   example `auth.json`), remove that file by hand.
+
+   ```sh
+   CODEX_HOME=/Users/matthias/projects/frontier-clean/.tmp/codex-probe/home /Users/matthias/.local/bin/codex logout
+   ls -a /Users/matthias/projects/frontier-clean/.tmp/codex-probe/home
+   ```
+
+   Expect no login file in the listing; `hooks.json` and Codex's own state files may
+   remain.
+
+Unregister by not setting `CODEX_HOME`. The scratch home is ignored by git and holds no
+login after step 5.
 
 #### Register
 
