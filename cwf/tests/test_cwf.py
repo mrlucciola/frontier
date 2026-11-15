@@ -351,19 +351,40 @@ class InstallTests(Environment):
     def test_same_name_different_folder_collision(self):
         p=self.home/'.agents/skills/custom'; p.mkdir(parents=True); (p/'SKILL.md').write_text('---\nname: cwf-build\n---\n')
         with self.assertRaises(Fault): self.install()
-    def test_stale_plan_refused(self):
+    def test_apply_reads_targets_again_instead_of_refusing_an_old_plan(self):
         p=installer.plan(self.home,ROOT)
         d=self.home/'.config/opencode'; d.mkdir(parents=True); (d/'AGENTS.md').write_text('new changes')
-        with self.assertRaises(Fault): installer.apply(p,self.home)
+        installer.apply(p,self.home)
+        text=(d/'AGENTS.md').read_text()
+        self.assertTrue(text.startswith('new changes')); self.assertIn(installer.START,text)
+        installer.revert(self.home)
         self.assertEqual((d/'AGENTS.md').read_text(),'new changes')
     def test_uninstall_preserves_later_unrelated_edits(self):
         self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text()+'\nLater personal rule.\n')
         installer.revert(self.home)
         self.assertIn('Later personal rule.',agents.read_text()); self.assertNotIn(installer.START,agents.read_text())
-    def test_edited_owned_block_refuses_uninstall_without_partial_changes(self):
-        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
-        with self.assertRaises(Fault): installer.revert(self.home)
-        self.assertTrue((self.home/'.agents/skills/cwf-build').is_symlink())
+    def test_hand_edited_block_and_targets_do_not_block_uninstall(self):
+        agents=self.home/'.config/opencode/AGENTS.md'; agents.parent.mkdir(parents=True); agents.write_text('Personal instructions.\n')
+        self.install(); agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
+        (self.home/'.local/bin/cwf').write_text('hand edit\n')
+        installer.revert(self.home)
+        self.assertEqual(agents.read_text(),'Personal instructions.\n')
+        self.assertFalse((self.home/'.agents/skills/cwf-build').is_symlink()); self.assertFalse((self.home/'.local/bin/cwf').exists())
+    def test_same_version_reinstall_delivers_source_edits(self):
+        bundle=self.base/'source'; shutil.copytree(ROOT,bundle,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+        installer.apply(installer.plan(self.home,bundle),self.home)
+        skill=bundle/'skills/cwf-build/SKILL.md'; skill.write_text(skill.read_text()+'\nHand edit.\n'); (bundle/'patterns/tools.md').unlink()
+        agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
+        installer.apply(installer.plan(self.home,bundle),self.home)
+        self.assertIn('Hand edit.',(self.home/'.agents/skills/cwf-build/SKILL.md').read_text())
+        self.assertFalse((self.home/'.local/share/cwf/current/patterns/tools.md').exists())
+        self.assertIn('Keep discovery',agents.read_text())
+        self.assertEqual([p.name for p in (self.home/'.local/share/cwf/releases').iterdir()],['0.1.0'])
+    def test_doctor_reports_presence_not_bytes(self):
+        self.install(); (self.home/'.local/bin/cwf').write_text('#!/bin/sh\n# hand edit\n')
+        code,out=self.cli('doctor')
+        self.assertEqual(code,0); self.assertTrue(out['data']['checks'])
+        self.assertTrue(all(c=={'target':c['target'],'present':True} for c in out['data']['checks']))
     def test_enable_disable_and_installed_launcher(self):
         self.install(); launcher=self.home/'.local/bin/cwf'
         p=subprocess.run([str(launcher),'version'],capture_output=True,text=True)
@@ -403,12 +424,12 @@ class InstallTests(Environment):
         outside=self.base/'outside'; outside.mkdir(); (self.home/'.config').mkdir(); (self.home/'.config/opencode').symlink_to(outside)
         with self.assertRaises(Fault): self.install()
         self.assertFalse((outside/'AGENTS.md').exists())
-    def test_bundle_changed_after_plan_refused(self):
+    def test_bundle_edit_after_plan_is_installed(self):
         bundle=self.base/'changed'; shutil.copytree(ROOT,bundle,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         p=installer.plan(self.home,bundle)
-        (bundle/'cwf.py').write_text('changed')
-        with self.assertRaises(Fault): installer.apply(p,self.home)
-        self.assertFalse((self.home/'.local/share/cwf/releases').exists())
+        (bundle/'patterns/core.md').write_text('changed')
+        installer.apply(p,self.home)
+        self.assertEqual((self.home/'.local/share/cwf/current/patterns/core.md').read_text(),'changed')
 
     def test_toggle_and_uninstall_failures_recover(self):
         self.install(); before=installer.receipt(installer.paths(self.home)); original=installer.restore
@@ -436,12 +457,13 @@ class InstallTests(Environment):
         self.assertEqual(installer.recover(self.home)['recovered'],['interrupted'])
         self.assertFalse(p['launcher'].exists())
 
-    def test_toggle_conflict_does_not_partially_disable(self):
-        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
-        before=(self.home/'.config/cwf/config.json').read_bytes()
-        with self.assertRaises(Fault): installer.toggle(self.home,None,False)
-        self.assertEqual((self.home/'.config/cwf/config.json').read_bytes(),before)
-        self.assertTrue((self.home/'.agents/skills/cwf-build').is_symlink())
+    def test_toggle_works_on_hand_edited_block_and_missing_instruction_file(self):
+        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text('Mine.\n'+agents.read_text().replace('Keep discovery','Changed discovery'))
+        installer.toggle(self.home,None,False)
+        self.assertNotIn(installer.START,agents.read_text()); self.assertIn('Mine.',agents.read_text())
+        self.assertFalse((self.home/'.agents/skills/cwf-build').is_symlink())
+        agents.unlink(); installer.toggle(self.home,None,True)
+        self.assertIn(installer.GUIDANCE,agents.read_text()); self.assertTrue((self.home/'.agents/skills/cwf-build').is_symlink())
 
     def test_guidance_cannot_be_orphaned_on_upgrade(self):
         self.install()

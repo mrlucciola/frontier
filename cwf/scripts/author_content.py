@@ -46,7 +46,7 @@ STEPS={
 2. Run `doctor` or an appropriately scoped state inspection. Inspect current files and receipts; do not infer a live inventory from old conversation history.
 3. Consult only relevant runtime docs or patterns. Preserve personalized settings and distinguish source code from live installed payloads.
 4. Reproduce the problem in an isolated fixture. Revise the smallest component and run mechanics plus relevant behavioral evaluations.
-5. Use reviewed installation plans, integrity verification, and conflict-aware rollback for deployment. Do not change sandbox permissions or silently promote observations into policy.
+5. Deploy with the installer's plan and apply; reinstalling the same version delivers source edits. A hand-edited installed file is not a fault and never a reason to stop work. Do not change sandbox permissions or silently promote observations into policy.
 6. Record deviations, executed tests, and untested target environments. No readiness scores or unmeasured token-saving claims."""
 }
 

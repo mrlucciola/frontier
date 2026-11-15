@@ -77,7 +77,7 @@ Proposed default paths; all framework-specific paths are conventions introduced 
 
 | Path | Purpose |
 | --- | --- |
-| `~/.local/share/cwf/releases/<version>/` | Immutable runtime, skill source, patterns, schemas, and bundled templates |
+| `~/.local/share/cwf/releases/<version>/` | Runtime, skill source, patterns, schemas, and bundled templates; replaced when the same version is installed again |
 | `~/.local/share/cwf/current` | Atomically switched pointer to active release |
 | `~/.local/bin/cwf` | Owned launcher; resolves the configured Python interpreter and active release |
 | `~/.agents/skills/cwf-<domain>` | Owned links to enabled skill directories in the active release |
@@ -281,13 +281,13 @@ No adapters for ICM, quiz, or Feynman are implemented by inference. Future integ
 ## 12. Installation, coexistence, and rollback
 
 1. `plan` inventories only relevant installation targets and reports collisions, prerequisites, active instruction file, existing owned state, and intended mutations. It does not scan work repositories or install dependencies.
-2. `apply` requires a matching plan fingerprint; abort on intervening target changes. Stage a versioned release and verify hashes before switching the active pointer.
+2. `apply` reads the targets and the bundle again and installs what it finds; a plan does not go stale. Stage the release and switch the active pointer; installing a version already present replaces its release. Installed bytes are never compared: no manifest, checksum, plan fingerprint or drift refusal. Git history records what changed.
 3. Create only namespaced skill links that are absent or proven CWF-owned. Same-name or foreign-path collisions are reported; no overwrite or duplicate installation.
 4. Add the optional activation block to the global instruction file, `AGENTS.md` in the opencode config directory. Preserve bytes outside owned markers and detect malformed/duplicate markers. Managed/read-only files yield skill-only operation with an explicit limitation, not an attempt to bypass controls.
 5. Do not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, or unrelated skills. No rewrite of `opencode.json`.
-6. Validate links/targets and record an installation receipt with before/after hashes, prior file existence, release version, and backed-up owned changes. Use an installation lock and atomic per-file writes. If a step fails, perform conflict-aware recovery; filesystem changes across multiple targets are not assumed globally atomic.
-7. Rollback restores only unchanged owned portions/links. Preserve later user edits and report conflicts. Never restore a whole old AGENTS.md over unrelated later edits.
-8. Uninstall removes owned runtime links and an unmodified activation block. Preserve state/backups by default. Explicit purge is separate. Per-domain disabling removes only owned discovery links; whole-install disabling also removes/suspends the owned activation block.
+6. Record an installation receipt with each target's prior state, the release version, and the owned changes. Use an installation lock and atomic per-file writes. If a step fails, return the targets already written to their prior state; filesystem changes across multiple targets are not assumed globally atomic.
+7. Rollback returns owned targets to their state before the last installation, whatever they hold now. In `AGENTS.md` only the text between the markers is touched; never restore a whole old file over later edits.
+8. Uninstall removes owned runtime links and the activation block, edited or not. Preserve state/backups by default. Explicit purge is separate. Per-domain disabling removes only owned discovery links; whole-install disabling also removes/suspends the owned activation block.
 
 Durable tasks pin their framework release and schema versions. Upgrades affect new tasks; existing tasks either use their retained release or explicitly migrate at a checkpoint. Keep referenced releases available until tasks close or migrate. State-schema upgrades require a backup, transactional migration, and a documented backward-compatibility range. Rollback must refuse an incompatible state schema rather than silently reinterpret or discard it. The qualification suite must include an upgrade with an active checkpoint and a failed schema migration.
 

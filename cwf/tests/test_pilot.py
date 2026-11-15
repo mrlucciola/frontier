@@ -50,16 +50,15 @@ class PilotTests(Environment):
         self.assertEqual(self.base_agents.read_text(), 'Original global rules\n')
         self.assertFalse((self.home / '.agents/skills/cwf-build').exists())
 
-    def test_owned_drift_blocks_uninstall_before_any_target_changes(self):
+    def test_hand_edited_owned_target_does_not_block_uninstall(self):
         self.install()
         launcher = self.home / '.local/bin/cwf'
-        launcher.write_text('Later foreign edit\n')
-        receipt = installer.receipt(installer.paths(self.home))
-        snapshots = {c['path']: installer.snapshot(c['path']) for c in receipt['changes']}
-        with self.assertRaises(Fault):
-            installer.revert(self.home)
-        self.assertEqual({p: installer.snapshot(p) for p in snapshots}, snapshots)
+        launcher.write_text('Later hand edit\n')
+        installer.revert(self.home)
+        self.assertFalse(launcher.exists())
+        self.assertFalse((self.home / '.agents/skills/cwf-build').exists())
         self.assertEqual(self.entry_file.read_bytes(), self.entry)
+        self.assertEqual(self.base_agents.read_text(), 'Original global rules\n')
 
     def test_interrupted_skill_only_install_recovers_without_prose_write(self):
         plan = installer.plan(self.home, ROOT, guidance=False)

@@ -20,7 +20,7 @@ From the extracted bundle:
 python3 -B cwf.py install plan --output install-plan.json
 ```
 
-This reports intended targets, before/after snapshots, and a fingerprint. It does not apply configuration changes. Plans contain existing instruction/configuration bytes and local paths: keep them private. If an existing skill or owned block conflicts, resolve it deliberately; do not delete it to bypass the diagnostic.
+This reports intended targets with before/after snapshots. It does not apply configuration changes. Plans contain existing instruction/configuration bytes and local paths: keep them private. A skill that CWF did not install at one of its target paths blocks the plan; resolve that deliberately.
 
 Review the `data.changes` entries. Expected targets are CWF's release pointer, launcher, configuration, six skill links, and the global `AGENTS.md` instruction file. Model/provider settings, existing hooks, and unrelated files are not targets.
 
@@ -41,7 +41,9 @@ The installed launcher is `~/.local/bin/cwf`. It binds the selected interpreter 
 
 For a skill-only installation without an AGENTS edit, supply `{"guidance":false}` to `install plan`. If an existing installation has an activation block, keep that setting for upgrades or uninstall/reinstall explicitly; do not silently abandon owned guidance. Managed/read-only instructions require this skill-only path, with automatic activation limitations recorded.
 
-To test elsewhere, use the same `--home` and `--config-root` values for both plan and apply. A plan for one home cannot be applied to another. Changing targets or files between plan and apply invalidates it.
+To test elsewhere, use the same `--home` and `--config-root` values for both plan and apply. A plan for one home cannot be applied to another. Apply reads the targets and the bundle again, so edits made after planning are installed rather than refused.
+
+Nothing compares installed bytes. Reinstalling the same version from an edited bundle replaces the release, hand-edited owned files are overwritten by the next install and removed by uninstall, and `doctor` reports only whether each target is present. Git history is the record of what changed. Durable edits belong in the source bundle; an edit made only to an installed copy lasts until the next install.
 
 No repository files are added by installation. The optional activation block goes into the global `AGENTS.md` in the opencode config directory, which opencode combines with project `AGENTS.md` files. Existing instructions outside the markers are preserved.
 
@@ -156,16 +158,16 @@ Whole installation:
 
 Per domain: provide `{"domain":"build"}` with `--input domain.json`. Whole disable removes owned skill links and activation text and prevents new runtime work; management commands remain available. It cannot erase text already loaded into an agent session. Verify discovery in a fresh session before judging activation changes.
 
-Upgrade from a new extracted bundle using the same plan/apply flow (`upgrade plan`, `upgrade apply`). Versions are immutable: conflicting bytes under an existing version are rejected. Existing task checkpoints remain pinned to their release. To resume a task pinned to an older release, run its retained `~/.local/share/cwf/releases/<version>/cwf.py` with the same home. Automatic task/schema migration is not implemented; incompatible schemas are refused and retained.
+Upgrade from a new extracted bundle using the same plan/apply flow (`upgrade plan`, `upgrade apply`). Installing a version that is already present replaces its release directory. Existing task checkpoints remain pinned to their release. To resume a task pinned to an older release, run its retained `~/.local/share/cwf/releases/<version>/cwf.py` with the same home. Automatic task/schema migration is not implemented; incompatible schemas are refused and retained.
 
 ```sh
 ~/.local/bin/cwf rollback
 ~/.local/bin/cwf uninstall
 ```
 
-Rollback reverts the last installation transaction. Uninstall returns owned targets to their pre-install state, preserving unrelated later AGENTS edits. Edited owned blocks/files trigger a conflict instead of overwrite. Release directories, checkpoints, and receipts/backups are retained; there is no automatic deletion of old pinned releases.
+Rollback reverts the last installation transaction. Uninstall returns owned targets to their pre-install state, preserving AGENTS text outside the markers. An edited owned file or block is removed like an unedited one. Release directories, checkpoints, and receipts/backups are retained; there is no automatic deletion of old pinned releases.
 
-If apply is interrupted, use the original extracted bundle and run `python3 -B cwf.py install recover` with the same target roots. Recovery checks exact before/after snapshots and refuses ambiguous targets. Read the reported conflict and preserve both versions for manual reconciliation. Never restore an entire old AGENTS file over unrelated new edits.
+If apply is interrupted, use the original extracted bundle and run `python3 -B cwf.py install recover` with the same target roots. Recovery returns each target the interrupted step had already written to its prior state and leaves anything else as found.
 
 ## 9. Privacy and reporting
 

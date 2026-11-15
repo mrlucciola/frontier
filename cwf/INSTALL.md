@@ -81,12 +81,11 @@ operator-owned file and affects every fresh opencode session on that home.
 fc-2e70b4 rules on the route; until then the pilot is skill-only and nothing in
 `~/.config/opencode` changes.
 
-C2 records the plan's `bundle_digest`, source revision, exact paths,
-file types/modes/hashes, the global `AGENTS.md` and `opencode.json` hashes, and
-the skill permission rules in effect in fc-2e70b4. This proposal expects the
-config directory `/Users/matthias/.config/opencode`; a different root requires
-reconciliation. Reject foreign CWF targets, changed owned files and pending
-transactions. Never overwrite/adopt a collision. What deploys the existing
+This proposal expects the config directory `/Users/matthias/.config/opencode`;
+a different root requires reconciliation. The installer refuses a skill it did
+not install at one of its target paths and a pending transaction. It does not
+compare bytes: owned targets are rewritten whatever they hold, and installing
+0.1.0 again from edited source replaces the release. What deploys the existing
 `~/.config/opencode/AGENTS.md` is not established; establish it before proposing
 any edit there.
 
@@ -163,7 +162,7 @@ frozen quality/cost thresholds; source size is not savings.
 
 ## Disable, rollback, remove and recover
 
-Stop launching pilot sessions. Recheck the recorded hashes before each phase.
+Stop launching pilot sessions.
 
 ```sh
 ~/.local/bin/cwf disable
@@ -183,13 +182,28 @@ and files to the activation snapshots. Then remove runtime integration:
 owns nor removes anything C2 added to the opencode config directory. Use only
 the operation matching the recorded phase. Release/state retention is
 intentional; no purge or manual deletion. If interrupted, run from this
-unchanged bundle, using the same target roots:
+bundle, using the same target roots:
 
 ```sh
 python3 -B cwf.py install recover
 ```
 
-Recovery checks before/after snapshots and refuses ambiguous bytes. Preserve
-foreign edits and record the exact incomplete phase and conflict on fc-2e70b4.
-Never blanket-restore a global file. Already loaded sessions require restarting
-before they can establish rollback behavior.
+Recovery returns each target the interrupted step had written to its prior
+state and leaves anything else as found. Already loaded sessions require
+restarting before they can establish rollback behavior.
+
+## Deliver a source edit
+
+Edit the files here, then install the same version again. Nothing compares
+bytes, so there is no version bump and no reconciliation step. Use the same
+`guidance` value as the current installation.
+
+```sh
+cd /Users/matthias/projects/frontier-clean/cwf
+print '{"guidance":true}' | python3 -B cwf.py install plan --input - --output /private/tmp/cwf-plan.json
+print '{"plan_file":"/private/tmp/cwf-plan.json"}' | python3 -B cwf.py install apply --input -
+# expect: "status": "ok" twice
+```
+
+An edit made only to an installed copy (the release, the launcher, the block in
+the global `AGENTS.md`) works until the next install replaces it.

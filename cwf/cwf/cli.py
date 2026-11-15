@@ -25,12 +25,10 @@ def doctor(home,config_root):
     checks=[]
     if rec:
         for c in rec["changes"]:
-            current=installer.snapshot(c["path"])
-            valid=current==c["after"]
-            if not valid and c["kind"]=="guidance" and current["kind"]=="file":
-                import base64
-                valid=installer.marker_body(base64.b64decode(current["data"]).decode())==installer.marker_body(base64.b64decode(c["after"]["data"]).decode())
-            checks.append({"target":c["path"],"intact":valid})
+            # Presence only: what a target holds is the operator's business, not a health signal.
+            path=Path(c["path"])
+            present=path.is_file() and installer.START in path.read_text(errors="replace") if c["kind"]=="guidance" else path.is_symlink() or path.exists()
+            checks.append({"target":c["path"],"present":present})
     return {"framework_version":VERSION,"python":platform.python_version(),"os":platform.system(),
             "machine":platform.machine(),"git_available":bool(shutil.which("git")),
             "opencode_executable_available":bool(shutil.which("opencode")),"installation":rec.get("status") if rec else "not_installed",

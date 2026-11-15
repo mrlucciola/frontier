@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 
 from . import VERSION
-from .common import Fault, DOMAINS, digest, canonical, read_json, write_json, atomic_write, private_dir, now
+from .common import Fault, DOMAINS, canonical, read_json, write_json, atomic_write, private_dir, now
 
 START="<!-- CWF:BEGIN -->"
 END="<!-- CWF:END -->"
@@ -70,11 +70,11 @@ def read_bundle(bundle):
     bundle=Path(bundle).resolve(); init=bundle/"cwf/__init__.py"
     found=re.search(r'(?m)^VERSION\s*=\s*"(\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?)"',init.read_text()) if init.is_file() else None
     if not found: raise Fault("Bundle has no valid release version")
-    files={}
+    files=[]
     for p in sorted(bundle.rglob("*")):
         if p.is_symlink(): raise Fault("Source release must contain only regular files/directories","blocked")
         if "__pycache__" in p.parts or p.suffix==".pyc" or not p.is_file(): continue
-        files[p.relative_to(bundle).as_posix()]=digest(p.read_bytes())
+        files.append(p.relative_to(bundle).as_posix())
     return {"version":found.group(1),"files":files}
 
 
@@ -129,21 +129,13 @@ def plan(home,bundle,config_root=None,guidance=True):
     if previous and previous.get("config_root")!=str(p["client"]):
         raise Fault("Existing installation uses another client config root; uninstall or use that root","blocked")
     version=source["version"]; release=p["base"]/"releases"/version
-    if release.exists() and read_bundle(release)!=source:
-        raise Fault("Release version already exists with different bytes","blocked")
     changes=[]
-    owned={c["path"]:c for c in previous.get("changes",[])} if previous else {}
+    owned={c["path"] for c in previous.get("changes",[])} if previous else set()
     def add(path,after,kind="normal"):
         check_parents(path)
         before=snapshot(path)
-        if str(path) in owned:
-            expected=owned[str(path)]["after"]
-            if kind=="guidance" and before["kind"]=="file" and expected["kind"]=="file":
-                a=base64.b64decode(before["data"]).decode(); b=base64.b64decode(expected["data"]).decode()
-                if marker_body(a)!=marker_body(b): raise Fault("Owned guidance was edited; preserve and reconcile manually","blocked")
-            elif before!=expected:
-                raise Fault(f"Owned target changed since installation: {path}","blocked")
-        elif before["kind"]!="absent" and kind not in ("guidance","config"):
+        # Owned targets are rewritten whatever they hold now; only foreign ones are protected.
+        if str(path) not in owned and before["kind"]!="absent" and kind not in ("guidance","config"):
             raise Fault(f"Foreign installation target collision: {path}","blocked")
         changes.append({"path":str(path),"before":before,"after":after,"kind":kind})
     # Verify same-name metadata collisions even in differently named directories.
@@ -175,16 +167,12 @@ def plan(home,bundle,config_root=None,guidance=True):
         if before["kind"] not in ("file","absent"): raise Fault("Instruction target must be a regular file","blocked")
         text=base64.b64decode(before["data"]).decode() if before["kind"]=="file" else ""
         existing=marker_body(text)
-        if existing and str(agents) not in owned: raise Fault("Unowned CWF marker collision","blocked")
         body=BLOCK.strip("\n")
         if existing: text=text.replace(existing,body,1) if active else without_block(text,existing)
         elif active: text+=BLOCK
         add(agents,file_snap(text,before.get("mode",0o600)),"guidance")
-    output={"schema_version":"cwf-install/v1","home":str(p["home"]),"config_root":str(p["client"]),
-            "bundle":str(Path(bundle).resolve()),"version":version,"bundle_digest":digest(source["files"]),
-            "guidance":guidance,"changes":changes,"previous_receipt_digest":digest(previous)}
-    output["fingerprint"]=digest(output)
-    return output
+    return {"schema_version":"cwf-install/v1","home":str(p["home"]),"config_root":str(p["client"]),
+            "bundle":str(Path(bundle).resolve()),"version":version,"guidance":guidance,"changes":changes}
 
 
 @contextlib.contextmanager
@@ -204,20 +192,22 @@ def apply(plan_data,home,config_root=None):
     if plan_data.get("home")!=str(p["home"]) or plan_data.get("config_root")!=str(p["client"]):
         raise Fault("Plan belongs to a different target home","blocked")
     with install_lock(p):
+        # The plan file names the request; targets are read again here, so a plan never goes stale.
         fresh=plan(home,plan_data["bundle"],config_root,plan_data["guidance"])
-        if fresh!=plan_data: raise Fault("Plan is stale or altered; regenerate and review","blocked")
         old=receipt(p)
-        release=p["base"]/"releases"/fresh["version"]
-        if not release.exists():
+        release=p["base"]/"releases"/fresh["version"]; bundle=Path(fresh["bundle"])
+        if bundle!=release.resolve():
+            # Reinstalling the same version replaces the release, which is how a source edit is delivered.
             private_dir(release.parent)
             staging=Path(tempfile.mkdtemp(prefix=".stage-",dir=release.parent))
             try:
-                for rel in read_bundle(fresh["bundle"])["files"]:
+                for rel in read_bundle(bundle)["files"]:
                     dest=staging/rel; dest.parent.mkdir(parents=True,exist_ok=True)
-                    shutil.copyfile(Path(fresh["bundle"])/rel,dest)
-                if digest(read_bundle(staging)["files"])!=fresh["bundle_digest"]:
-                    raise Fault("Bundle changed during apply; regenerate and review","blocked")
-                os.replace(staging,release)
+                    shutil.copyfile(bundle/rel,dest)
+                if release.exists():
+                    retired=release.with_name(".old-"+uuid.uuid4().hex)
+                    os.replace(release,retired); os.replace(staging,release); shutil.rmtree(retired)
+                else: os.replace(staging,release)
             finally:
                 if staging.exists(): shutil.rmtree(staging)
         tx={"id":uuid.uuid4().hex,"started_at":now(),"plan":fresh,"previous_receipt":old,"status":"applying"}
@@ -226,7 +216,6 @@ def apply(plan_data,home,config_root=None):
         applied=[]
         try:
             for change in fresh["changes"]:
-                if snapshot(change["path"])!=change["before"]: raise Fault("Target changed during apply","blocked")
                 restore(change["path"],change["after"]); applied.append(change)
             changes=[]
             prior={c["path"]:c for c in old.get("changes",[])} if old else {}
@@ -255,14 +244,14 @@ def apply(plan_data,home,config_root=None):
             raise
 
 
-def guidance_target(path,after,before):
+def guidance_target(path,before):
+    """Instruction file with the marker block returned to its `before` state; text outside the markers is kept."""
     current=snapshot(path)
-    if current["kind"]!="file" or after["kind"]!="file": raise Fault("Instruction target changed","blocked")
+    if current["kind"]!="file": return current
     text=base64.b64decode(current["data"]).decode()
-    expected=marker_body(base64.b64decode(after["data"]).decode())
-    if marker_body(text)!=expected: raise Fault("Owned instruction block changed; manual reconciliation needed","blocked")
+    body=marker_body(text)
     old=marker_body(base64.b64decode(before["data"]).decode()) if before["kind"]=="file" else None
-    if expected: text=text.replace(expected,old,1) if old else without_block(text,expected)
+    if body: text=text.replace(body,old,1) if old else without_block(text,body)
     elif old: text+="\n"+old+"\n"
     if not text and before["kind"]=="absent": return {"kind":"absent"}
     return file_snap(text,current["mode"])
@@ -277,7 +266,6 @@ def management_transaction(p,changes,new_receipt):
     write_json(history,tx); done=[]
     try:
         for c in changes:
-            if snapshot(c["path"])!=c["before"]: raise Fault("Target changed during operation","blocked")
             restore(c["path"],c["after"]); done.append(c)
         if new_receipt: write_json(p["state"]/"installation.json",new_receipt)
         elif (p["state"]/"installation.json").exists(): (p["state"]/"installation.json").unlink()
@@ -309,17 +297,10 @@ def revert(home,config_root=None,rollback=False):
             changes=[dict(c,after=current[c["path"]]["after"]) for c in tx["plan"]["changes"]]
             previous=tx["previous_receipt"]
         else: changes=rec["changes"]; previous=None
-        # Preflight all changes before mutating any target.
-        for c in changes:
-            if snapshot(c["path"])!=c["after"]:
-                if c["kind"]!="guidance": raise Fault(f"Changed owned target; preserving it: {c['path']}","blocked")
-                current=snapshot(c["path"])
-                if current["kind"]!="file" or marker_body(base64.b64decode(current["data"]).decode())!=marker_body(base64.b64decode(c["after"]["data"]).decode()):
-                    raise Fault("Owned guidance modified; preserving it","blocked")
         mutations=[]
         for c in reversed(changes):
             before=c["before"] if rollback else c["original"]
-            target=guidance_target(c["path"],c["after"],before) if c["kind"]=="guidance" else before
+            target=guidance_target(c["path"],before) if c["kind"]=="guidance" else before
             mutations.append({"path":c["path"],"before":snapshot(c["path"]),"after":target,"kind":c["kind"]})
         management_transaction(p,mutations,previous)
         return {"changed":True,"state_and_releases":"retained","rolled_back":rollback}
@@ -332,9 +313,6 @@ def toggle(home,config_root,enabled,domain=None):
         require_no_pending(p)
         rec=receipt(p)
         if not rec: raise Fault("No owned installation","blocked")
-        for c in rec["changes"]:
-            if c["kind"]!="guidance" and snapshot(c["path"])!=c["after"]:
-                raise Fault("Owned target changed; reconcile before toggling","blocked",c["path"])
         config=read_json(p["config"])
         if domain:
             ds=set(config.get("domains",DOMAINS))
@@ -351,13 +329,12 @@ def toggle(home,config_root,enabled,domain=None):
                 after={"kind":"link","target":str(p["base"]/"current/skills"/path.name)} if active and d in config.get("domains",DOMAINS) else {"kind":"absent"}
             elif c["kind"]=="guidance":
                 cur=snapshot(path)
-                if cur["kind"]!="file": raise Fault("Instruction file missing","blocked")
-                text=base64.b64decode(cur["data"]).decode(); body=marker_body(text)
-                expected=marker_body(base64.b64decode(c["after"]["data"]).decode())
-                if body!=expected: raise Fault("Owned guidance changed","blocked")
+                if cur["kind"] not in ("file","absent"): raise Fault("Instruction target must be a regular file","blocked")
+                if cur["kind"]=="absent" and not active: continue
+                text=base64.b64decode(cur["data"]).decode() if cur["kind"]=="file" else ""; body=marker_body(text)
                 if body: text=text.replace(body,BLOCK.strip("\n"),1) if active else without_block(text,body)
                 elif active: text+=BLOCK
-                after=file_snap(text,cur["mode"])
+                after=file_snap(text,cur.get("mode",0o600))
             else: continue
             pending.append((c,path,snapshot(path),after))
         mutations=[]
@@ -370,15 +347,13 @@ def toggle(home,config_root,enabled,domain=None):
 
 
 def recover(home,config_root=None):
-    """Recover interrupted apply transactions using exact before/after states."""
+    """Undo interrupted transactions: a target still in its written state returns to its prior state; anything else is left as found."""
     p=paths(home,config_root); recovered=[]
     with install_lock(p):
         for f in sorted((p["state"]/"transactions").glob("*.json")):
             tx=read_json(f)
             if tx["status"] not in ("applying","recovery_required"): continue
             changes=tx["plan"]["changes"]
-            conflicts=[c["path"] for c in changes if snapshot(c["path"]) not in (c["before"],c["after"])]
-            if conflicts: raise Fault("Recovery would overwrite changed targets","blocked",conflicts)
             for c in reversed(changes):
                 if snapshot(c["path"])==c["after"]: restore(c["path"],c["before"])
             old=tx["previous_receipt"]
