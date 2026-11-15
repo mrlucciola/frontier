@@ -21,7 +21,10 @@ epic subtree:
 
 ## Next batch
 
-fc-03292e, fc-121923 and fc-2c0656, once fc-2a6562 and fc-262fa8 are closed.
+In flight (turn 1, 2026-11-14): fc-03292e (`prompts/01-wt-help.md`), fc-121923
+(`prompts/02-principles.md`), fc-2c0656 (`prompts/03-codex.md`); prerequisites
+fc-2a6562 and fc-262fa8 confirmed closed. Then fc-f9ab11 (`04-measure.md`) after
+fc-03292e closes; fc-10981e (`05-cutover-runbook.md`) last.
 
 ## Owed operator actions
 
@@ -42,7 +45,9 @@ None yet. Expected by the end: the Codex probe, and the cutover runbook itself.
   `pm/config/claude/hooks.json`, and `pm/hooks/opencode/pm.ts`. No skill for pm or wt.
 - **Not verified.** Whether Codex exposes session-start, prompt or stop events.
   fc-2c0656 establishes it from the installed client before writing anything that
-  depends on it.
+  depends on it. Seen 2026-11-14: the client is `~/.local/bin/codex` (not on the
+  agent PATH), `~/.codex/hooks.json` exists, and `~/.codex/config.toml` carries
+  `hooks.state` keys for `user_prompt_submit`.
 - **Stores at cutover.** Ten are registered in `~/frontier/runtime-tools/pm/stores.json`;
   `~/claude` is frozen; frontier lists `cl` as a legacy prefix; this repository's store
   sets three write-reduction keys the new pm does not use; only lai sets `gate`.
