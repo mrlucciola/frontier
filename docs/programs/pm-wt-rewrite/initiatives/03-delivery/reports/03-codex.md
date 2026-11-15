@@ -11,7 +11,8 @@ EVIDENCE:
 - /Users/matthias/.codex/hooks.json (read only) is the file format example; /Users/matthias/.codex/config.toml `[hooks.state."<file>:<event>:<group>:<handler>"] trusted_hash` shows the trust model; `codex --help` lists `--dangerously-bypass-hook-trust`.
 - Probe run by hand: `printf '{"cwd":"/x","hook_event_name":"SessionStart","session_id":"s1","source":"startup","transcript_path":null,"model":"m","permission_mode":"default"}' | /usr/bin/python3 -B pm/tests/codex/probe.py <worktree>/.tmp/probe-capture.jsonl SessionStart` -> no output, exit 0; captured line: `{"event": "SessionStart", "argv": ["/Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/.tmp/probe-capture.jsonl", "SessionStart"], "stdin": "{\"cwd\":\"/x\",\"hook_event_name\":\"SessionStart\",\"session_id\":\"s1\",\"source\":\"startup\",\"transcript_path\":null,\"model\":\"m\",\"permission_mode\":\"default\"}"}`
 - Gate (run by absolute path from the worktree; the bare relative form from the Bash default cwd hit the main checkout, which I noticed and reran): `/usr/bin/python3 -B /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/pm/tests/run_transcripts.py` -> `transcripts: passed 25, failed 0`; `/usr/bin/python3 -B -m unittest discover -s /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/pm/tests` -> `Ran 7 tests ... OK`; `/usr/bin/python3 -B /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/docs/check_structure.py` -> `check_structure: ok (7 components, 3 exempted)`.
-COMMITS: /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656 e52e909 (branch fc-2c0656; the report commit follows it on the same branch). check-required: no.
+- Review fix (credential cleanup): pm/INSTALL.md Probe gained step 5 "Sign the scratch home out" (`codex logout` plus `ls -a` of the scratch home) and the closing line no longer says the scratch home "may stay". Gate: `python3 -B /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/docs/check_structure.py` -> `check_structure: ok (7 components, 3 exempted)`. Codex was not run again.
+COMMITS: /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656 e52e909 (Codex subsection, fragment, probe), aa488db (report), 656a661 (logout step in INSTALL.md), then one commit updating this report. Branch fc-2c0656. check-required: no.
 NOT DONE:
 - No Codex session was run (not allowed), so these are not proven live: (a) SessionStart plain-text stdout reaches the model (the schema's own form is JSON `additionalContext`; if plain text is ignored, `pm hook session-start` needs a Codex adapter emitting `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":...}}`, not written here); (b) the three events fire under `codex exec`; (c) `Stop` exit 2 continuation behaves live (proven only by the binary's message); (d) whether a scratch `CODEX_HOME` keeps the login (I did not check where Codex stores it).
 - No official Codex documentation was found on disk; the event list rests on strings embedded in the 0.167.0 binary. Other events exist (SessionEnd, PreToolUse etc.) and are not wired.
@@ -35,7 +36,12 @@ BLOCKED ON OPERATOR:
    ```sh
    cat /Users/matthias/projects/frontier-clean/.tmp/codex-probe/capture.jsonl
    ```
-5. After the capture matches, register per pm/INSTALL.md "Codex" > "Register" (edit /Users/matthias/.codex/hooks.json lines 17-22, accept the trust prompt, then the Verify section proves the SessionStart claim). Tell me when done - the rest is mine.
+5. Sign the scratch home out so no login stays in the repository's .tmp/. `codex --help` lists `logout` ("Remove stored authentication credentials"); I have not checked how Codex stores the login, so if the listing still shows a login file (for example auth.json), remove that file by hand.
+   ```sh
+   CODEX_HOME=/Users/matthias/projects/frontier-clean/.tmp/codex-probe/home /Users/matthias/.local/bin/codex logout
+   ls -a /Users/matthias/projects/frontier-clean/.tmp/codex-probe/home
+   ```
+6. After the capture matches, register per pm/INSTALL.md "Codex" > "Register" (edit /Users/matthias/.codex/hooks.json lines 17-22, accept the trust prompt, then the Verify section proves the SessionStart claim). Tell me when done - the rest is mine.
 ARTIFACTS:
 /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/pm/INSTALL.md
 /Users/matthias/projects/frontier-clean/.worktrees/fc-2c0656/pm/config/codex/hooks.json
