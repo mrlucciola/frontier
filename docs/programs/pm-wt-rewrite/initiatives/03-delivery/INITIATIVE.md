@@ -38,7 +38,15 @@ None yet. Expected by the end: the Codex probe, and the cutover runbook itself.
   tickets for those here are closed as superseded. Nothing was built under them.
 - **Scratch git repos.** Any worker that runs `git init` puts it under the main
   checkout's `.tmp/` and checks `rev-parse --show-toplevel` before the next git
-  command (02-wt incident: a refused init let git act on the real repo).
+  command (02-wt incident: a refused init let git act on the real repo). The hook
+  refuses an absolute-path init; its named remedy, which 04-measure followed, is the
+  relative form from the main checkout, `git init -b main .tmp/<name>`. Write prompts
+  with that form.
+- **Codex facts (fc-2c0656, from the 0.167.0 binary's embedded schemas, no live
+  session).** `SessionStart`, `UserPromptSubmit` and `Stop` exist with Claude's key
+  names, so `pm/config/codex/hooks.json` calls `pm hook` with no adapter. Not proven
+  live: plain-text `SessionStart` stdout reaching the model, the events under
+  `codex exec`. The probe is in `pm/INSTALL.md` "Codex" > "Probe".
 - **What exists before cutover.** Claude: `~/frontier/hooks/pm/session_start.py`
   injects `pm ticket summary` when the working directory is inside a repo with `.pm/`;
   `stop.py` blocks once on a claim this session holds. opencode: a plugin written in
