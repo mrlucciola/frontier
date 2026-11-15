@@ -125,6 +125,9 @@ affects user data.
 Put validation commands in the component's `AGENTS.md` and update instructions
 when behavior or setup changes. Keep component tests inside the component. Write
 a component's code and tests by the [component principles](/docs/component-principles.md).
+A component that departs from them records the departure and its reason in its
+`AGENTS.md`. A test that fixes behavior the maintainer must not change is named in
+the route table, with who may change it.
 
 Run the structure check from the repository root after changing a routing
 document, a component's top-level layout, or the component index.

@@ -14,6 +14,10 @@ implementation, tests, and documentation.
 - **Scoped instruction delivery.** Deliver instructions for the relevant component,
   workspace, operation, and session state. Surface outstanding obligations when
   the agent can act on them, including after long tasks or context compaction.
+- **Output that teaches.** A component's own output carries the guidance for the
+  next step. A refusal names what was refused and the command to run next, help is
+  short enough to read whole, and a workspace the component has no state in gets
+  no injected text.
 - **One maintained source.** Keep executable files in their owning component.
   Provider integration should reference those files directly or through symlinks.
   Keep shared requirements in one source and isolate necessary provider differences.
