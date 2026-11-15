@@ -3,7 +3,7 @@
 Link ticket a to one or more others. "a blocks b" keeps b out of ready until a is
 done; a link that would make a cycle is refused. "related" shows on both tickets and
 gates nothing. A link that already exists is printed and not added again. --note
-adds the text as a note on each ticket after the relation, even for an existing link.
+adds the text as a note on each ticket after the relation (b, c ...), even for an existing link.
 """
 import render
 import store
@@ -66,7 +66,7 @@ def run(argv):
                 events.append({"op": "link", "id": a["id"], "rel": "related",
                                "to": b["id"]})
         if args.note is not None:
-            for tid in dict.fromkeys([a["id"]] + [b["id"] for b in others]):
+            for tid in dict.fromkeys(b["id"] for b in others):
                 events.append({"op": "note", "id": tid, "text": args.note})
         return events
 
