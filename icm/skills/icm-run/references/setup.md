@@ -1,6 +1,6 @@
 # setup
 
-Configures the factory, not the product. Runs once per workspace.
+Configures the factory, not the product. Runs once per workspace, and only when the user asks for setup. It is the one operation of this skill that writes outside a stage's `output/`, and only to the files step 5 lists.
 
 ## Procedure
 

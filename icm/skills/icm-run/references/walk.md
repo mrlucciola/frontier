@@ -4,7 +4,7 @@ The five-layer load order. Stop reading as soon as you have what the stage needs
 
 | Layer | File | Question | Budget |
 |---|---|---|---|
-| 0 | `AGENTS.md` / `CLAUDE.md` | Where am I, where does everything live | ~800 tok |
+| 0 | `AGENTS.md` (a `CLAUDE.md` is only a pointer to it) | Where am I, where does everything live | ~800 tok |
 | 1 | root `CONTEXT.md` | Which stage handles this task | ~300 tok |
 | 2 | `stages/<current>/CONTEXT.md` | What exactly do I do | 200 to 500 tok |
 | 3 | rows the Inputs table marks reference | What rules apply (internalize) | 500 to 2k tok |
@@ -12,11 +12,11 @@ The five-layer load order. Stop reading as soon as you have what the stage needs
 
 ## Determining the current stage
 
-1. If the user named a stage, that is it.
-2. Otherwise run the status scan: the first stage whose `output/` is empty (or dotfiles only) is current.
-3. If every stage has output, report the pipeline complete and ask whether to start a new run or re-run a stage.
+1. Run `scripts/state.py`. The current stage is the earliest one that is not accepted, and only it can show `may_run`.
+2. A stage the user names runs only if it is that stage. If it is a later one, report what blocks it.
+3. If every stage is accepted, report that and ask whether to start a new run or re-run a stage.
 
-Re-running a stage is normal (incremental recompilation, paper §6.1). Re-running stage N does not touch stage N-1. Say which existing output files will be overwritten before overwriting.
+Re-running a stage is normal (incremental recompilation, paper section 6.1). Re-running stage N does not touch stage N-1 or any other stage's output or `check.md`. Say which existing output files will be overwritten before overwriting. A re-run leaves the stage pending until it is checked again, and state.py shows later stages that used the old output as stale.
 
 ## Reading the Inputs table
 
@@ -46,7 +46,7 @@ Complete the step, present exactly what the table says, wait. Do not pre-empt th
 | Check | Pass Condition |
 ```
 
-Run every row after the process completes and before writing. Report each as pass or fail with one line of evidence. On any fail, revise and re-audit. Write only on all-pass.
+Run every row after the process completes and before writing. Report each as pass or fail with one line of evidence. On any fail, revise and re-audit. Write only on all-pass. Passing the Audit is your own verification, not the stage's check.
 
 ## Writing output
 
@@ -57,9 +57,9 @@ Run every row after the process completes and before writing. Report each as pas
 
 ## Status after writing
 
-Report in this shape:
+Run the stage's check if it is a script, or hand it to its model reviewer (SKILL.md, "The check"). Then run state.py again and report in this shape:
 
 ```
 Wrote: stages/02-script/output/hello-world-script.md
-Next:  03-production (pending). Review the file above before running it.
+Check: 02-script pending (human check). Review the file above; 03-production waits for your verdict.
 ```

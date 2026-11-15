@@ -1,13 +1,157 @@
 # Setup: ICM
 
-Manual setup for Claude Code, the only provider this component ships configuration
-for. You get two skills (`icm-architect` builds workspaces, `icm-run` executes
-stages), a SessionStart hook that tells the agent when the working directory is an
-ICM workspace, one allow rule so a workspace's own `_tools/*.py` scripts run without
-prompts, and one instruction section in `~/.claude/CLAUDE.md`.
+ICM ships two skills: `icm-architect` builds workspaces and `icm-run` executes their
+stages. OpenCode needs only the skills. The Claude Code setup also registers a hook,
+an allow rule and an instruction section.
 
-The skills are linked from this directory and the hook runs from it, so the
-repository must stay in place.
+| Provider | What is installed | Status |
+| --- | --- | --- |
+| [OpenCode](#opencode) | two skill links in `~/.agents/skills` | the supported setup; see [Not verified](#not-verified-opencode) |
+| [Claude Code](#claude-code) | two skill links, a SessionStart hook, an allow rule, an instruction section | earlier setup, not updated for the current `icm-run` contract |
+
+The skills are linked from this directory, so the repository must stay in place.
+
+## OpenCode
+
+You get the two skills, which OpenCode discovers in `~/.agents/skills`, and nothing
+else: no instruction file, no `opencode.json` change, no plugin or hook. A session
+started inside a workspace loads that workspace's own `AGENTS.md`. `icm-run` works out
+stage state with its own scripts.
+
+| Source in this component | Provider destination | How |
+| --- | --- | --- |
+| `skills/icm-architect/` | `~/.agents/skills/icm-architect` | symlink |
+| `skills/icm-run/` | `~/.agents/skills/icm-run` | symlink |
+
+Codex also reads `~/.agents/skills`, so Codex sessions on the same computer list both
+skills too.
+
+### Prerequisites
+
+- OpenCode installed. `opencode --version` was 2.0.32 when this was checked.
+- `python3` 3.9 or newer on `PATH`. `icm-run` runs its `scripts/state.py` and
+  `scripts/record.py` with it.
+- This repository checked out at `~/projects/frontier-clean`. If it lives elsewhere,
+  substitute that path in every command.
+
+Setup uses no network.
+
+### 1. Check the destinations
+
+```sh
+ls -d ~/.agents/skills/icm-architect ~/.agents/skills/icm-run
+# expect: "No such file or directory" twice; if either is listed, inspect it and stop: it is not this setup's to replace
+```
+
+### 2. Link the skills
+
+```sh
+mkdir -p ~/.agents/skills
+for name in icm-architect icm-run; do
+  if [ -e ~/.agents/skills/$name ] || [ -L ~/.agents/skills/$name ]; then
+    echo "already present, left alone: ~/.agents/skills/$name"
+  else
+    ln -s ~/projects/frontier-clean/icm/skills/$name ~/.agents/skills/$name
+  fi
+done
+readlink ~/.agents/skills/icm-architect ~/.agents/skills/icm-run
+# expect: the two source paths under ~/projects/frontier-clean/icm/skills
+```
+
+The test before `ln` matters: `ln -s` onto an existing directory, even with `-n`,
+creates the link inside it instead of failing. Running the block again changes
+nothing and reports both entries as already present.
+
+### 3. Check skill permissions
+
+An `opencode.json` that denies skills by default denies these two by ID.
+
+```sh
+grep -n '"skill"' ~/.config/opencode/opencode.json
+# expect: no output, or only "skill": "deny" lines inside an "agent" entry, which affect that agent alone
+```
+
+If a top-level `permission` block holds a `"skill"` rule whose `"*"` is `"deny"`, the
+skills stay unavailable until you add `"icm-architect": "allow"` and
+`"icm-run": "allow"` beside it by hand. That is your configuration to change. This
+setup has not qualified it.
+
+### 4. Verify without an agent
+
+Build a one-stage throwaway workspace outside any repository and run the state script
+the skill calls.
+
+```sh
+mkdir -p /tmp/icm-demo/stages/01-draft/output
+printf '# Demo\n\nOne stage: 01-draft.\n' > /tmp/icm-demo/AGENTS.md
+printf '# Pipeline\n\n01-draft writes a short draft.\n' > /tmp/icm-demo/CONTEXT.md
+printf '# 01-draft\n\n## Process\n1. Write three sentences about ICM.\n\n## Outputs\n- `draft.md` -> `output/`\n\n## Check\nA person reads it.\n' > /tmp/icm-demo/stages/01-draft/CONTEXT.md
+python3 ~/.agents/skills/icm-run/scripts/state.py /tmp/icm-demo
+# expect: a line "01-draft  unproduced", then "next: run 01-draft"
+```
+
+Component checks, which use temporary directories only:
+
+```sh
+python3 -B ~/projects/frontier-clean/icm/tests/test_state.py
+python3 -B ~/projects/frontier-clean/icm/tests/test_opencode_setup.py
+# expect: last line OK, twice
+```
+
+### 5. First use with the agent
+
+```sh
+cd /tmp/icm-demo && opencode
+# type: status
+# expect: the agent loads icm-run, runs state.py and reports 01-draft unproduced
+# type: run the next stage
+# expect: it writes stages/01-draft/output/draft.md only, then stops: 01-draft waits for your review
+# type: I read draft.md and approve it
+# expect: it records your verdict with record.py, and status shows 01-draft accepted
+```
+
+If the agent answers without loading the skill, name it: `@icm-run status`. To build
+a real workspace, start a session in an empty directory and ask for one, for example
+"build me an ICM workspace for a weekly engineering newsletter".
+
+### Update
+
+```sh
+git -C ~/projects/frontier-clean pull
+```
+
+The links pick up skill changes. Start a new session afterwards.
+
+### Disable and remove
+
+To hide one skill, remove its link. To remove both:
+
+```sh
+readlink ~/.agents/skills/icm-architect ~/.agents/skills/icm-run
+# expect: the two source paths; if one prints anything else, or nothing, it is not this setup's link: leave that one
+rm ~/.agents/skills/icm-architect ~/.agents/skills/icm-run
+ls -d ~/.agents/skills/icm-architect ~/.agents/skills/icm-run
+# expect: "No such file or directory" twice
+```
+
+`rm` without `-r` deletes the links only. On a real directory it fails and deletes
+nothing. If you added allow entries in step 3, delete them by hand. Removal does not
+touch workspaces. Their outputs and `check.md` verdicts stay readable as ordinary
+files.
+
+### Not verified (OpenCode)
+
+Checked on OpenCode 2.0.32 with a relocated configuration root: both skills register
+in the catalog through the `~/.agents/skills` links. Not checked: the real
+`~/.agents/skills` and `~/.config/opencode`, a configuration with a top-level
+`permission.skill` rule, IDE and desktop clients.
+
+## Claude Code
+
+This setup predates the current `icm-run` contract. Its instruction section and hook
+still treat `CLAUDE.md` as the entry file, while `icm-run` now treats `AGENTS.md` as
+the entry and `CLAUDE.md` as a pointer to it. It has not been run against a real
+`~/.claude`; see [Not verified](#not-verified-claude-code).
 
 | Source in this component | Provider destination | How |
 | --- | --- | --- |
@@ -17,7 +161,7 @@ repository must stay in place.
 | `config/settings.icm.fragment.json` | `~/.claude/settings.json` | merged by hand |
 | `instructions/icm.md` | `~/.claude/CLAUDE.md` | appended once |
 
-## Prerequisites
+### Claude Code prerequisites
 
 - macOS or Linux with `bash` and `python3` 3.9 or newer.
 - Claude Code installed.
@@ -26,7 +170,7 @@ repository must stay in place.
 
 Setup uses no network.
 
-## 1. Link the skills
+### 1. Link the skills
 
 Confirm nothing is already at the destinations. `ln -s` onto an existing directory
 would create the link inside it instead of failing.
@@ -44,7 +188,7 @@ ls ~/.claude/skills/icm-architect/SKILL.md ~/.claude/skills/icm-run/SKILL.md
 # expect: two paths listed
 ```
 
-## 2. Register the hook and the allow rule
+### 2. Register the hook and the allow rule
 
 The entries live in the [settings fragment](/icm/config/settings.icm.fragment.json).
 The registered command is the hook's path in this component; nothing is linked into
@@ -88,7 +232,7 @@ grep -c "icm-detect.sh" ~/.claude/settings.json
 # expect: no output from the first command (the file parses), then 1
 ```
 
-## 3. Add the instruction section
+### 3. Add the instruction section
 
 [instructions/icm.md](/icm/instructions/icm.md) is the "## ICM workspaces" section. Append
 it once.
@@ -102,7 +246,7 @@ grep -c "ICM workspaces" ~/.claude/CLAUDE.md
 # expect: 1
 ```
 
-## 4. Verify without an agent
+### 4. Verify the hook without an agent
 
 The hook prints only inside an ICM workspace: a root `CONTEXT.md` plus a `stages/NN-*`
 or `stages/NN_*` directory. Build a throwaway one in `.tmp/`, the repository's
@@ -124,7 +268,7 @@ python3 -B ~/projects/frontier-clean/icm/tests/test_hook.py
 # expect: last line OK
 ```
 
-## 5. First use with the agent
+### 5. First use with Claude Code
 
 Start a new session; skills are read at session start.
 
@@ -142,7 +286,7 @@ cd <the workspace it created> && claude
 # expect: the icm-run skill renders the pipeline and names the next pending stage
 ```
 
-## Update
+### Claude Code update
 
 ```sh
 git -C ~/projects/frontier-clean pull
@@ -153,13 +297,13 @@ entries and the instruction
 section are copies: if the fragment or `instructions/icm.md` changed, repeat step 2
 or 3 by hand.
 
-## Disable
+### Claude Code disable
 
 To stop detection and keep the skills, delete the `icm-detect.sh` group from
 `hooks.SessionStart` in `~/.claude/settings.json`. To hide one skill, remove its link
 (`rm ~/.claude/skills/icm-run`). Start a new session afterwards.
 
-## Remove
+### Claude Code removal
 
 ```sh
 rm ~/.claude/skills/icm-architect ~/.claude/skills/icm-run
@@ -179,7 +323,7 @@ User data: this component keeps no store. Workspaces you built are ordinary
 directories and are not touched by removal; they stay readable, but nothing detects
 them or runs their stages until you set the component up again.
 
-## If something is off
+### If something is off with Claude Code
 
 - The agent says a workspace is not detected: run the hook by hand as in step 4 from
   the workspace root.
@@ -191,7 +335,7 @@ them or runs their stages until you set the component up again.
   [VENDOR.md](/icm/skills/icm-architect/VENDOR.md). Re-vendoring needs network and is
   optional.
 
-## Not verified
+### Not verified (Claude Code)
 
 Nothing here was run against a real `~/.claude`. The links, the copy of the fragment
 into an absent `settings.json`, the append, the direct hook run, and the removal

@@ -1,35 +1,54 @@
 ---
 name: icm-run
-description: Execute one stage of an existing ICM (Interpretable Context Methodology) workspace, report pipeline status, or run its setup questionnaire. Use when the current directory has a root CONTEXT.md and a stages/NN-*/ tree and the user says "status", "setup", "run stage N", "next stage", "continue the pipeline", or names a stage folder. Not for building or restructuring a workspace; that is icm-architect.
+description: Run, review or report one stage of an ICM workspace (root CONTEXT.md plus stages/NN-name folders) when asked for status, setup, the next stage, or a stage verdict there. Not for other repositories, a plain status elsewhere, or building a workspace (icm-architect).
 ---
 
 # ICM Run
 
-Execute a stage of an ICM workspace the way the paper specifies: one agent, the right files at the right moment, output as a plain file a human edits before anything else runs. This skill is the floor. A workspace's entry file or stage contract may make it stricter; it cannot loosen the review gate or the write scope.
+One stage per invocation, loading only the files its contract names, writing plain files, and stopping at the stage's check. A workspace's own files may make these rules stricter; they cannot loosen the check or the write scope.
 
-Method: Van Clief & McDermott, arXiv:2603.16021. Conventions: `_core/CONVENTIONS.md` in RinDig/Interpretable-Context-Methodology. The always-loaded ICM instruction gives the load order, write scope, and gate; this skill adds the mechanics. Detail files are under this skill's `references/`.
+Method: Van Clief & McDermott, arXiv:2603.16021. Scripts and detail files are in this skill's directory: `scripts/`, `references/`.
+
+## Start with the state
+
+Run `python3 <this skill's directory>/scripts/state.py <dir>`, where `<dir>` is the workspace root or a folder inside one stage. It is read-only. It prints each stage's state, whether the entry file is sound, and the one next action.
+
+- Exit 1, "not an ICM workspace": stop using this skill and handle the request as ordinary work.
+- `next: stop: entry ...`: report it and propose making `AGENTS.md` the entry with one-line pointers (`CLAUDE.md` holding `@AGENTS.md`). Change nothing.
+- States: `unproduced` (required output absent, empty or partial), `pending` (output exists, no current verdict), `rejected`, `accepted` (verdict bound to the current outputs, inputs and contract), `stale` (a file changed after the verdict), `blocked`.
+
+A file being present never means accepted. Neither does a closed ticket, an earlier conversation, or your own Audit.
 
 ## Commands
 
-| User says | Do | Detail |
+| Request | Do | May write |
 |---|---|---|
-| `status` | Scan `stages/*/output/`, render the pipeline diagram, name the next pending stage | `references/status.md` |
-| `setup` | Run `setup/questionnaire.md` once, fill placeholders, verify none remain | `references/setup.md` |
-| run / next / stage name | Execute exactly one stage, then stop | `references/walk.md` |
+| `status` | Run state.py and report its output | nothing |
+| run, next, a stage name, or a topic for the entry stage | Run the stage state.py marks `may_run`. Naming a later stage does not skip an earlier one. Procedure: `references/walk.md` | that stage's declared outputs under its `output/` |
+| the user approves or rejects a stage | Record it, as in "The check" below | that stage's `output/check.md` |
+| `setup` | `references/setup.md` | only the files it lists to the user first |
 
-If the user gives a topic with no command, that is the entry stage's per-run input. Run `status` silently first; if stage 01 output already exists, ask whether this is a new run before overwriting.
+Building, restructuring or fixing a contract is `icm-architect`, and only when the owner asks for it.
 
-## Executing a stage
+## The check
 
-`references/walk.md` is the procedure: load order, how to read the Inputs table, Checkpoints, Audit, output naming, the closing report. In one line: load exactly what the contract lists, follow Process in order, pass every Audit row, write to `stages/<current>/output/`, stop.
+The stage's `## Check` section names the reviewer. When it names none, the reviewer is a person.
 
-## Rules beyond the instruction
+- **Human.** After writing, stop and report that the stage is waiting for review. Record only a verdict the person actually gave for these files: `python3 <skill dir>/scripts/record.py <root> <stage> --reviewer human --by <name> --decision pass|fail --reason "<why>"`. "continue", "next", a chaining request or your Audit is not a verdict. Ask for one.
+- **Script** (`Reviewer: script <command>`): `record.py <root> <stage> --reviewer script` runs the command and records its result.
+- **Model** (`Reviewer: model <reviewer>`): give that reviewer, as a separate subagent and never yourself, the outputs, the contract's criteria and its inputs. Record its verdict with `--reviewer model --by <reviewer>`. No usable verdict means the stage stays pending.
 
-- Never edit `references/`, `_config/`, or any `CONTEXT.md` during a run. If the contract looks wrong, say so and stop; fixing the factory is a separate decision the human makes (paper §6.3).
-- Never hand-edit generated indexes; they are rebuilt by scripts in `_tools/`.
-- Token check before acting: entry + root context + stage contract + inputs should land near 2k to 8k tokens. If it is far above, the Inputs table is too broad; report it rather than silently loading everything.
-- Delegation: if your runtime supports sub-agents and the stage benefits, each sub-agent gets the stage contract plus its listed inputs and nothing more. See `references/delegate.md`.
+record.py refuses a reviewer kind the contract does not declare. Do not work around a refusal. After a stage is accepted, the next one runs on a new request, or within a chain the user stated by naming the stages or an end point. A chain never stands in for a human check that has not happened. A rejection, missing evidence or a refusal ends the chain.
+
+## Loading and writing
+
+- Read `AGENTS.md`, then the root `CONTEXT.md`, then the current stage's `CONTEXT.md`, then exactly the Inputs rows at their stated scope. Skip a file your runtime already loaded. Read no README, no other stage, and no other stage's output unless an Inputs or Verify row names it. A missing input stops the run.
+- Write only the stage's declared outputs under its `output/`, and `check.md` only through record.py. Never edit a `CONTEXT.md`, `references/`, `_shared/`, `_config/` or a generated index during a run. If the contract looks wrong, say so and stop. Before re-running a stage, name the outputs it will replace.
+- A stage that writes outside `output/`, such as code in a repository, needs an exception in its contract naming the files, the writer, the reason, the check and when it expires. Without one, stop. Symlinks and `..` paths do not widen the scope.
+- ICM never changes a ticket's status, claim or dependencies.
+- The entry file, root context, stage contract and inputs should total roughly 2k to 8k tokens. If they come to far more, report that the Inputs table is too broad instead of loading everything.
+- Delegate only when the stage benefits and your instructions allow it: `references/delegate.md`.
 
 ## Contract sections this skill honors
 
-Inputs, Process, Outputs (required, Pattern 1). Checkpoints (Pattern 11). Audit (Pattern 12). Optional extensions a workspace may include: Verify, Completion, What NOT to Load. See `references/contract-extensions.md`.
+Inputs, Process, Outputs, Check, Checkpoints and Audit. A workspace may add Verify, Completion and What NOT to Load: `references/contract-extensions.md`.

@@ -18,7 +18,7 @@ Behavior: open the named earlier output, check each criterion, list discrepancie
 
 ## Completion (gist)
 
-Says what happens after output is written. In a human-gated pipeline the only valid values are "stop for review" (default when absent) or "final stage: deliverable is X". If a contract says "proceed directly to stage N+1", still stop unless the user said to chain: a workspace can tighten the gate, not loosen it. Note the conflict in the report.
+Says what happens after output is written. The only valid values are "stop for the check" (default when absent) or "final stage: deliverable is X". If a contract says "proceed directly to stage N+1", still stop at the check, and continue past an accepted script or model check only within a chain the user stated: a workspace can tighten the gate, not loosen it. Note the conflict in the report.
 
 ```
 ## Completion
