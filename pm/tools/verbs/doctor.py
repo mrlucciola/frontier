@@ -63,7 +63,7 @@ def run(argv):
         print("\n".join(text for _, text in problems))
     else:
         print("ok: %s, %s, %s" % (s.prefix, _plural(len(known), "ticket"), _plural(count, "event")))
-    if store.in_checkout(s.root):
+    if store.has_backup(s):
         print(_backup_line(s, lines))
     return 1 if problems else 0
 

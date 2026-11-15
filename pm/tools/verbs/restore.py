@@ -1,7 +1,7 @@
 """usage: pm restore
 
-Bring the log back from its git backup. Inside a git checkout every change stores the
-log as one blob at refs/pm/log; restore writes that blob back when the log is missing
+Bring the log back from its git backup. A store at the top of a git checkout stores
+its log as one blob at refs/pm/log after every change; restore writes that blob back when the log is missing
 or has fewer events than the backup, and refuses when there is nothing to gain.
 """
 import fcntl
@@ -20,8 +20,8 @@ def run(argv):
     s, _ = store.locate_dir()
     if s is None:
         render.refuse("no store here. Start one: pm init <prefix>")
-    if not store.in_checkout(s.root):
-        render.refuse("this store is not in a git checkout, so it has no backup.")
+    if not store.has_backup(s):
+        render.refuse("this store is not at the top of a git checkout, so it has no backup.")
     try:
         blob = store.backup_blob(s)
     except (OSError, RuntimeError) as e:

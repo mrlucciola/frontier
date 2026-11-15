@@ -365,8 +365,13 @@ def backup_blob(s):
     return _git(s, "cat-file", "blob", "refs/pm/log")
 
 
+def has_backup(s):
+    """True when the store's directory is the top of its git checkout."""
+    return _toplevel(s.root) == os.path.realpath(s.root)
+
+
 def _backup(s):
-    if not in_checkout(s.root):
+    if not has_backup(s):
         return
     try:
         sha = _git(s, "hash-object", "-w", ".pm/log.jsonl").decode().strip()
