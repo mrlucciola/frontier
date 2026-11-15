@@ -60,3 +60,14 @@ A done blocker stops blocking.
   t-2  P2  open  write the parser
   t-3  P2  open  write the printer  blocked by t-4
   t-4  P2  open  write the docs  blocked by t-2
+
+`--note` says why, as a note on each ticket after the relation.
+
+  $ pm new "write the index" >/dev/null
+  $ pm link t-4 blocks t-5 --note "the index reads the docs"
+  t-4 blocks t-5
+  $ pm show t-5
+  t-5  P2  open  write the index  blocked by t-4
+
+  notes:
+    2026-01-01 ada: the index reads the docs
