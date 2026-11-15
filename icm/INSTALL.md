@@ -23,8 +23,8 @@ stage state with its own scripts.
 | `skills/icm-architect/` | `~/.agents/skills/icm-architect` | symlink |
 | `skills/icm-run/` | `~/.agents/skills/icm-run` | symlink |
 
-Codex also reads `~/.agents/skills`, so Codex sessions on the same computer list both
-skills too.
+Codex is documented to read `~/.agents/skills` as well, so Codex sessions on the same
+computer would list both skills too. That was not checked here.
 
 ### Prerequisites
 

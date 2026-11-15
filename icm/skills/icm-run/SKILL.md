@@ -1,6 +1,6 @@
 ---
 name: icm-run
-description: Run, review or report one stage of an ICM workspace (root CONTEXT.md plus stages/NN-name folders) when asked for status, setup, the next stage, or a stage verdict there. Not for other repositories, a plain status elsewhere, or building a workspace (icm-architect).
+description: Only inside an ICM workspace (root CONTEXT.md plus stages/NN-name folders) - report its status, run or continue its next stage, record an approval or rejection of a stage, run setup. Not for other repositories or for building one (icm-architect).
 ---
 
 # ICM Run
