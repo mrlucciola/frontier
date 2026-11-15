@@ -1,0 +1,41 @@
+VERDICT: BROKEN
+FINDINGS:
+- CUTOVER.md:167 The import loop runs parent stores before the stores nested inside them (lai before 00-initialization, loop and 99-local-deployment; portside before engineering). `store.locate_dir` walks up to the nearest `.pm/log.jsonl` (pm/tools/store.py:36-43,61). So once lai is imported, `cd ~/work/lai/00-initialization && pm import` resolves to lai's store and gets "this store already has events" (pm/tools/verbs/import.py:173-174). The loop then breaks, and :172-173 tells the operator to "skip it". Result: lin, lop, obs and pse are never imported, and after step 4 every pm write in those repos lands in the parent's log. Fix: import the deepest path first. Also make step 2.4 expect each store's own prefix from `pm doctor`.
+- CUTOVER.md:109 vs :114-121 Step 1.1 hashes every tickets.jsonl, then step 1.2 finishes or parks worktrees with the old wt, which rewrites tickets.jsonl. That guarantees `shasum -c` at :187 fails, so the freeze proof is meaningless. `/Users/matthias/work/lai/00-initialization/.worktrees/lin-381db0` exists today. Fix: swap 1.1 and 1.2.
+- CUTOVER.md:799 Item 7's `git add` names runtime-tools/pm, runtime-tools/wt, hooks/pm, skills/pm and skills/worktree-lifecycle, which the item 3 `git rm -r` (:693) already removed. If nothing is left on disk, git aborts with a fatal pathspec error and stages nothing. If ignored `__pycache__` is left (:698-699), it errors that the paths are ignored. Either way the commit may lack the json and doc edits, so the step 10.6 revert is incomplete. Drop the five removed paths from the `add`.
+- CUTOVER.md:648-655 `git log -1` runs after `bin/deploy deploy core-hooks`, and that deploy makes its own registry commit (deploy/engine.py:2482 `_commit_registry`). The kept hash is therefore that registry commit, not the 8.0 merge, and a `wt finish` merge can be several commits. So 10.6 (:989) reverts the wrong thing.
+- Missing reader, posture/render/check.py:43,103,45: the posture gate named in CLAUDE.md runs `pm ticket show <id>` and checks states `{"open","claimed","blocked"}`. It breaks at step 4 and appears in neither the 8.0 table nor 8.3.
+- CUTOVER.md:600-612 vs :244 (ordering): the 8.0 fixes are scheduled after step 7, but they break at step 4, when `pm` on PATH becomes the new pm.
+  - done_gate.py:129 and :141 call `pm ticket ...`, which now fails. The gate raises Unavailable (done_gate.py:133,144) and fails open, so the Stop-side done gate is off from step 4 until 8.1 is deployed.
+  - session-title.py:198 also fails open in the same window.
+  - The runbook never states this gap.
+- CUTOVER.md:606 The replacement `pm ls taken --json` lists only the local store and shows at most 20 rows (pm/tools/verbs/ls.py:56-58). The old claim check spanned every store (pm/docs/cost.md:179). It needs `pm ls taken -n 0 --all-stores --json`.
+- CUTOVER.md:234-236 `pm show` and `pm note` call `store.require()` (show.py:17, note.py:28, store.py:79-82). Run outside a store they print "no store here", and the block names no working directory. This contradicts "routes an id to its store from any directory" (:198). Fix: run the block from inside a store, e.g. `/Users/matthias/frontier`.
+- CUTOVER.md:986-999 Reverting the step 8 item 7 commit also reverts its deploy/registry.json hunks. Every later deploy rewrites that file, including `updated_at` (engine.py:932-937), so a conflict is near certain, not just possible (:1021). Exclude registry.json from the revert; the redeploys rewrite it anyway.
+- CUTOVER.md:91-94 The D2 re-check expects exactly one hit, but pm/AGENTS.md also names `runtime-tools/pm/stores.json`. That gives a false "stop and tell me".
+- CUTOVER.md:843 says to land the `Ticket: ... done` word change in the same deploy as done_gate.py:248. They actually deploy in different steps: core-hooks at 8.1 (:649), instructions at 9.5 (:905).
+- CUTOVER.md:858 The new instruction text says "release" a ticket, but the new pm has no `release` verb; it is `drop` (pm/tools/verbs/drop.py).
+- CUTOVER.md:1007-1013 The rollback verify list omits skill-pm@codex, skill-worktree-lifecycle@codex and instructions-codex, which :994-999 redeployed.
+- CUTOVER.md:586-587 refers to `retire --dry-run`, but retire has no `--dry-run` flag (engine.py:3446-3448).
+- Ticket note 2026-11-14T18:26 item (4), "selftest drives the sibling pm/cli/pm", is not reflected. As a result, `wt selftest` at :271 and :676 proves nothing about the `pm` on PATH.
+- Checked and sound:
+  - Coordinates match the files today:
+    - settings.config.json 183-190, 212-219, 223.
+    - registry.json keys 1523, 1547, 2302, 2320, 2488, 2506, 2566.
+    - deprecated-sources.json 19-20 and 25; retired_roots_allowlist.json 70-72.
+    - done_gate.py 15-16, 92-99, 129, 131, 141, 248, 257.
+    - bin/test 28-29, 55, 125, 166, 180; session-title.py 68, 182, 198, 202; git_branch_guard.py:81, destructive_ops.py:59 and :900, continuity_nudge.py:27, git_identity_guard.py:130.
+    - gen_instructions.py 901, 1371, 1378, 1387-1405, 1738, 2255.
+    - claude-global CLAUDE.md 42, 142-145, 160-170.
+    - Every pm/INSTALL.md range cited.
+    - cost.md 4, 26-34, 46, 50-61, 93, 98, 113.
+    - The lai, lin, lop and fc config.json line numbers (still valid JSON after the deletions).
+    - opencode.json:50-52, fail.zsh:3, crossrepo.py:15, finish.zsh:313.
+  - The scratch-registry `cl` handling in import is sound: it registers only the primary prefix.
+  - The read-only refusal text matches store.py:432.
+  - The pre-done plugin's environment variables match plugins.py:56-67.
+  - `close-check` and `retire` exist as described.
+  - Every other ticket note maps to a step, decision or trigger.
+- I could not run `pm ticket show fc-10981e --all-notes` (no shell available). I read the ticket row directly at /Users/matthias/projects/frontier-clean/.pm/tickets.jsonl:52 instead.
+
+RE-VERIFY: after reordering step 2.2 deepest-first and applying it on copies, run `pm doctor` from the new pm by path inside each of the ten store paths. Expect each to report its own prefix (lin, lop, obs and pse must not report lai or ps). Then run `git -C /Users/matthias/frontier add --dry-run tools/audit/retired_roots_allowlist.json hooks/core-hooks/config/deprecated-sources.json deploy/registry.json` and expect exit 0.
