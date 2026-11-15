@@ -3,7 +3,7 @@
 What an agent harness should inject. Reads one JSON object on stdin with any of cwd,
 session_id, prompt, stop_hook_active; a missing or bad one is empty. cwd picks the
 store, session_id picks the session. session-start prints the tickets for the repo,
-prompt the tickets the prompt names, and stop, when the session still holds a ticket
+prompt each ticket it names once per session (kept in $TMPDIR/pm-mentioned-<token>), and stop, when the session still holds a ticket
 it has not held, prints the four ways out on stderr and exits 2. Outside a store, or
 with nothing to say, it prints nothing.
 """
@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 import render
 import store
@@ -55,15 +56,48 @@ def _prompt(s, text):
     if not s.prefix or not isinstance(text, str):
         return 0
     tickets = store.replay(store.read(s))
+    path = _mentioned_path()
+    shown = _read_mentioned(path)
     seen = []
     for m in re.finditer(r"(?<![A-Za-z0-9-])%s-[A-Za-z0-9]+" % re.escape(s.prefix), text):
-        if m.group(0) in tickets and m.group(0) not in seen:
-            seen.append(m.group(0))
+        tid = m.group(0)
+        if tid in tickets and tid not in seen and tid not in shown:
+            seen.append(tid)
+    seen = seen[:3]
     if seen:
         print("mentioned:")
-        for tid in seen[:3]:
+        for tid in seen:
             print("  " + render.line(tickets[tid], tickets))
+        _keep_mentioned(path, seen)
     return 0
+
+
+def _mentioned_path():
+    tok = who.token()
+    if not tok:
+        return None
+    return os.path.join(os.environ.get("TMPDIR") or tempfile.gettempdir(),
+                        "pm-mentioned-" + tok)
+
+
+def _read_mentioned(path):
+    if not path:
+        return set()
+    try:
+        with open(path) as f:
+            return set(f.read().split("\n"))
+    except (OSError, ValueError):
+        return set()
+
+
+def _keep_mentioned(path, ids):
+    if not path:
+        return
+    try:
+        with open(path, "a") as f:
+            f.write("".join(tid + "\n" for tid in ids))
+    except OSError:
+        pass
 
 
 def _stop(s, data):
