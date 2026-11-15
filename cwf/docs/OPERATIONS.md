@@ -5,12 +5,12 @@
 - Python 3.11+ must already be available. Check `python3 --version`; do not assume macOS includes an appropriate interpreter. CWF does not run Homebrew or install Python automatically.
 - Git is required only for Git-aware discovery and worktree operations. Core text work can run outside Git.
 - Use the extracted bundle as a working directory for the commands below. Quote paths containing spaces.
-- Check `docs/PLATFORM.md` against installed Codex versions during qualification. Never weaken sandbox or managed-device settings to make CWF work.
+- Check `docs/PLATFORM.md` against the installed opencode version during qualification. Never weaken sandbox or managed-device settings to make CWF work.
 - Installation makes no remote requests and does not commit/push repository changes.
 
 Every command accepts `--input file.json` or `--input -` for one JSON object. Keep task text out of interpolated shell strings. `--output file.json` saves the same result envelope printed to stdout. `--format text` prints a brief status plus the data. Request size is bounded to 1 MiB.
 
-The default target is the current user's home. `--home /absolute/test-home` targets a disposable home and deliberately ignores ambient CODEX_HOME; add `--codex-home /absolute/config-root` when testing a custom root. Without `--home`, the normal CODEX_HOME environment override is honored. Never repurpose HOME itself.
+The default target is the current user's home. `--home /absolute/test-home` targets a disposable home. The opencode config directory defaults to `.config/opencode` under the target home; add `--config-root /absolute/config-root` when `opencode debug paths config` reports a different directory or when testing a custom root. No environment variable is consulted. Never repurpose HOME itself.
 
 ## 2. Plan and install
 
@@ -20,9 +20,9 @@ From the extracted bundle:
 python3 -B cwf.py install plan --output install-plan.json
 ```
 
-This checks the manifest and reports intended targets, before/after snapshots, and a fingerprint. It does not apply configuration changes. Plans contain existing instruction/configuration bytes and local paths: keep them private. If an existing skill or owned block conflicts, resolve it deliberately; do not delete it to bypass the diagnostic.
+This reports intended targets, before/after snapshots, and a fingerprint. It does not apply configuration changes. Plans contain existing instruction/configuration bytes and local paths: keep them private. If an existing skill or owned block conflicts, resolve it deliberately; do not delete it to bypass the diagnostic.
 
-Review the `data.changes` entries. Expected targets are CWF's release pointer, launcher, configuration, six skill links, and the effective global AGENTS instruction file. Model/provider settings, existing hooks, and unrelated files are not targets.
+Review the `data.changes` entries. Expected targets are CWF's release pointer, launcher, configuration, six skill links, and the global `AGENTS.md` instruction file. Model/provider settings, existing hooks, and unrelated files are not targets.
 
 Create `apply-request.json`:
 
@@ -41,13 +41,13 @@ The installed launcher is `~/.local/bin/cwf`. It binds the selected interpreter 
 
 For a skill-only installation without an AGENTS edit, supply `{"guidance":false}` to `install plan`. If an existing installation has an activation block, keep that setting for upgrades or uninstall/reinstall explicitly; do not silently abandon owned guidance. Managed/read-only instructions require this skill-only path, with automatic activation limitations recorded.
 
-To test elsewhere, use the same `--home` and `--codex-home` values for both plan and apply. A plan for one home cannot be applied to another. Changing targets or files between plan and apply invalidates it.
+To test elsewhere, use the same `--home` and `--config-root` values for both plan and apply. A plan for one home cannot be applied to another. Changing targets or files between plan and apply invalidates it.
 
-No repository files are added by installation. The optional activation block goes into an existing nonempty AGENTS.override.md when that is the effective global file, otherwise AGENTS.md. Existing instructions outside the markers are preserved.
+No repository files are added by installation. The optional activation block goes into the global `AGENTS.md` in the opencode config directory, which opencode combines with project `AGENTS.md` files. Existing instructions outside the markers are preserved.
 
 ## 3. Ordinary use
 
-Native descriptions let Codex consider a relevant skill. Users can explicitly invoke `$cwf-build`, `$cwf-docs`, `$cwf-design`, `$cwf-product`, `$cwf-plan`, or `$cwf-maintain`. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by the installer.
+Native descriptions let opencode consider a relevant skill and load it through its `skill` tool. Users can explicitly name `@cwf-build`, `@cwf-docs`, `@cwf-design`, `@cwf-product`, `@cwf-plan`, or `@cwf-maintain` in a prompt. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by the installer.
 
 Discovery request example, substituting your actual scope:
 

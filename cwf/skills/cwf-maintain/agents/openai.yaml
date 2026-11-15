@@ -1,4 +1,0 @@
-interface:
-  display_name: "CWF Maintain"
-  short_description: "Context-aware maintain workflows and verification"
-  default_prompt: "Use $cwf-maintain to handle this task with relevant context and proportionate verification."

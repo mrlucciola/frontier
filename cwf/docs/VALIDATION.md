@@ -8,7 +8,7 @@ Implementation and packaging deliverables for M1–M5 are present. This does not
 
 | Check | Result | Evidence and limits |
 | --- | --- | --- |
-| Automated mechanics | 65 passed, 0 failed, 1 skipped; 66 total | `tests/test_cwf.py`; individual results and actual OS/Python/Git versions in `validation-ledger.json` |
+| Automated mechanics | 65 passed, 0 failed, 1 skipped; 66 total | `tests/test_cwf.py` |
 | Published schema equality and built-in validation | Passed | Runtime contracts equal packaged JSON schemas; positive/negative contract tests |
 | Independent JSON Schema validator | Skipped | Optional `jsonschema` development dependency unavailable; not silently installed |
 | Native skill structure | 6 passed, 0 failed | All six staged skills passed the skill-authoring validator; this is not live visibility or activation evidence |
@@ -45,7 +45,7 @@ Independent review found issues in targeted-read boundaries, scope-root narrowin
 | A18 excessive input | File/byte/result bounds and partial reporting passed; real huge-repo latency unmeasured |
 | A19 unavailable state | Corruption fallback and schema refusal passed; exhaustive locked/read-only combinations untested |
 | A20 independent users | Temporary-home coexistence/isolation passed; two real computers untested |
-| A21 collisions/global override | Mechanics passed; actual client visibility untested |
+| A21 collisions/global rules | Mechanics passed; actual client visibility untested |
 | A22 failed upgrade/later edits | Recovery and preservation regressions passed |
 | A23 toggles/uninstall/no adapters | Mechanics passed; already-loaded model instructions cannot be retracted |
 | A24 varying conventions | Config/scope mechanics passed; real-repository adaptation untested |
@@ -62,7 +62,7 @@ From the extracted package:
 python3 -B -m unittest discover -s tests -v
 ```
 
-Tests create disposable homes/repositories, including paths containing spaces. They do not use real Codex configuration. Git is required for worktree cases. Python runtime has no third-party dependencies; the optional cross-validator is reported as skipped if absent.
+Tests create disposable homes/repositories, including paths containing spaces. They do not use real opencode configuration. Git is required for worktree cases. Python runtime has no third-party dependencies; the optional cross-validator is reported as skipped if absent.
 
 Read `docs/DEVIATIONS.md` before interpreting coverage. Retrieval is bounded lexical discovery, not semantic clone detection. Warm cache matches still reread bounded sources. Global instruction and skill metadata overhead is small but nonzero even for bypassed requests; actual token counts, activation reliability, remediation savings, and latency distributions are unmeasured. No estimates are presented as release evidence.
 

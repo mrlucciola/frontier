@@ -2,7 +2,7 @@
 
 **Status:** Implementation candidate; not implemented, installed, or production-qualified.
 
-**Target:** A global, per-user Codex installation on macOS, available in CLI and IDE sessions, across repositories and outside repositories.
+**Target:** A global, per-user opencode installation on macOS, available in terminal and IDE sessions, across repositories and outside repositories.
 
 **Working name:** Contextual Work Framework (CWF). This name and the `cwf-` namespace are proposed implementation identifiers, not an established standard.
 
@@ -15,7 +15,7 @@ These are accepted requirements from the design conversation. Implementation def
 | ID | Requirement |
 | --- | --- |
 | R01 | Install once per user/computer; work across directories without mandatory repository installation or initialization. |
-| R02 | Support macOS Codex CLI and IDE extension; preserve personalized configurations and existing shared or personal skills. |
+| R02 | Support opencode on macOS in terminal and IDE sessions; preserve personalized configurations and existing shared or personal skills. |
 | R03 | Cover product work, strategy, architecture, software design, documentation, PRDs, ERDs, planning, and implementation. |
 | R04 | Treat ordinary prompts and batches as first-class inputs. Tickets, backlogs, and agentic ticketing systems are optional sources. |
 | R05 | Investigate relevant existing implementations, artifacts, conventions, and accepted decisions before introducing competing solutions. |
@@ -73,7 +73,7 @@ Team conventions normally guide implementation. If a convention conflicts with c
 
 ## 4. Installation and storage layout
 
-Proposed default paths; all framework-specific paths are conventions introduced by this specification, not native Codex features.
+Proposed default paths; all framework-specific paths are conventions introduced by this specification, not native opencode features.
 
 | Path | Purpose |
 | --- | --- |
@@ -81,7 +81,7 @@ Proposed default paths; all framework-specific paths are conventions introduced 
 | `~/.local/share/cwf/current` | Atomically switched pointer to active release |
 | `~/.local/bin/cwf` | Owned launcher; resolves the configured Python interpreter and active release |
 | `~/.agents/skills/cwf-<domain>` | Owned links to enabled skill directories in the active release |
-| `${CODEX_HOME:-~/.codex}/AGENTS.md` or active override | Optional, clearly delimited activation block; preserve all surrounding content |
+| `~/.config/opencode/AGENTS.md` | Optional, clearly delimited activation block; preserve all surrounding content |
 | `~/.config/cwf/config.json` | Personal framework settings, exclusions, and explicitly configured adapter bindings |
 | `~/.local/state/cwf/` | Private scope registry, SQLite state, task records, locks, receipts, and backups |
 | `<scope>/.cwf.json` | Optional team-maintained, data-only source mappings and conventions |
@@ -201,7 +201,7 @@ For the widget example, the useful outcome is candidates for v1, v2, migration d
 
 ### Framework configuration
 
-All keys below belong to CWF, not Codex. Effective order: command options, explicit session overrides, approved scope settings, personal defaults, built-in defaults. Security restrictions intersect: a narrower scope may add exclusions but cannot silently remove personal exclusions, grant external access, enable execution, or export data.
+All keys below belong to CWF, not opencode. Effective order: command options, explicit session overrides, approved scope settings, personal defaults, built-in defaults. Security restrictions intersect: a narrower scope may add exclusions but cannot silently remove personal exclusions, grant external access, enable execution, or export data.
 
 Configuration fields: `schema_version`, `mode` (`active`, `advisory`, `off`), enabled domains, source roots/exclusions, packet/scan limits, retention limits, adapter bindings, and local validation mappings. Repository `.cwf.json` is optional and data-only. Unknown fields, executable values, path escapes, and unsupported schema versions produce diagnostics; never evaluate arbitrary expressions.
 
@@ -268,7 +268,7 @@ Commands below are proposed CWF interfaces, not existing commands. All accept st
 | `cwf worktree list/create/remove` | Guarded local Git operations described above |
 | `cwf state inspect/prune/purge/export` | Explicit scoped lifecycle management |
 | `cwf enable/disable` | Per-domain or whole-install visibility and activity control |
-| `cwf install/upgrade/rollback/uninstall` | Manifest-owned deployment operations |
+| `cwf install/upgrade/rollback/uninstall` | Receipt-owned deployment operations |
 
 Runtime result statuses are `ok`, `partial`, `blocked`, `error`, and `skipped`. Exit codes: 0 for complete success or intentional skip; 2 for invalid input/configuration; 3 for missing prerequisite or authority block; 4 for required check failure; 5 for partial evidence; 6 for internal failure. JSON distinguishes pass/fail/unknown and includes reason codes. Callers must not treat nonzero discovery as evidence that nothing relevant exists.
 
@@ -283,8 +283,8 @@ No adapters for ICM, quiz, or Feynman are implemented by inference. Future integ
 1. `plan` inventories only relevant installation targets and reports collisions, prerequisites, active instruction file, existing owned state, and intended mutations. It does not scan work repositories or install dependencies.
 2. `apply` requires a matching plan fingerprint; abort on intervening target changes. Stage a versioned release and verify hashes before switching the active pointer.
 3. Create only namespaced skill links that are absent or proven CWF-owned. Same-name or foreign-path collisions are reported; no overwrite or duplicate installation.
-4. Add the optional activation block to the effective global instruction file. If an override is active, patching an ignored AGENTS.md is insufficient. Preserve bytes outside owned markers and detect malformed/duplicate markers. Managed/read-only files yield skill-only operation with an explicit limitation, not an attempt to bypass controls.
-5. Do not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, or unrelated skills. No wholesale rewrite of `config.toml`.
+4. Add the optional activation block to the global instruction file, `AGENTS.md` in the opencode config directory. Preserve bytes outside owned markers and detect malformed/duplicate markers. Managed/read-only files yield skill-only operation with an explicit limitation, not an attempt to bypass controls.
+5. Do not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, or unrelated skills. No rewrite of `opencode.json`.
 6. Validate links/targets and record an installation receipt with before/after hashes, prior file existence, release version, and backed-up owned changes. Use an installation lock and atomic per-file writes. If a step fails, perform conflict-aware recovery; filesystem changes across multiple targets are not assumed globally atomic.
 7. Rollback restores only unchanged owned portions/links. Preserve later user edits and report conflicts. Never restore a whole old AGENTS.md over unrelated later edits.
 8. Uninstall removes owned runtime links and an unmodified activation block. Preserve state/backups by default. Explicit purge is separate. Per-domain disabling removes only owned discovery links; whole-install disabling also removes/suspends the owned activation block.
@@ -330,7 +330,7 @@ No scenario below has been executed against an implementation yet. IDs are stabl
 | A18 | Huge repo, scan timeout, excessive matches | Bounded response; partial coverage/omission counts; no false clean result |
 | A19 | Cache corruption, locked DB, read-only state location | Safe fallback or clear persistence failure; no lost-update success claim |
 | A20 | Two personalized installations sharing one repository | Same usable procedures; independent private state and preserved personal settings |
-| A21 | Existing skill name/path collision and global override | No overwrite; actionable visibility diagnosis and effective activation handling |
+| A21 | Existing skill name/path collision and existing global rules | No overwrite; actionable visibility diagnosis and effective activation handling |
 | A22 | Upgrade failure and user edits after installation | Recover owned changes only; preserve unrelated edits and report rollback conflicts |
 | A23 | Enable/disable, uninstall, and optional adapters absent | Disabled tools/state inactive; no residual forced routing; core work succeeds without adapters |
 | A24 | Different local code/document conventions | Adapt through evidence or optional mappings; no hard-coded docs layout |
@@ -355,9 +355,9 @@ Earlier conversation token tables were hypothetical and are not release evidence
 
 ### Release gates
 
-- **G1 — Build correctness:** all required automated tests pass; manifest and schemas consistent; no unresolved destructive-operation defects.
+- **G1 -- Build correctness:** all required automated tests pass; schemas consistent; no unresolved destructive-operation defects.
 - **G2 — Behavioral candidate:** all critical safety/coexistence cases pass; A01–A06, A08, A11, A14–A18 demonstrate expected behavior in the tested model configuration. Any failure is reported, not averaged away.
-- **G3 — Local compatibility:** run clean/personalized install, activation, disable, upgrade, and rollback on macOS CLI and IDE. Record OS, architecture, Python, Git, Codex/extension, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
+- **G3 -- Local compatibility:** run clean/personalized install, activation, disable, upgrade, and rollback on macOS CLI and IDE. Record OS, architecture, Python, Git, opencode version and surface, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
 - **G4 — Pilot qualification:** minimum two independent users/computers, shared and independent repositories, and a non-Git workspace. Include ticket-free single/batch work. Human review confirms useful results and acceptable correction/overhead behavior. This small pilot does not establish universal reliability.
 
 Only combinations passing the relevant gates may be labeled qualified. “Production-ready” must identify its supported configurations and known limitations; it is not a blanket label for the archive.
@@ -390,9 +390,9 @@ Only combinations passing the relevant gates may be labeled qualified. “Produc
 | M5 — Deployment | Installer plan/apply, receipts, toggles, doctor, upgrade, rollback, uninstall | Temporary-home coexistence/recovery tests pass; versioned ZIP reproducible |
 | M6 — Target pilot | macOS CLI/IDE qualification and paired real-task pilot | Evidence matrix, measured outcomes, limitations, and qualified support list |
 
-M1–M5 produce the installation candidate. M6 requires actual target environments; do not substitute this authoring environment's tests for macOS or real Codex behavior.
+M1-M5 produce the installation candidate. M6 requires actual target environments; do not substitute this authoring environment's tests for macOS or real opencode behavior.
 
-The candidate ZIP must include source, runtime payload, skills/references, schemas, fixtures/tests, this specification, installation/rollback guidance, qualification prompts, version/ownership manifest, checksums, and a validation ledger separating executed from pending checks. It must not contain credentials, user source code, local caches, real prompts, or observations. Packaging does not activate or install it in the author's current account.
+The candidate ZIP must include source, runtime payload, skills/references, schemas, fixtures/tests, this specification, installation/rollback guidance, and qualification prompts. It must not contain credentials, user source code, local caches, real prompts, or observations. Packaging does not activate or install it in the author's current account.
 
 ## 17. Source grounding and design decisions
 
@@ -404,12 +404,12 @@ Adapted: scoped instructions, narrow triggers, direct invocation, evidence-based
 
 ### Current platform grounding
 
-Official documentation consulted during specification drafting:
+Official opencode documentation consulted when the specification was retargeted to opencode (details in `docs/PLATFORM.md`):
 
-- [Build skills](https://learn.chatgpt.com/docs/build-skills): native progressive disclosure, personal/repository discovery paths, same-name collision behavior, and symlink support. These support the native skill design; actual visibility is still qualified locally.
-- [Custom instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md): global/project guidance and override discovery. These motivate effective-file detection and preserving personalized instructions.
-- [Config basics](https://learn.chatgpt.com/docs/config-file/config-basic): user/project configuration and trust boundaries. The installer avoids changing unrelated runtime settings.
-- [Hooks](https://learn.chatgpt.com/docs/hooks): hook discovery/merging and trust review. Hooks are deferred so baseline behavior does not depend on installing or trusting additional lifecycle handlers.
+- [Skills](https://opencode.ai/docs/skills/): metadata-first loading through the `skill` tool, global/project discovery paths including `~/.agents/skills`, and path-derived IDs where a later duplicate overrides an earlier one. These support the native skill design; symlink support is not documented, and actual visibility is still qualified locally.
+- [Instructions](https://opencode.ai/docs/instructions/): global and project `AGENTS.md` files and `instructions` entries are combined, with no override file. This motivates an owned block in the global file that preserves personalized instructions.
+- [Config](https://opencode.ai/docs/config/): user/project/system configuration precedence. The installer avoids changing unrelated runtime settings.
+- [Plugins](https://opencode.ai/docs/plugins/): plugin discovery and hook handlers. Plugins are deferred so baseline behavior does not depend on installing or trusting additional lifecycle handlers.
 
 Platform behavior can change. M5/M6 must verify supported versions against contemporaneous documentation and the actual installed clients; no version-specific compatibility has been established in this specification.
 

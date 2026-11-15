@@ -1,4 +1,0 @@
-interface:
-  display_name: "CWF Product"
-  short_description: "Context-aware product workflows and verification"
-  default_prompt: "Use $cwf-product to handle this task with relevant context and proportionate verification."

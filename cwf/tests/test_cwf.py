@@ -1,5 +1,4 @@
 import copy
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -21,9 +20,6 @@ from cwf.state import State
 from cwf.operations import checkpoint, resume, observation, batch_validate, run_checks, worktree
 from cwf.adapters import LocalTextAdapter
 from cwf import installer
-
-spec=importlib.util.spec_from_file_location('packager',ROOT/'scripts/package.py')
-packager=importlib.util.module_from_spec(spec); spec.loader.exec_module(packager)
 
 
 class Environment(unittest.TestCase):
@@ -340,17 +336,14 @@ class InstallTests(Environment):
         p=installer.plan(self.home,ROOT,guidance=guidance)
         return installer.apply(p,self.home)
     def test_install_preserves_personal_config_and_uninstall(self):
-        agents=self.home/'.codex/AGENTS.md'; agents.parent.mkdir(); agents.write_text('Personal instructions.\n')
-        config=self.home/'.codex/config.toml'; config.write_text('model = "personal-choice"\n')
+        agents=self.home/'.config/opencode/AGENTS.md'; agents.parent.mkdir(parents=True); agents.write_text('Personal instructions.\n')
+        config=self.home/'.config/opencode/opencode.json'; config.write_text('{"model":"personal/choice"}\n')
         self.install()
-        self.assertEqual(config.read_text(),'model = "personal-choice"\n')
+        self.assertEqual(config.read_text(),'{"model":"personal/choice"}\n')
         self.assertIn('Personal instructions.',agents.read_text())
         link=self.home/'.agents/skills/cwf-build'; self.assertTrue(link.is_symlink())
         installer.revert(self.home)
         self.assertEqual(agents.read_text(),'Personal instructions.\n'); self.assertFalse(link.is_symlink())
-    def test_effective_override_used(self):
-        d=self.home/'.codex'; d.mkdir(); (d/'AGENTS.md').write_text('base'); (d/'AGENTS.override.md').write_text('override')
-        self.install(); self.assertEqual((d/'AGENTS.md').read_text(),'base'); self.assertIn(installer.START,(d/'AGENTS.override.md').read_text())
     def test_foreign_collision_no_overwrite(self):
         p=self.home/'.agents/skills/cwf-build'; p.mkdir(parents=True); (p/'SKILL.md').write_text('foreign')
         with self.assertRaises(Fault): self.install()
@@ -360,15 +353,15 @@ class InstallTests(Environment):
         with self.assertRaises(Fault): self.install()
     def test_stale_plan_refused(self):
         p=installer.plan(self.home,ROOT)
-        d=self.home/'.codex'; d.mkdir(); (d/'AGENTS.md').write_text('new changes')
+        d=self.home/'.config/opencode'; d.mkdir(parents=True); (d/'AGENTS.md').write_text('new changes')
         with self.assertRaises(Fault): installer.apply(p,self.home)
         self.assertEqual((d/'AGENTS.md').read_text(),'new changes')
     def test_uninstall_preserves_later_unrelated_edits(self):
-        self.install(); agents=self.home/'.codex/AGENTS.md'; agents.write_text(agents.read_text()+'\nLater personal rule.\n')
+        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text()+'\nLater personal rule.\n')
         installer.revert(self.home)
         self.assertIn('Later personal rule.',agents.read_text()); self.assertNotIn(installer.START,agents.read_text())
     def test_edited_owned_block_refuses_uninstall_without_partial_changes(self):
-        self.install(); agents=self.home/'.codex/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
+        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
         with self.assertRaises(Fault): installer.revert(self.home)
         self.assertTrue((self.home/'.agents/skills/cwf-build').is_symlink())
     def test_enable_disable_and_installed_launcher(self):
@@ -401,20 +394,21 @@ class InstallTests(Environment):
         self.install(); checkpoint(self.home,{'scope':str(self.repo),'record':self.task()},self.config)
         bundle=self.base/'new bundle'; shutil.copytree(ROOT,bundle,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         f=bundle/'cwf/__init__.py'; f.write_text(f.read_text().replace('0.1.0','0.1.1'))
-        packager.manifest(bundle,'0.1.1')
         installer.apply(installer.plan(self.home,bundle),self.home)
         self.assertTrue(str((self.home/'.local/share/cwf/current').resolve()).endswith('0.1.1'))
         installer.revert(self.home,rollback=True)
         self.assertTrue(str((self.home/'.local/share/cwf/current').resolve()).endswith('0.1.0'))
         self.assertTrue(resume(self.home,{'scope':str(self.repo),'id':'task1'},self.config)['ready_to_resume'])
     def test_symlink_destination_refused(self):
-        outside=self.base/'outside'; outside.mkdir(); (self.home/'.codex').symlink_to(outside)
+        outside=self.base/'outside'; outside.mkdir(); (self.home/'.config').mkdir(); (self.home/'.config/opencode').symlink_to(outside)
         with self.assertRaises(Fault): self.install()
         self.assertFalse((outside/'AGENTS.md').exists())
-    def test_tampered_bundle_refused(self):
-        bundle=self.base/'tampered'; shutil.copytree(ROOT,bundle,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-        (bundle/'cwf.py').write_text('tampered')
-        with self.assertRaises(Fault): installer.verify_bundle(bundle)
+    def test_bundle_changed_after_plan_refused(self):
+        bundle=self.base/'changed'; shutil.copytree(ROOT,bundle,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+        p=installer.plan(self.home,bundle)
+        (bundle/'cwf.py').write_text('changed')
+        with self.assertRaises(Fault): installer.apply(p,self.home)
+        self.assertFalse((self.home/'.local/share/cwf/releases').exists())
 
     def test_toggle_and_uninstall_failures_recover(self):
         self.install(); before=installer.receipt(installer.paths(self.home)); original=installer.restore
@@ -443,7 +437,7 @@ class InstallTests(Environment):
         self.assertFalse(p['launcher'].exists())
 
     def test_toggle_conflict_does_not_partially_disable(self):
-        self.install(); agents=self.home/'.codex/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
+        self.install(); agents=self.home/'.config/opencode/AGENTS.md'; agents.write_text(agents.read_text().replace('Keep discovery','Changed discovery'))
         before=(self.home/'.config/cwf/config.json').read_bytes()
         with self.assertRaises(Fault): installer.toggle(self.home,None,False)
         self.assertEqual((self.home/'.config/cwf/config.json').read_bytes(),before)
@@ -456,7 +450,7 @@ class InstallTests(Environment):
     def test_later_instructions_survive_toggle_reapply_and_uninstall(self):
         for intermediate in ('disable','reapply','disable-enable'):
             target=self.base/intermediate; target.mkdir()
-            agents=target/'.codex/AGENTS.md'; agents.parent.mkdir(); agents.write_text('Original\n')
+            agents=target/'.config/opencode/AGENTS.md'; agents.parent.mkdir(parents=True); agents.write_text('Original\n')
             installer.apply(installer.plan(target,ROOT),target)
             agents.write_text(agents.read_text()+'Later\n')
             if intermediate=='reapply': installer.apply(installer.plan(target,ROOT),target)

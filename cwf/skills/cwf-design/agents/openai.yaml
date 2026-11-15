@@ -1,4 +1,0 @@
-interface:
-  display_name: "CWF Design"
-  short_description: "Context-aware design workflows and verification"
-  default_prompt: "Use $cwf-design to handle this task with relevant context and proportionate verification."

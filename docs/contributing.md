@@ -147,6 +147,5 @@ the row when the component conforms.
 
 | Component | Rule | Reason |
 | --- | --- | --- |
-| `cwf` | `C-CLAUDE` | Every regular file under `cwf/` becomes part of its release manifest. |
+| `cwf` | `C-CLAUDE` | Every regular file under `cwf/` ships in its release bundle. |
 | `cwf` | `A-CWD` | cwf tests are documented to run from `cwf/`. |
-| `cwf` | `L-ROOT` | cwf routing documents use relative links; `cwf/` is not edited for repository conventions. |

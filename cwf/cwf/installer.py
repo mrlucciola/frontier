@@ -24,11 +24,11 @@ GUIDANCE=("For substantive product, architecture, documentation, planning, or co
 BLOCK="\n"+START+"\n"+GUIDANCE+"\n"+END+"\n"
 
 
-def paths(home,codex_home=None):
+def paths(home,config_root=None):
     home=Path(home).resolve()
     return {"home":home,"base":home/".local/share/cwf","skills":home/".agents/skills",
             "launcher":home/".local/bin/cwf","config":home/".config/cwf/config.json",
-            "state":home/".local/state/cwf","codex":Path(codex_home or home/".codex").absolute()}
+            "state":home/".local/state/cwf","client":Path(config_root or home/".config/opencode").absolute()}
 
 
 def snapshot(path):
@@ -66,35 +66,20 @@ def restore(path,snap):
     else: raise Fault("Unsupported managed target kind","blocked")
 
 
-def verify_bundle(bundle):
-    bundle=Path(bundle).resolve()
-    manifest=read_json(bundle/"MANIFEST.json")
-    if manifest.get("schema_version")!="cwf-release/v1" or not re.fullmatch(r"\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?",manifest.get("version","")):
-        raise Fault("Invalid release manifest")
-    files=manifest.get("files")
-    if not isinstance(files,dict) or not files: raise Fault("Empty manifest")
-    seen=set()
-    from .common import within
-    for name,h in files.items():
-        if name.casefold() in seen: raise Fault("Case-insensitive manifest collision","blocked")
-        seen.add(name.casefold())
-        p=within(bundle,name)
-        if not p.is_file() or p.is_symlink() or digest(p.read_bytes())!=h:
-            raise Fault(f"Release integrity failed: {name}","blocked")
-    actual={p.relative_to(bundle).as_posix() for p in bundle.rglob("*") if p.is_file() and "__pycache__" not in p.parts}
-    if actual-set(files)-{"MANIFEST.json","CHECKSUMS.sha256"}:
-        raise Fault("Release contains unmanifested files","blocked")
-    if any(p.is_symlink() for p in bundle.rglob("*")):
-        raise Fault("Source release must contain only regular files/directories","blocked")
-    return manifest
+def read_bundle(bundle):
+    bundle=Path(bundle).resolve(); init=bundle/"cwf/__init__.py"
+    found=re.search(r'(?m)^VERSION\s*=\s*"(\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?)"',init.read_text()) if init.is_file() else None
+    if not found: raise Fault("Bundle has no valid release version")
+    files={}
+    for p in sorted(bundle.rglob("*")):
+        if p.is_symlink(): raise Fault("Source release must contain only regular files/directories","blocked")
+        if "__pycache__" in p.parts or p.suffix==".pyc" or not p.is_file(): continue
+        files[p.relative_to(bundle).as_posix()]=digest(p.read_bytes())
+    return {"version":found.group(1),"files":files}
 
 
-def effective_agents(p):
-    override=p["codex"]/"AGENTS.override.md"
-    if override.is_symlink(): raise Fault("Symlinked instruction target requires manual integration","blocked")
-    if override.is_file() and override.stat().st_size:
-        return override
-    return p["codex"]/"AGENTS.md"
+def instruction_file(p):
+    return p["client"]/"AGENTS.md"
 
 
 def marker_body(text):
@@ -116,7 +101,7 @@ def without_block(text,body):
 def launcher_text(p,python):
     # POSIX sh launcher uses repr-like shell quoting only for known installation paths.
     import shlex
-    return "#!/bin/sh\n# CWF-owned launcher\nexec "+shlex.quote(python)+" -B "+shlex.quote(str(p["base"]/"current/cwf.py"))+" --home "+shlex.quote(str(p["home"]))+" --codex-home "+shlex.quote(str(p["codex"]))+' "$@"\n'
+    return "#!/bin/sh\n# CWF-owned launcher\nexec "+shlex.quote(python)+" -B "+shlex.quote(str(p["base"]/"current/cwf.py"))+" --home "+shlex.quote(str(p["home"]))+" --config-root "+shlex.quote(str(p["client"]))+' "$@"\n'
 
 
 def file_snap(text,mode=0o600):
@@ -135,18 +120,17 @@ def require_no_pending(p):
                 raise Fault("Interrupted installation transaction; run install recover first","blocked")
 
 
-def plan(home,bundle,codex_home=None,guidance=True):
-    p=paths(home,codex_home); manifest=verify_bundle(bundle)
+def plan(home,bundle,config_root=None,guidance=True):
+    p=paths(home,config_root); source=read_bundle(bundle)
     previous=receipt(p)
     require_no_pending(p)
     if previous and previous.get("status") not in ("installed","disabled"):
         raise Fault("Installation recovery required before further changes","blocked")
-    if previous and previous.get("codex_home")!=str(p["codex"]):
-        raise Fault("Existing installation uses another Codex home; uninstall or use that home","blocked")
-    version=manifest["version"]; release=p["base"]/"releases"/version
-    if release.exists():
-        old=verify_bundle(release)
-        if old!=manifest: raise Fault("Release version already exists with different bytes","blocked")
+    if previous and previous.get("config_root")!=str(p["client"]):
+        raise Fault("Existing installation uses another client config root; uninstall or use that root","blocked")
+    version=source["version"]; release=p["base"]/"releases"/version
+    if release.exists() and read_bundle(release)!=source:
+        raise Fault("Release version already exists with different bytes","blocked")
     changes=[]
     owned={c["path"]:c for c in previous.get("changes",[])} if previous else {}
     def add(path,after,kind="normal"):
@@ -183,13 +167,9 @@ def plan(home,bundle,codex_home=None,guidance=True):
         link=p["skills"]/("cwf-"+d)
         after={"kind":"link","target":str(p["base"]/"current/skills"/("cwf-"+d))} if active and d in domains else {"kind":"absent"}
         add(link,after)
-    agents=effective_agents(p)
-    if previous:
-        old_targets=[Path(c["path"]) for c in previous["changes"] if c["kind"]=="guidance"]
-        if old_targets and not guidance:
-            raise Fault("Existing guidance is owned; preserve it on upgrade or uninstall before switching to skill-only","blocked")
-        if old_targets and old_targets[0]!=agents:
-            raise Fault("Effective global instruction file changed; remove old integration before moving it","blocked")
+    agents=instruction_file(p)
+    if previous and not guidance and any(c["kind"]=="guidance" for c in previous["changes"]):
+        raise Fault("Existing guidance is owned; preserve it on upgrade or uninstall before switching to skill-only","blocked")
     if guidance:
         before=snapshot(agents)
         if before["kind"] not in ("file","absent"): raise Fault("Instruction target must be a regular file","blocked")
@@ -200,8 +180,8 @@ def plan(home,bundle,codex_home=None,guidance=True):
         if existing: text=text.replace(existing,body,1) if active else without_block(text,existing)
         elif active: text+=BLOCK
         add(agents,file_snap(text,before.get("mode",0o600)),"guidance")
-    output={"schema_version":"cwf-install/v1","home":str(p["home"]),"codex_home":str(p["codex"]),
-            "bundle":str(Path(bundle).resolve()),"version":version,"manifest_digest":digest(manifest),
+    output={"schema_version":"cwf-install/v1","home":str(p["home"]),"config_root":str(p["client"]),
+            "bundle":str(Path(bundle).resolve()),"version":version,"bundle_digest":digest(source["files"]),
             "guidance":guidance,"changes":changes,"previous_receipt_digest":digest(previous)}
     output["fingerprint"]=digest(output)
     return output
@@ -219,25 +199,24 @@ def install_lock(p):
         finally: fcntl.flock(f,fcntl.LOCK_UN)
 
 
-def apply(plan_data,home,codex_home=None):
-    p=paths(home,codex_home)
-    if plan_data.get("home")!=str(p["home"]) or plan_data.get("codex_home")!=str(p["codex"]):
+def apply(plan_data,home,config_root=None):
+    p=paths(home,config_root)
+    if plan_data.get("home")!=str(p["home"]) or plan_data.get("config_root")!=str(p["client"]):
         raise Fault("Plan belongs to a different target home","blocked")
     with install_lock(p):
-        fresh=plan(home,plan_data["bundle"],codex_home,plan_data["guidance"])
+        fresh=plan(home,plan_data["bundle"],config_root,plan_data["guidance"])
         if fresh!=plan_data: raise Fault("Plan is stale or altered; regenerate and review","blocked")
-        old=receipt(p); manifest=verify_bundle(fresh["bundle"])
+        old=receipt(p)
         release=p["base"]/"releases"/fresh["version"]
         if not release.exists():
             private_dir(release.parent)
             staging=Path(tempfile.mkdtemp(prefix=".stage-",dir=release.parent))
             try:
-                for rel in [*manifest["files"],"MANIFEST.json","CHECKSUMS.sha256"]:
-                    source=Path(fresh["bundle"])/rel
-                    if not source.exists(): continue
+                for rel in read_bundle(fresh["bundle"])["files"]:
                     dest=staging/rel; dest.parent.mkdir(parents=True,exist_ok=True)
-                    shutil.copyfile(source,dest)
-                verify_bundle(staging)
+                    shutil.copyfile(Path(fresh["bundle"])/rel,dest)
+                if digest(read_bundle(staging)["files"])!=fresh["bundle_digest"]:
+                    raise Fault("Bundle changed during apply; regenerate and review","blocked")
                 os.replace(staging,release)
             finally:
                 if staging.exists(): shutil.rmtree(staging)
@@ -255,7 +234,7 @@ def apply(plan_data,home,codex_home=None):
                 c=dict(c); c["original"]=prior.get(c["path"],{}).get("original",c["before"])
                 changes.append(c)
             rec={"schema_version":"cwf-install/v1","status":"installed","version":fresh["version"],
-                 "codex_home":str(p["codex"]),"changes":changes,"transaction":tx["id"],"installed_at":now()}
+                 "config_root":str(p["client"]),"changes":changes,"transaction":tx["id"],"installed_at":now()}
             write_json(p["state"]/"installation.json",rec)
             tx["status"]="complete"; write_json(history,tx)
             return {"version":rec["version"],"receipt":str(p["state"]/"installation.json"),"transaction":tx["id"]}
@@ -318,8 +297,8 @@ def management_transaction(p,changes,new_receipt):
         raise
 
 
-def revert(home,codex_home=None,rollback=False):
-    p=paths(home,codex_home)
+def revert(home,config_root=None,rollback=False):
+    p=paths(home,config_root)
     with install_lock(p):
         require_no_pending(p)
         rec=receipt(p)
@@ -346,9 +325,9 @@ def revert(home,codex_home=None,rollback=False):
         return {"changed":True,"state_and_releases":"retained","rolled_back":rollback}
 
 
-def toggle(home,codex_home,enabled,domain=None):
+def toggle(home,config_root,enabled,domain=None):
     if domain is not None and domain not in DOMAINS: raise Fault("Unknown domain")
-    p=paths(home,codex_home)
+    p=paths(home,config_root)
     with install_lock(p):
         require_no_pending(p)
         rec=receipt(p)
@@ -390,9 +369,9 @@ def toggle(home,codex_home,enabled,domain=None):
         return {"mode":config.get("mode"),"domains":config.get("domains",DOMAINS),"loaded_context":"not_retracted"}
 
 
-def recover(home,codex_home=None):
+def recover(home,config_root=None):
     """Recover interrupted apply transactions using exact before/after states."""
-    p=paths(home,codex_home); recovered=[]
+    p=paths(home,config_root); recovered=[]
     with install_lock(p):
         for f in sorted((p["state"]/"transactions").glob("*.json")):
             tx=read_json(f)

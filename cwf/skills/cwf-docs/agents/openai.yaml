@@ -1,4 +1,0 @@
-interface:
-  display_name: "CWF Docs"
-  short_description: "Context-aware docs workflows and verification"
-  default_prompt: "Use $cwf-docs to handle this task with relevant context and proportionate verification."
