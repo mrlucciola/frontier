@@ -47,7 +47,8 @@ the `pm` that a live session is using.
 5. The frontier reader changes exist on a parked branch (step 0): a frontier ticket
    rewrote `done_gate.py`, `session-title.py`, `posture/render/check.py` and the rest
    of the step 4A table for the new pm, was tested against the new pm by path, and ends
-   parked with `wt park <id> --waits-on "cutover step 4A"`. Step 0 files and works it;
+   parked with `wt park <id> --waits-on "cutover step 4A" --findings none --note "<what
+   was tested, with the commands>"` (step 0 item 4 has the exact line). Step 0 files and works it;
    do it before step 1. Without it step 4A has nothing to merge.
 6. Overseer ticket fc-5e5a20 fixes pm's resolution of nested stores. It is not required:
    step 2.2 imports deepest path first, which is the only guard until it lands. Check
@@ -119,7 +120,7 @@ runbook, so the operator files the ticket.
 
    ```sh
    cd /Users/matthias/frontier
-   pm ticket create --label tooling --body 'Rewrite the frontier readers of the old pm for the new pm, on this branch, before the cutover. The rows are the table in step 4A of /Users/matthias/projects/frontier-clean/docs/programs/pm-wt-rewrite/CUTOVER.md (bin/test, tests/test_bin_test_pm_validate.py, hooks/core-hooks done_gate.py, session-title.py and their tests, the pm ticket prose in core-hooks, posture/render/check.py). New verbs and states: pm help in /Users/matthias/projects/frontier-clean/pm/cli/pm. Wherever a reader runs pm by name, take the executable from the environment variable PM_BIN, default pm, so the tests can point at /Users/matthias/projects/frontier-clean/pm/cli/pm while PATH still holds the old pm. Run the tests with PM_BIN set (commands in step 0 of CUTOVER.md), commit on the ticket branch, and park the ticket with wt park --waits-on "cutover step 4A". Do not merge, do not deploy, do not run wt finish: the operator merges it with git merge --ff-only in cutover step 4A.' 'Frontier readers of the old pm: move to the new pm verbs and states'
+   pm ticket create --label tooling --body 'Rewrite the frontier readers of the old pm for the new pm, on this branch, before the cutover. The rows are the table in step 4A of /Users/matthias/projects/frontier-clean/docs/programs/pm-wt-rewrite/CUTOVER.md (bin/test, tests/test_bin_test_pm_validate.py, hooks/core-hooks done_gate.py, session-title.py and their tests, the pm ticket prose in core-hooks, posture/render/check.py). tests/test_bin_test_pm_validate.py asserts lint WARN lines for dead or .local/ paths and reads .pm/tickets.jsonl, and pm doctor has no WARN lines and no tickets.jsonl: this ticket must decide that test semantics, not just swap the verbs. New verbs and states: pm help in /Users/matthias/projects/frontier-clean/pm/cli/pm. Wherever a reader runs pm by name, take the executable from the environment variable PM_BIN, default pm, so the tests can point at /Users/matthias/projects/frontier-clean/pm/cli/pm while PATH still holds the old pm. Run the tests with PM_BIN set (commands in step 0 of CUTOVER.md), commit on the ticket branch, and park the ticket with: wt park <id> --waits-on "cutover step 4A" --findings none --note "<what was tested, with the commands>" (the old wt park refuses a branch with commits unless --findings and a note are given). Do not merge, do not deploy, do not run wt finish: the operator merges it with git merge --ff-only in cutover step 4A.' 'Frontier readers of the old pm: move to the new pm verbs and states'
    ```
 
    Expect one line holding the new id (`fr-......`). The ticket carries the `tooling`
@@ -150,19 +151,24 @@ runbook, so the operator files the ticket.
    would refuse there. `tests/test_posture.py` fakes `ticket_state` and runs here;
    `check.py` itself runs for real in step 4A item 4. I have not read how
    `tests/test_bin_test_pm_validate.py` is run (the first two lines of the file say).
-4. Park it, do not merge it. The branch keeps the work.
+   Not proven here: `--hermetic` skips the one step that calls the new pm
+   (`bin/test:160-161`), and `done_gate.py` and `session-title.py` run only through
+   fixtures. The proof against the real new pm is the direct runs in step 4A item 4.
+4. Park it, do not merge it. The branch keeps the work. The old `wt park` refuses a
+   branch with commits when `findings_required` is set, unless `--findings` is given,
+   and `--findings none` needs a note (`runtime-tools/wt/src/wt_core.py:667-678`,
+   `:1132-1135`), so give both. Replace the note text with what the ticket actually ran,
+   commands included.
 
    ```sh
    cd /Users/matthias/frontier
-   wt park <id> --waits-on "cutover step 4A"
+   wt park <id> --waits-on "cutover step 4A" --findings none --note "tested with PM_BIN=/Users/matthias/projects/frontier-clean/pm/cli/pm: bin/test --hermetic exit 0; tests/test_bin_test_pm_validate.py exit 0; the core-hooks .deploy.json test files exit 0. check.py and the real-pm runs of done_gate.py and session-title.py are cutover step 4A item 4."
    git --no-pager -C /Users/matthias/frontier log --oneline main..<id>
    wt pending
    ```
 
    Expect `wt park` to remove the worktree and park the ticket, the `log` to list the
-   ticket's commits, and `wt pending` to list `<id>`. I have not run `wt park` with
-   `findings_required` set; `wt park` accepts `--findings`, so if it refuses naming
-   findings, repeat with `--findings none`.
+   ticket's commits, and `wt pending` to list `<id>`.
 
 
 ## Step 1. Freeze the old pm and wt
@@ -173,8 +179,9 @@ exists only in the old `tickets.jsonl`.
 1. Close every agent session that uses pm, and stop any other writer. Then finish or
    park every worktree the old wt started, with the old wt, so none is open when the new
    wt takes over. I have not checked whether the new `wt finish` accepts a worktree the
-   old wt started, so this removes the question. Do this before item 2: `finish` and
-   `park` rewrite `tickets.jsonl`, and item 2 hashes it.
+   old wt started, so this removes the question. Do this, and item 2 whose remedy can
+   rewrite `tickets.jsonl`, before item 4: `finish` and `park` rewrite `tickets.jsonl`,
+   and item 4 hashes it.
 
    ```sh
    git -C /Users/matthias/projects/frontier-clean worktree list
@@ -190,7 +197,30 @@ exists only in the old `tickets.jsonl`.
    `/Users/matthias/work/portside/engineering`, `/Users/matthias/projects/macos-orchestration`.
    `/Users/matthias/work/lai/00-initialization/.worktrees/lin-381db0` exists today
    (read 2026-11-15): finish or park it here.
-2. Record the state to prove nothing moved, after item 1 and with no writer running.
+2. Prove the step 0 branch still fast-forwards onto frontier `main`, so step 4A item 2
+   cannot refuse. No other commit may land on frontier `main` from here to step 4A. This
+   comes before the hashes because its remedy rewrites frontier's `tickets.jsonl`.
+
+   ```sh
+   git -C /Users/matthias/frontier merge-base --is-ancestor main <id>
+   ```
+
+   Expect exit 0 and no output. Exit 1 means `main` moved: resume the ticket with
+   `wt start <id> --as <actor>` from `/Users/matthias/frontier`, run `git -C
+   /Users/matthias/frontier/.worktrees/<id> rebase main`, rerun step 0 item 3, and
+   park it again with the line of step 0 item 4, then repeat this item.
+3. Record a baseline of the posture gate with the old pm, as the posture gate in
+   frontier's instructions names it. A red result here is fixed before the cutover,
+   not inside it: step 4A item 4 runs the same command and a red there rolls the
+   cutover back.
+
+   ```sh
+   /usr/bin/python3 /Users/matthias/frontier/posture/render/check.py
+   ```
+
+   Expect exit 0. If it is red (for example an ack owner that is already done), stop and
+   fix that first; I have not run it.
+4. Record the state to prove nothing moved, after items 1 to 3 and with no writer running.
 
    ```sh
    git --no-pager -C /Users/matthias/frontier log -1 --format=%h -- runtime-tools/pm runtime-tools/wt
@@ -201,17 +231,6 @@ exists only in the old `tickets.jsonl`.
 
    The second command prints nothing. Keep the first command's hash: no commit may
    touch those two directories until step 8.
-3. Prove the step 0 branch still fast-forwards onto frontier `main`, so step 4A item 2
-   cannot refuse. No other commit may land on frontier `main` from here to step 4A.
-
-   ```sh
-   git -C /Users/matthias/frontier merge-base --is-ancestor main <id>
-   ```
-
-   Expect exit 0 and no output. Exit 1 means `main` moved: resume the ticket with
-   `wt start <id> --as <actor>` from `/Users/matthias/frontier`, run `git -C
-   /Users/matthias/frontier/.worktrees/<id> rebase main`, rerun step 0 item 3, and
-   `wt park <id> --waits-on "cutover step 4A"` again, then repeat this item.
 
 ## Step 2. Import every store
 
@@ -424,7 +443,7 @@ against `/Users/matthias/projects/frontier-clean/pm/cli/pm` while `PATH` still h
 | --- | --- | --- |
 | `bin/test:55` | `sys.path.insert(0, .../runtime-tools/wt/src)` to import `wt_core`; used at `:125` (`known_red_scan`) and `:180` (`read_known_red`) | `wt_core` has no successor: the new wt reads `.wt/known-red` in zsh. No store sets `known_red` today (Part A, step 5), so remove the known-red path from `bin/test` (lines 34-40, 55, 121-125, 180, 258-264) or give it a new reader; a decision for the frontier ticket, I have not read `bin/test` past the hit lines |
 | `bin/test:166`, `:28-29`, `:135-136`, `:152-203` | `pm_validate_step` runs `runtime-tools/pm/cli/pm ticket --store <main checkout> lint` | the new pm has `pm doctor` and no `ticket` verb or `--store` flag (`pm help`); run `$PM_BIN doctor` (default `pm`, see above) with the main checkout as working directory and keep exit 1 or 2 as FAIL. `--hermetic` skips this step (`bin/test:161`), so no hermetic run exercises it; step 2.4 already ran `doctor` on every store |
-| `tests/test_bin_test_pm_validate.py:25`, `:56`, `:59`, `:78` | `PM = REPO/runtime-tools/pm/cli/pm`; builds a scratch store with `ticket init --prefix tt` and `ticket create` | `PM` from `PM_BIN` (default `pm`); `init tt` and `new "<title>"` (`pm help`); the test needs no real store, so it runs before the cutover with `PM_BIN` set |
+| `tests/test_bin_test_pm_validate.py:25`, `:56`, `:59`, `:78` | `PM = REPO/runtime-tools/pm/cli/pm`; builds a scratch store with `ticket init --prefix tt` and `ticket create` | `PM` from `PM_BIN` (default `pm`); `init tt` and `new "<title>"` (`pm help`); the test needs no real store, so it runs before the cutover with `PM_BIN` set. The frontier ticket must decide this test's semantics, not only swap verbs: the test asserts lint WARN lines for dead or `.local/` paths and reads `.pm/tickets.jsonl` (`:90`), and `pm doctor` prints no WARN lines and the new pm has no `tickets.jsonl` |
 | `hooks/core-hooks/policies/done_gate.py:92-99` | `_load_pm_stop` imports `hooks/pm/stop.py` for `token_of` (`:253`) and `split_assignee` (`:257`); raises `Unavailable` when missing, which fails open | copy the two functions (`hooks/pm/stop.py` `token_of`: first 8 hex of sha256 of the session id) into the policy, or drop the claim check. I have not checked that the new pm computes its `by` token the same way (`pm/tools`); do that first |
 | `hooks/core-hooks/policies/done_gate.py:129` | `pm ticket show <id> --json` | `pm show <id> --json` |
 | `done_gate.py:131` | looks for `no such ticket` in stderr | I have not found what the new pm prints for an unknown id; read `pm/tools` refusal text before editing |
@@ -506,21 +525,88 @@ findings value (`wt/docs/contract.md:76-78`), and the branch is merged by `git` 
    ```sh
    /usr/bin/python3 /Users/matthias/frontier/bin/test --hermetic
    /usr/bin/python3 /Users/matthias/frontier/posture/render/check.py
+   mkdir -p /Users/matthias/frontier/.tmp
+   printf '%s' '{"session_id":"cutover-4a-check","cwd":"/Users/matthias/frontier","last_assistant_message":"Done.\n\nTicket: fr-453840 done","background_tasks":[],"session_crons":[]}' | env CLAUDE_HOOKS_LEDGER_DIR=/Users/matthias/frontier/.tmp/cutover-ledger CLAUDE_HOOKS_STATE_DIR=/Users/matthias/frontier/.tmp/cutover-state /usr/bin/python3 /Users/matthias/frontier/hooks/core-hooks/dispatch.py stop
+   cat /Users/matthias/frontier/.tmp/cutover-ledger/*
+   printf '%s' '{"hook_event_name":"UserPromptSubmit","session_id":"cutover-4a-title","cwd":"/Users/matthias/projects/frontier-clean","prompt":"please check fc-10981e for the cutover"}' | env SESSION_TITLE_NO_MODEL=1 SESSION_TITLE_STATE_DIR=/Users/matthias/frontier/.tmp/cutover-title-state /usr/bin/python3 /Users/matthias/frontier/hooks/core-hooks/session-title.py
    ```
 
-   Expect exit 0 from both. `check.py` resolves each ack owner with `pm show` in
-   `/Users/matthias/frontier` (`posture/render/check.py:44`, `:103`), so it can only run for real here,
-   not in step 0, where that store has no log yet. On a red result do not `reset`. The
-   merged commits are on `main` and expect the new pm, so undo them with a new commit,
-   prove the tree is back, then roll back step 4 (step 10 item 1). The deploy has not
-   run, so the deployed hooks are untouched.
+   Expect exit 0 from the first two. `check.py` resolves each ack owner with `pm show` in
+   `/Users/matthias/frontier` (`posture/render/check.py:44`, `:103`), so it can only run
+   for real here, not in step 0, where that store has no log yet. The two direct runs
+   are the real-pm proof of the rewritten readers, run by hand from the merged main
+   checkout with the payloads their tests send (`dispatch.py` reads the Stop payload on
+   stdin, `hooks/core-hooks/tests/test-policy-done-gate.py:87-92`;
+   `session-title.py` reads a `UserPromptSubmit` payload,
+   `hooks/core-hooks/tests/test-session-title.py:77-82`):
+   - `done_gate.py`: `dispatch.py stop` prints nothing (phase 1 never prints). The
+     ledger row for policy `done_gate` has `decision` `shadow_done` or `shadow_not_done`
+     and `err` null or absent, which proves `pm show` and `pm ls taken` answered. `decision` null
+     with `err` `unavailable: ...` means the pm call failed: treat as red. The verdict
+     itself does not matter; `fr-453840` is only a real closed ticket.
+   - `session-title.py`: one JSON line whose `sessionTitle` reads
+     `[frontier-clean][ACTIVE] please check for the cutover fc-ccecda:fc-10981e <MM/DD>`.
+     The `fc-ccecda:` part is the epic found through `pm show --json` (`under`); without
+     it the new pm call failed and the hook fell open. I have not run either command.
+
+   On a red result from any command above do not `reset`; nothing is deployed yet, so
+   the deployed hooks are untouched. The merged commits are on `main` and expect the new
+   pm, so undo them with a new commit and roll back. After the revert the old tools are
+   live again, so a retry is a new pass of step 0. Run these in order:
+
+   R1. Undo the merge with a new commit and prove the tree is back.
 
    ```sh
    git -C /Users/matthias/frontier revert --no-edit <before>..<merged>
    git --no-pager -C /Users/matthias/frontier diff <before> HEAD --stat
    ```
 
-   Expect the second command to print nothing. Then stop and send me the red output.
+   Expect the second command to print nothing.
+
+   R2. Roll back step 4: step 10 item 1 (links, plugin links, registry aside), run as
+   written. The old pm and wt are live again.
+
+   R3. Resume the ticket with the old wt.
+
+   ```sh
+   cd /Users/matthias/frontier
+   wt start <id> --as <actor>
+   ```
+
+   Expect the worktree path `/Users/matthias/frontier/.worktrees/<id>`. I have not run
+   the old `wt start` on a parked ticket whose branch exists; if it refuses, send me the
+   line.
+
+   R4. Bring the revert commits onto the branch, then revert them there. Branch `<id>`
+   still ends at `<merged>`, behind `main`, so `merge --ff-only main` comes first; the
+   `log` lists the revert commits from R1.
+
+   ```sh
+   git -C /Users/matthias/frontier/.worktrees/<id> merge --ff-only main
+   git --no-pager -C /Users/matthias/frontier log --oneline <merged>..HEAD
+   git -C /Users/matthias/frontier/.worktrees/<id> revert --no-edit <merged>..main
+   git --no-pager -C /Users/matthias/frontier/.worktrees/<id> diff <merged> HEAD --stat
+   ```
+
+   Expect the `log` to list only `Revert ...` commits and the last command to print
+   nothing: the branch holds the original work again.
+
+   R5. Fix what was red in the worktree, rerun step 0 item 3, and park again with the
+   line of step 0 item 4 (`--findings none --note ...`, naming what changed).
+
+   R6. Restart from step 1. The logs step 2 wrote are stale once the old tools wrote
+   `tickets.jsonl` again, and `pm import` refuses a store that has events
+   (`pm/tools/verbs/import.py:173-174`), so move them and the scratch registry aside
+   first. I have not checked whether pm's git backup (`refs/pm/log`) is read by a second
+   import.
+
+   ```sh
+   for s in /Users/matthias/work/lai/00-initialization /Users/matthias/work/lai/loop /Users/matthias/work/lai/99-local-deployment /Users/matthias/work/portside/engineering /Users/matthias/work/lai /Users/matthias/work/portside /Users/matthias/frontier /Users/matthias/projects/macos-orchestration /Users/matthias/claude /Users/matthias/projects/frontier-clean; do mv "$s/.pm/log.jsonl" "$s/.pm/log.jsonl.attempt1" || break; done
+   mv /Users/matthias/projects/frontier-clean/.tmp/cutover-import-registry /Users/matthias/projects/frontier-clean/.tmp/cutover-import-registry.attempt1
+   ```
+
+   Then step 1 onward; step 3 writes `~/.config/pm/stores` again (R2 set the old one
+   aside as `stores.cutover`). Send me the red output first.
 5. Deploy `core-hooks` and prove it.
 
    ```sh
