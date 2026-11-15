@@ -113,7 +113,7 @@ wt_stop_remove_failed() {
   err=$WT_REMOVE_ERR
   file=$(wt_fault_row "$key" "$repo" "$ticket" "$verb" "git: $err -- $what")
   cmds=${(j:; :)@}
-  wt_say "STOP. $what: git said: ${err[1,100]}. Recorded in ${file:-(fault report unwritable)}. This is infrastructure, not a finding: file no ticket and write no retro. Do not run any further git, wt or pm command and do not escalate; hand the operator this cleanup (operator-run, in order): $cmds."
+  wt_say "STOP. $what: git said: ${err[1,100]}. Recorded in ${file:-(fault report unwritable)}. This is infrastructure, not a finding: file no ticket and write no retro. Do not run any further git, wt or pm command against this worktree and do not escalate; hand the operator this cleanup (operator-run, in order): $cmds."
   return 1
 }
 

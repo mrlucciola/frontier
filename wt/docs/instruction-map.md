@@ -21,9 +21,6 @@ instructions down to match is a change in `~/frontier/instructions/claude-global
 this repository; until it lands those lines stay in force and this map is what justifies
 the cut.
 
-Check that every source line is covered: `python3 -B .tmp/map_check.py` from the
-repository root (the script is not committed; it reads this table and the two sources).
-
 ## Skill
 
 | Src | Lines | Says | Disposition | Where or why |

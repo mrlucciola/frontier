@@ -16,8 +16,8 @@ Run from the repository root.
 
 The first line is the gate: exit 0 with `pending 0, failed 0`. The `--pm old` run
 points at the old wt and the old pm. `-k` keeps tests whose id contains the name.
-`--allow-pending` accepts verbs that answer exit 70 (not built). The last line runs the
-plugin transcripts.
+`--allow-pending` accepts verbs that answer exit 70 (not built). The fourth line runs the
+plugin transcripts; the last runs the byte-ceiling tests.
 
 | Work | Read |
 | --- | --- |
