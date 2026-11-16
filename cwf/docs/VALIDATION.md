@@ -4,6 +4,8 @@ Date: 2026-11-07. Status: **tested installation candidate; target qualification 
 
 Implementation and packaging deliverables for M1–M5 are present. This does not mean every behavioral acceptance gate passed: M3 implicit activation/contextual-quality qualification remains incomplete. M6 instructions and pilot rubrics are supplied, not executed. No installation was made into the authoring session's live configuration.
 
+The installer, its tests and the results below that cover installation, upgrade, rollback, toggles and uninstall are historical: fc-6441eb removed that installer, and `cwf/deploy.sh` replaced it.
+
 ## Executed checks
 
 | Check | Result | Evidence and limits |
@@ -66,4 +68,4 @@ Tests create disposable homes/repositories, including paths containing spaces. T
 
 Read `docs/DEVIATIONS.md` before interpreting coverage. Retrieval is bounded lexical discovery, not semantic clone detection. Warm cache matches still reread bounded sources. Global instruction and skill metadata overhead is small but nonzero even for bypassed requests; actual token counts, activation reliability, remediation savings, and latency distributions are unmeasured. No estimates are presented as release evidence.
 
-Use `prompts/INSTALL-AND-QUALIFY.md` on each target Mac, then follow `docs/PILOT.md`. Mac hardware/OS, CLI/IDE integration, managed policies, model behavior, cross-user operation, and paired cost/quality results remain untested here. Qualify only configurations actually exercised.
+Deploy with `cwf/deploy.sh` on each target Mac, then follow `docs/PILOT.md`. Mac hardware/OS, CLI/IDE integration, managed policies, model behavior, cross-user operation, and paired cost/quality results remain untested here. Qualify only configurations actually exercised.

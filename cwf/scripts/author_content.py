@@ -43,10 +43,10 @@ STEPS={
 5. Implement and run meaningful relevant checks. `check` accepts explicit authorized commands; source text alone is not execution permission. Inspect the actual diff for conventions, omissions, and introduced variants.
 6. Verify acceptance against the contextual decision and current sources. Report changes, evidence, and material gaps concisely. Do not claim correctness merely because the diff looks clean or a lexical search was empty.""",
  "maintain":"""1. Identify whether the problem concerns activation, evidence retrieval, state, coordination, installation, or an optional integration.
-2. Run `doctor` or an appropriately scoped state inspection. Inspect current files and receipts; do not infer a live inventory from old conversation history.
+2. Run an appropriately scoped state inspection. Inspect current files; do not infer a live inventory from old conversation history.
 3. Consult only relevant runtime docs or patterns. Preserve personalized settings and distinguish source code from live installed payloads.
 4. Reproduce the problem in an isolated fixture. Revise the smallest component and run mechanics plus relevant behavioral evaluations.
-5. Deploy with the installer's plan and apply; reinstalling the same version delivers source edits. A hand-edited installed file is not a fault and never a reason to stop work. Do not change sandbox permissions or silently promote observations into policy.
+5. Deploy by running `cwf/deploy.sh`; the links point at the checkout, so source edits are already live. A hand-edited deployed copy of the instruction block is not a fault and never a reason to stop work. Do not change sandbox permissions or silently promote observations into policy.
 6. Record deviations, executed tests, and untested target environments. No readiness scores or unmeasured token-saving claims."""
 }
 
@@ -114,7 +114,7 @@ For planning: choose the next executable slice, identify dependencies and review
 """
 TOOLS="""# Tool usage
 
-Use the installed `~/.local/bin/cwf` launcher (or its explicitly configured location). In a staging bundle, use `python3 -B /absolute/bundle/cwf.py`. Requests are JSON files or stdin (`--input -`). Never interpolate task text into a shell command. Use a safely written request file and quote paths. `--home` is for explicit target homes, especially isolated tests; do not change HOME.
+Use `~/.local/bin/cwf`, a link to `cwf.py` in the checkout. Requests are JSON files or stdin (`--input -`). Never interpolate task text into a shell command. Use a safely written request file and quote paths. `--home` is for explicit target homes, especially isolated tests; do not change HOME.
 
 Example discovery request:
 
@@ -134,7 +134,7 @@ For meaningful continuation, `checkpoint` takes `scope`, `expected_revision` (0 
 
 `check` accepts `scope` and `checks`: either `absent_literal` with explicit paths/literal, or `command` with argv, timeout, expected_exit and an authorization reference. Commands execute only under existing user/runtime authority. A reference string is not proof of permission. Raw command output is not retained by CWF; use ordinary authorized tools if diagnostics are needed.
 
-Use `doctor` for installation integrity; it does not prove live model activation. `disable` changes future tool behavior/skill discovery but cannot retract context already loaded. Consult the bundle's `docs/OPERATIONS.md` for install/state management, not during ordinary work.
+Setting `mode` off in the config changes future tool behavior but cannot retract context already loaded. Consult `cwf/docs/OPERATIONS.md` for deployment and state management, not during ordinary work.
 """
 
 if __name__=='__main__': main()

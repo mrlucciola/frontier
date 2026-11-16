@@ -226,5 +226,3 @@ is what has to change.
 
 | Component | Rule | Reason |
 | --- | --- | --- |
-| `cwf` | `C-CLAUDE` | Legacy installer copies every file under `cwf/` into a release; fc-6441eb removes the installer and this row. |
-| `cwf` | `A-CWD` | cwf tests are documented to run from `cwf/`; fc-6441eb moves the command to the repository root and removes this row. |

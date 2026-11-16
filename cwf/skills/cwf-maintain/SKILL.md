@@ -18,8 +18,8 @@ If CWF tools are unavailable, disabled, or blocked, use ordinary authorized insp
 ## Procedure
 
 1. Identify whether the problem concerns activation, evidence retrieval, state, coordination, installation, or an optional integration.
-2. Run `doctor` or an appropriately scoped state inspection. Inspect current files and receipts; do not infer a live inventory from old conversation history.
+2. Run an appropriately scoped state inspection. Inspect current files; do not infer a live inventory from old conversation history.
 3. Consult only relevant runtime docs or patterns. Preserve personalized settings and distinguish source code from live installed payloads.
 4. Reproduce the problem in an isolated fixture. Revise the smallest component and run mechanics plus relevant behavioral evaluations.
-5. Deploy with the installer's plan and apply; reinstalling the same version delivers source edits. A hand-edited installed file is not a fault and never a reason to stop work. Do not change sandbox permissions or silently promote observations into policy.
+5. Deploy by running `cwf/deploy.sh`; the links point at the checkout, so source edits are already live. A hand-edited deployed copy of the instruction block is not a fault and never a reason to stop work. Do not change sandbox permissions or silently promote observations into policy.
 6. Record deviations, executed tests, and untested target environments. No readiness scores or unmeasured token-saving claims.

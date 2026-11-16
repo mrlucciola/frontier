@@ -1,6 +1,6 @@
 # Contextual Work Framework — v0.1.0 specification
 
-**Status:** Implementation candidate; not implemented, installed, or production-qualified.
+**Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment as built; the installer, receipts and rollback this document once specified were removed.
 
 **Target:** A global, per-user opencode installation on macOS, available in terminal and IDE sessions, across repositories and outside repositories.
 
@@ -73,22 +73,20 @@ Team conventions normally guide implementation. If a convention conflicts with c
 
 ## 4. Installation and storage layout
 
-Proposed default paths; all framework-specific paths are conventions introduced by this specification, not native opencode features.
+Framework-specific paths are conventions introduced by this specification, not native opencode features.
 
 | Path | Purpose |
 | --- | --- |
-| `~/.local/share/cwf/releases/<version>/` | Runtime, skill source, patterns, schemas, and bundled templates; replaced when the same version is installed again |
-| `~/.local/share/cwf/current` | Atomically switched pointer to active release |
-| `~/.local/bin/cwf` | Owned launcher; resolves the configured Python interpreter and active release |
-| `~/.agents/skills/cwf-<domain>` | Owned links to enabled skill directories in the active release |
-| `~/.config/opencode/AGENTS.md` | Optional, clearly delimited activation block; preserve all surrounding content |
+| `~/.config/opencode/skills/cwf-<domain>` | Symlinks to the skill directories in the checkout |
+| `~/.local/bin/cwf` | Symlink to `cwf.py` in the checkout |
+| `~/.config/opencode/AGENTS.md` | One delimited activation block; all surrounding content is preserved |
 | `~/.config/cwf/config.json` | Personal framework settings, exclusions, and explicitly configured adapter bindings |
-| `~/.local/state/cwf/` | Private scope registry, SQLite state, task records, locks, receipts, and backups |
+| `~/.local/state/cwf/` | Private scope registry, SQLite state and task records; optional, recreated on the next write |
 | `<scope>/.cwf.json` | Optional team-maintained, data-only source mappings and conventions |
 
 Paths with spaces must work. Resolve home paths in code, not by embedding shell expansion into subprocess arguments. No administrator rights or automatic package installation. Initial runtime target: Python 3.11+ and Git for Git-specific features. Python availability must be checked, not assumed from macOS. `rg` is an optional accelerator; a bounded standard-library fallback is required. Core runtime uses Python's standard library and SQLite; FTS support is optional and has a deterministic fallback.
 
-The installer can accept alternative roots explicitly. A sandbox that prevents local-state writes is not a reason to move state into tracked repository files: use an ephemeral/in-memory mode and report that continuation is not durable.
+A sandbox that prevents local-state writes is not a reason to move state into tracked repository files: use an ephemeral/in-memory mode and report that continuation is not durable.
 
 ### Identity and isolation
 
@@ -258,7 +256,6 @@ Commands below are proposed CWF interfaces, not existing commands. All accept st
 
 | Command | Contract |
 | --- | --- |
-| `cwf doctor` | Report runtime, owned installation integrity, instruction/skill visibility risks, state access, and missing optional capabilities |
 | `cwf discover` | Resolve scope, bounded refresh, and ranked evidence packet; no model calls |
 | `cwf inspect-source` | Targeted allowed-source read with fingerprint and limits |
 | `cwf observe` | Validate/store an observation with provenance; never promote automatically |
@@ -267,8 +264,6 @@ Commands below are proposed CWF interfaces, not existing commands. All accept st
 | `cwf check` | Run selected trusted mechanical checks and return evidence/status |
 | `cwf worktree list/create/remove` | Guarded local Git operations described above |
 | `cwf state inspect/prune/purge/export` | Explicit scoped lifecycle management |
-| `cwf enable/disable` | Per-domain or whole-install visibility and activity control |
-| `cwf install/upgrade/rollback/uninstall` | Receipt-owned deployment operations |
 
 Runtime result statuses are `ok`, `partial`, `blocked`, `error`, and `skipped`. Exit codes: 0 for complete success or intentional skip; 2 for invalid input/configuration; 3 for missing prerequisite or authority block; 4 for required check failure; 5 for partial evidence; 6 for internal failure. JSON distinguishes pass/fail/unknown and includes reason codes. Callers must not treat nonzero discovery as evidence that nothing relevant exists.
 
@@ -278,20 +273,18 @@ Adapters expose `capabilities`, `resolve`, `read`, and `freshness`, returning st
 
 No adapters for ICM, quiz, or Feynman are implemented by inference. Future integration must identify ownership of memory, concepts, mastery evidence, and task status before sharing data. Engineering tasks must remain usable when all such adapters are disabled.
 
-## 12. Installation, coexistence, and rollback
+## 12. Deployment and coexistence
 
-1. `plan` inventories only relevant installation targets and reports collisions, prerequisites, active instruction file, existing owned state, and intended mutations. It does not scan work repositories or install dependencies.
-2. `apply` reads the targets and the bundle again and installs what it finds; a plan does not go stale. Stage the release and switch the active pointer; installing a version already present replaces its release. Installed bytes are never compared: no manifest, checksum, plan fingerprint or drift refusal. Git history records what changed.
-3. Create only namespaced skill links that are absent or proven CWF-owned. Same-name or foreign-path collisions are reported; no overwrite or duplicate installation.
-4. Add the optional activation block to the global instruction file, `AGENTS.md` in the opencode config directory. Preserve bytes outside owned markers and detect malformed/duplicate markers. Managed/read-only files yield skill-only operation with an explicit limitation, not an attempt to bypass controls.
-5. Do not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, or unrelated skills. No rewrite of `opencode.json`.
-6. Record an installation receipt with each target's prior state, the release version, and the owned changes. Use an installation lock and atomic per-file writes. If a step fails, return the targets already written to their prior state; filesystem changes across multiple targets are not assumed globally atomic.
-7. Rollback returns owned targets to their state before the last installation, whatever they hold now. In `AGENTS.md` only the text between the markers is touched; never restore a whole old file over later edits.
-8. Uninstall removes owned runtime links and the activation block, edited or not. Preserve state/backups by default. Explicit purge is separate. Per-domain disabling removes only owned discovery links; whole-install disabling also removes/suspends the owned activation block.
+`cwf/deploy.sh` is the whole deployment, held to "Deploy script" in `docs/contributing.md`.
 
-Durable tasks pin their framework release and schema versions. Upgrades affect new tasks; existing tasks either use their retained release or explicitly migrate at a checkpoint. Keep referenced releases available until tasks close or migrate. State-schema upgrades require a backup, transactional migration, and a documented backward-compatibility range. Rollback must refuse an incompatible state schema rather than silently reinterpret or discard it. The qualification suite must include an upgrade with an active checkpoint and a failed schema migration.
+1. It links the namespaced `cwf-<domain>` skill directories and `cwf.py` into the checkout. It rewrites only the text between the `CWF` markers in the global `AGENTS.md` and appends the block when the markers are absent; every other byte is kept.
+2. It does not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, unrelated skills or `opencode.json`.
+3. Running it again leaves the same result. A missing source file stops it before anything is written. There is no receipt, manifest, checksum, rollback or upgrade step: git history records what changed, and the checkout wins over any deployed copy.
+4. Removal is the command list in `cwf/INSTALL.md`. State under `~/.local/state/cwf` is kept unless the operator deletes it.
 
-Doctor must detect whether skills are actually discoverable, including name collisions and metadata-budget omissions where observable. Static path checks are insufficient: the local qualification procedure must test real CLI and IDE sessions. Report supported, failed, and untested combinations separately.
+Durable tasks pin the schema version that wrote them. A checkpoint with an incompatible schema is refused and retained, never reinterpreted or discarded.
+
+Whether skills are actually discoverable, including name collisions and metadata-budget omissions, cannot be read from file paths. The local qualification procedure must test real CLI and IDE sessions and report supported, failed, and untested combinations separately.
 
 ## 13. Security, failure, and observability
 

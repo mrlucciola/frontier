@@ -10,46 +10,17 @@
 
 Every command accepts `--input file.json` or `--input -` for one JSON object. Keep task text out of interpolated shell strings. `--output file.json` saves the same result envelope printed to stdout. `--format text` prints a brief status plus the data. Request size is bounded to 1 MiB.
 
-The default target is the current user's home. `--home /absolute/test-home` targets a disposable home. The opencode config directory defaults to `.config/opencode` under the target home; add `--config-root /absolute/config-root` when `opencode debug paths config` reports a different directory or when testing a custom root. No environment variable is consulted. Never repurpose HOME itself.
+The default target is the current user's home. `--home /absolute/test-home` targets a disposable home for state commands. No environment variable is consulted. Never repurpose HOME itself.
 
-## 2. Plan and install
+## 2. Deploy
 
-From the extracted bundle:
+`cwf/deploy.sh` links the six skills and `cwf.py` into the checkout and maintains one marked block in the global `AGENTS.md`; see [setup](/cwf/INSTALL.md). It is idempotent. The launcher is `~/.local/bin/cwf`; adding that directory to PATH is optional, so use its absolute path if PATH does not include it.
 
-```sh
-python3 -B cwf.py install plan --output install-plan.json
-```
-
-This reports intended targets with before/after snapshots. It does not apply configuration changes. Plans contain existing instruction/configuration bytes and local paths: keep them private. A skill that CWF did not install at one of its target paths blocks the plan; resolve that deliberately.
-
-Review the `data.changes` entries. Expected targets are CWF's release pointer, launcher, configuration, six skill links, and the global `AGENTS.md` instruction file. Model/provider settings, existing hooks, and unrelated files are not targets.
-
-Create `apply-request.json`:
-
-```json
-{"plan_file":"install-plan.json"}
-```
-
-Apply the reviewed plan:
-
-```sh
-python3 -B cwf.py install apply --input apply-request.json
-python3 -B cwf.py doctor
-```
-
-The installed launcher is `~/.local/bin/cwf`. It binds the selected interpreter and target home; adding that directory to PATH is optional and not done by the installer. Use its absolute path if PATH does not include it. If the Python installation moves, create a fresh plan/apply from the bundle to regenerate the launcher.
-
-For a skill-only installation without an AGENTS edit, supply `{"guidance":false}` to `install plan`. If an existing installation has an activation block, keep that setting for upgrades or uninstall/reinstall explicitly; do not silently abandon owned guidance. Managed/read-only instructions require this skill-only path, with automatic activation limitations recorded.
-
-To test elsewhere, use the same `--home` and `--config-root` values for both plan and apply. A plan for one home cannot be applied to another. Apply reads the targets and the bundle again, so edits made after planning are installed rather than refused.
-
-Nothing compares installed bytes. Reinstalling the same version from an edited bundle replaces the release, hand-edited owned files are overwritten by the next install and removed by uninstall, and `doctor` reports only whether each target is present. Git history is the record of what changed. Durable edits belong in the source bundle; an edit made only to an installed copy lasts until the next install.
-
-No repository files are added by installation. The optional activation block goes into the global `AGENTS.md` in the opencode config directory, which opencode combines with project `AGENTS.md` files. Existing instructions outside the markers are preserved.
+Git history is the record of what changed. Durable edits belong in the source files; an edit made only to a deployed copy of the block lasts until the next run. No repository files are added by deployment. The block goes into the global `AGENTS.md` in the opencode config directory, which opencode combines with project `AGENTS.md` files. Existing instructions outside the markers are preserved.
 
 ## 3. Ordinary use
 
-Native descriptions let opencode consider a relevant skill and load it through its `skill` tool. Users can explicitly name `@cwf-build`, `@cwf-docs`, `@cwf-design`, `@cwf-product`, `@cwf-plan`, or `@cwf-maintain` in a prompt. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by the installer.
+Native descriptions let opencode consider a relevant skill and load it through its `skill` tool. Users can explicitly name `@cwf-build`, `@cwf-docs`, `@cwf-design`, `@cwf-product`, `@cwf-plan`, or `@cwf-maintain` in a prompt. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by deployment.
 
 Discovery request example, substituting your actual scope:
 
@@ -90,7 +61,7 @@ Personal settings: `~/.config/cwf/config.json`. Optional scope settings: `.cwf.j
 
 Omit `source_roots` to search eligible files throughout the selected scope. Source roots remain relative to that scope; they cannot grant access outside it. Scope source roots narrow/intersect personal allowed roots; disjoint roots are rejected. Scope exclusions are added to personal exclusions. Scope settings cannot re-enable a globally disabled framework, expand configured domain availability, or elevate advisory mode to active. Request `limits` are an explicit per-invocation override.
 
-Use `disable`/`enable` for mode and domain visibility, rather than editing mode fields by hand. Hand-edited framework config is valid, but ownership checks may require explicit reconciliation before later install/toggle/uninstall operations; this is intentional preservation of user changes. Unknown keys are rejected. No shell commands, model credentials, or remote adapter definitions are accepted in scope config.
+Set `mode` and `domains` in the config file to change visibility. Unknown keys are rejected. No shell commands, model credentials, or remote adapter definitions are accepted in scope config.
 
 ## 5. Checkpoints and observations
 
@@ -115,7 +86,7 @@ Completion requires an evidence record or attributable waiver for each acceptanc
 
 Observation requests have `scope`, `expected_revision`, and a record matching `schemas/observation.schema.json`. Every observation needs current source fingerprints. Accepted claims additionally need `accepted_by` and `acceptance_source`. The tool records these assertions; it does not authenticate an approver's identity or upgrade a model inference into authority.
 
-Use `state inspect` for scoped records and freshness. `state export` returns counts only, without prompts, source contents, record IDs, or private paths. `state prune` removes expired cache entries and inferred observations only; active checkpoints are preserved. To purge a scope, `state purge` requires both `scope` and `confirm_scope` set to its exact canonical root. Purge is explicit and irreversible. Uninstall does not purge.
+Use `state inspect` for scoped records and freshness. `state export` returns counts only, without prompts, source contents, record IDs, or private paths. `state prune` removes expired cache entries and inferred observations only; active checkpoints are preserved. To purge a scope, `state purge` requires both `scope` and `confirm_scope` set to its exact canonical root. Purge is explicit and irreversible. Removal does not purge.
 
 ## 6. Batches and worktrees
 
@@ -147,27 +118,9 @@ Run `cwf check --input checks.json`. Literal checks operate only on explicit fil
 
 Codes: 0 complete/skip; 2 invalid input/configuration; 3 blocked; 4 required check failed or unknown; 5 partial evidence; 6 local/internal error. Advisory mode does not turn failing tests into passes; it changes workflow use, not recorded results. Inspect JSON status and reason, not just stdout presence.
 
-## 8. Disable, enable, upgrade, rollback, uninstall
+## 8. Update and remove
 
-Whole installation:
-
-```sh
-~/.local/bin/cwf disable
-~/.local/bin/cwf enable
-```
-
-Per domain: provide `{"domain":"build"}` with `--input domain.json`. Whole disable removes owned skill links and activation text and prevents new runtime work; management commands remain available. It cannot erase text already loaded into an agent session. Verify discovery in a fresh session before judging activation changes.
-
-Upgrade from a new extracted bundle using the same plan/apply flow (`upgrade plan`, `upgrade apply`). Installing a version that is already present replaces its release directory. Existing task checkpoints remain pinned to their release. To resume a task pinned to an older release, run its retained `~/.local/share/cwf/releases/<version>/cwf.py` with the same home. Automatic task/schema migration is not implemented; incompatible schemas are refused and retained.
-
-```sh
-~/.local/bin/cwf rollback
-~/.local/bin/cwf uninstall
-```
-
-Rollback reverts the last installation transaction. Uninstall returns owned targets to their pre-install state, preserving AGENTS text outside the markers. An edited owned file or block is removed like an unedited one. Release directories, checkpoints, and receipts/backups are retained; there is no automatic deletion of old pinned releases.
-
-If apply is interrupted, use the original extracted bundle and run `python3 -B cwf.py install recover` with the same target roots. Recovery returns each target the interrupted step had already written to its prior state and leaves anything else as found.
+Edit the source files; skill and runtime edits take effect through the links, and `cwf/deploy.sh` is run again only to change the block or add a skill. Removal is the command list in [setup](/cwf/INSTALL.md). It cannot erase text already loaded into an agent session; verify discovery in a fresh session. Checkpoints stay pinned to the schema version that wrote them; incompatible schemas are refused and retained.
 
 ## 9. Privacy and reporting
 
