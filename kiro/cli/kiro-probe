@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Recon report for a Kiro CLI 2.x work machine.
+
+Output contract: only lines `PASS|FAIL|SKIP <id> <detail|->` and
+`INFO <id> <detail>`, at most 40 lines in total, ending with `PROBE-END`.
+Exit 0 when no FAIL line was emitted, 1 when there is one, 2 on a usage
+error. Default mode never spawns a kiro session; --smoke runs one headless
+chat round trip and is otherwise manual.
+"""
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+USAGE = "usage: kiro-probe [--smoke]"
+TOKEN = "FRONTIER-PING-7412"
+VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
+
+
+def run(cmd, timeout):
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return (p.stdout or "") + (p.stderr or "")
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def first_version(text):
+    m = VERSION_RE.search(text or "")
+    return m.group(0) if m else None
+
+
+def main(argv):
+    smoke = False
+    for arg in argv:
+        if arg == "--smoke":
+            smoke = True
+        else:
+            sys.stderr.write(USAGE + "\n")
+            return 2
+    out = []
+
+    def line(status, ident, detail):
+        out.append("%s %s %s" % (status, ident, detail or "-"))
+
+    home = os.path.expanduser("~")
+    line("INFO", "mode", "smoke" if smoke else "default")
+
+    kiro = shutil.which("kiro-cli")
+    if kiro is None:
+        line("SKIP", "kiro-present", "not-on-PATH")
+        line("SKIP", "kiro-version", "kiro-absent")
+    else:
+        line("PASS", "kiro-present", kiro)
+        version = first_version(run(["kiro-cli", "--version"], 30))
+        if version is None:
+            line("FAIL", "kiro-version", "no-version-output")
+        elif version.split(".")[0] == "2":
+            line("PASS", "kiro-version", version)
+        else:
+            line("FAIL", "kiro-version", version)
+
+    git = shutil.which("git")
+    if git is None:
+        line("FAIL", "git", "missing")
+    else:
+        line("PASS", "git", first_version(run(["git", "--version"], 30)) or "-")
+    line("PASS", "python3", platform.python_version())
+
+    probe_file = os.path.join(home, ".kiro-probe-write-test")
+    try:
+        with open(probe_file, "w") as fh:
+            fh.write("x")
+        os.remove(probe_file)
+        line("PASS", "home-writable", home)
+    except OSError:
+        line("FAIL", "home-writable", "not-writable")
+
+    local_bin = os.path.join(home, ".local", "bin")
+    if os.path.isdir(local_bin):
+        line("PASS", "local-bin", "exists")
+    elif os.access(home, os.W_OK):
+        line("PASS", "local-bin", "creatable")  # deploy runs mkdir -p from $HOME
+    else:
+        line("FAIL", "local-bin", "not-creatable")
+
+    for ident, rel in (("kiro-dir", ".kiro"), ("kiro-agents", ".kiro/agents"),
+                       ("kiro-steering", ".kiro/steering")):
+        if os.path.isdir(os.path.join(home, *rel.split("/"))):
+            line("PASS", ident, "~/" + rel)
+        else:
+            line("SKIP", ident, "absent")
+
+    # Filesystem symlink support only; kiro's own link handling is B1 recon.
+    tmp = tempfile.mkdtemp(prefix="kiro-probe-")
+    try:
+        target = os.path.join(tmp, "target")
+        with open(target, "w") as fh:
+            fh.write("x")
+        link = os.path.join(tmp, "link")
+        os.symlink(target, link)
+        ok = os.path.realpath(link) == os.path.realpath(target)
+        line("INFO", "symlink-fs", "supported" if ok else "broken")
+    except OSError as exc:
+        line("INFO", "symlink-fs", "unsupported:%s" % exc.errno)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    top = os.path.join(home, ".kiro")
+    candidates = []
+    if os.path.isdir(top):
+        for name in sorted(os.listdir(top)):
+            full = os.path.join(top, name)
+            if os.path.isfile(full) and name.endswith(".json"):
+                candidates.append(name)
+            elif os.path.isdir(full) and name in ("agents", "steering", "hooks", "skills"):
+                candidates.append(name + "/")
+    for name in candidates[:10]:
+        line("INFO", "cfg", "~/.kiro/" + name)
+
+    if smoke:
+        if kiro is None:
+            line("SKIP", "smoke-token", "kiro-absent")
+        else:
+            prompt = "Reply with exactly %s and nothing else." % TOKEN
+            blob = run(["kiro-cli", "chat", "--v2", "--no-interactive", prompt], 120)
+            if blob is None:
+                line("FAIL", "smoke-token", "timeout-or-exec-error")
+            elif TOKEN in blob:
+                line("PASS", "smoke-token", "token-seen")
+            else:
+                line("FAIL", "smoke-token", "no-token")
+
+    out.append("PROBE-END")
+    assert len(out) <= 40, "probe output exceeded 40 lines"
+    sys.stdout.write("\n".join(out) + "\n")
+    return 1 if any(entry.startswith("FAIL ") for entry in out) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
