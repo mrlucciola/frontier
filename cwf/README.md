@@ -3,8 +3,7 @@
 **Deployable candidate.** Global agent skills for opencode and local, model-free tools for contextual discovery, task continuity, and coordinated work. No ticketing system, repository initialization, background service, hooks, remote memory, or API key is required.
 
 Supported provider: opencode. For this repository's pilot, start with [setup and removal](/cwf/INSTALL.md).
-The component includes the fc-14662f macOS fixture repair; current C2 evidence
-lives on fc-2e70b4. The historical records below describe the imported candidate,
+The historical records below describe the imported candidate,
 not an activated or behaviorally qualified live pilot. Read [maintenance instructions](/cwf/AGENTS.md) before changing this component.
 
 Targets macOS with Python 3.11+, Git for worktree operations, and opencode in terminal or IDE sessions. Mechanics are tested in the authoring environment; macOS and live opencode qualification remain pending. See `docs/VALIDATION.md` for executed versus pending checks.

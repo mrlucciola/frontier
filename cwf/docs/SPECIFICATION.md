@@ -23,7 +23,7 @@ These are accepted requirements from the design conversation. Implementation def
 | R07 | Offload mechanical discovery, record management, and checks to deterministic tools; keep semantic judgment with the agent. |
 | R08 | Support single-agent and multi-agent work, dependency ordering, write ownership, isolation, and integrated validation. |
 | R09 | Automatically maintain derived local indexes and labeled observations; changes to shared instructions, decisions, and tracked knowledge follow the repository's review process. |
-| R10 | Operate independently of ICM, quiz, and Feynman. Add adapters only after inspecting their actual contracts. |
+| R10 | Operate independently of other components. Add adapters only after inspecting their actual contracts. |
 | R11 | Tolerate different repositories, work sources, local configurations, users, and computers without implicit cross-user data sharing. |
 | R12 | Accept bounded overhead when it reduces rework. Measure outcomes; make no unverified token-savings or production-readiness claims. |
 
@@ -44,7 +44,7 @@ The usage percentages discussed in the conversation inform evaluation coverage o
 
 ### Deferred enhancements
 
-- ICM, quiz, Feynman, tracker, document-service, and messaging adapters.
+- Adapters to other components, trackers, document services, and messaging.
 - Full language-server/AST call graphs, embeddings, semantic clone detection, and graph databases.
 - Continuous transcript capture, background model workers, filesystem daemons, and automatic cross-user synchronization.
 - Native lifecycle hook integration. v0.1 must function without it; later hook adapters must be separately qualified.
@@ -271,7 +271,7 @@ Check definitions contain an ID, scope, command argument array or built-in check
 
 Adapters expose `capabilities`, `resolve`, `read`, and `freshness`, returning standardized source references, permissions, revisions, and error states. Writes are a separate optional capability requiring task authorization. Capability declarations alone are not authorization. An unavailable optional adapter degrades to local/supplied evidence; a missing required source blocks only dependent decisions/actions.
 
-No adapters for ICM, quiz, or Feynman are implemented by inference. Future integration must identify ownership of memory, concepts, mastery evidence, and task status before sharing data. Engineering tasks must remain usable when all such adapters are disabled.
+No adapters to other components are implemented by inference. Future integration must identify ownership of memory, concepts, mastery evidence, and task status before sharing data. Engineering tasks must remain usable when all such adapters are disabled.
 
 ## 12. Deployment and coexistence
 

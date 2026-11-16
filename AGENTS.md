@@ -12,7 +12,19 @@ put the checkout path in front before opening one.
 | Component structure, setup, or documentation | [Contribution standards](/docs/contributing.md) |
 | Instruction placement, skills, hooks, or context loading | [Instruction delivery](/docs/instruction-delivery.md) |
 | Component implementation or tests | The component's `AGENTS.md` and its task-specific routes, then the [component principles](/docs/component-principles.md) |
-| Ticketed work | The ticket body, notes, and applicable workstream contract through `pm ticket` |
+| Ticketed work | The ticket body, notes, and applicable workstream contract through the ticket store |
+
+## Roles
+
+Component files name these roles, not the tools. This table is the only place
+that binds them.
+
+| Role | Filled by |
+| --- | --- |
+| Ticket store: tickets, claims, notes, findings | [pm](/pm/README.md), as `pm ticket <verb>` |
+| Worktree tool: one checkout per ticket | [wt](/wt/README.md), as `wt <verb>` |
+
+## Working here
 
 Preserve other contributors' work and stay within the requested scope. Run the
 relevant component checks and update documentation affected by the change. After

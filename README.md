@@ -8,6 +8,11 @@ implementation, tests, and documentation.
 - **Independent use.** Each component must own its instructions, implementation,
   configuration, tests, and documentation. Components must remain independently
   usable. Optional integrations must use small, explicit interfaces.
+- **Roles, not names.** Outside an interface file two components share, a
+  component refers to another by the role it fills (the ticket store, the
+  worktree tool), never by its name, and never restates its rules. The
+  [role table](/AGENTS.md#roles) in the root `AGENTS.md` is the one place a role
+  is bound to a tool, so replacing a tool is an edit there.
 - **Thin global context.** Keep global instructions and skill descriptions limited
   to essential orientation and discovery. Load detailed guidance as it becomes
   relevant to the task.

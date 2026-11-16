@@ -15,7 +15,7 @@ The following examples illustrate possible triggers and the guidance they delive
 | Situation | Targeted guidance |
 | --- | --- |
 | First prompt in a workspace containing `.icm/` | Essential ICM orientation and where to find task-specific instructions. |
-| A ticket claim operation, such as `pm ticket claim` | Guidance needed to claim the ticket and establish session ownership. |
+| A ticket claim through the ticket store | Guidance needed to claim the ticket and establish session ownership. |
 | Session completion with an outstanding ticket claim | Guidance to close, park, or release that session's ticket. |
 
 Workspace markers establish relevance. Operations and current state determine
