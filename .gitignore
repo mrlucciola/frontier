@@ -129,6 +129,8 @@ dist
 .pm/tickets.jsonl
 .pm/history-pending
 
+.context
+
 # repos
 
 rem/
