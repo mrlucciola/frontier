@@ -1,35 +1,31 @@
 #!/usr/bin/env zsh
+# Deploy cwf: links into this checkout and one marked block. Safe to run again.
+here="${0:A:h}"
+snippet="$here/instructions/opencode.AGENTS.md"
+[[ -r "$snippet" ]] || { print -u2 "missing $snippet"; exit 1 }
 
-SKILLS_DIR_OPENCODE="$HOME/.config/opencode/skills"
-CWF_DIR="$HOME/projects/frontier-clean/cwf"
-
-mkdir -p "$SKILLS_DIR_OPENCODE"
-
-# Activate the skills
-for d in "$CWF_DIR/skills"/cwf-*(/); do
-	ln -sfn "$d" "$SKILLS_DIR_OPENCODE/${d:t}"
+# opencode: skills
+dest="$HOME/.config/opencode/skills"
+mkdir -p "$dest"
+for d in "$here/skills"/cwf-*(/); do
+	ln -sfn "$d" "$dest/${d:t}"
 done
-ls -l "$SKILLS_DIR_OPENCODE"
 
-# Activate the CLI
-chmod +x "$CWF_DIR/cwf.py"
-ln -sf "$CWF_DIR/cwf.py" "$HOME/.local/bin/cwf"
-"$HOME/.local/bin/cwf" version
+# command line
+mkdir -p "$HOME/.local/bin"
+ln -sfn "$here/cwf.py" "$HOME/.local/bin/cwf"
 
-# Activate/Apply the instruction snippet. This should only ever modify the text between <!-- CWF:BEGIN --> and <!-- CWF:END -->.
-AGENTS_OPENCODE="$HOME/.config/opencode/AGENTS.md"
+# opencode: instruction block
+target="$HOME/.config/opencode/AGENTS.md"
 begin='<!-- CWF:BEGIN -->' end='<!-- CWF:END -->' nl=$'\n'
-
-# Validate file exists:
-[[ -r "$CWF_DIR/instructions/opencode.AGENTS.md" ]] || { print -u2 "missing instructions/opencode.AGENTS.md"; exit 1 }
-
-block="$begin$nl$(<"$CWF_DIR/instructions/opencode.AGENTS.md")$nl$end"
+block="$begin$nl$(<"$snippet")$nl$end"
 text=""
-[[ -f "$AGENTS_OPENCODE" ]] && text="$(<"$AGENTS_OPENCODE")"
+[[ -f "$target" ]] && { text="$(cat "$target"; print -n x)"; text="${text%x}" }
 if [[ "$text" == *"$begin"*"$end"* ]]; then
 	text="${text%%"$begin"*}$block${text#*"$end"}"
 else
-	text="${text:+$text$nl$nl}$block"
+	[[ -n "$text" && "$text" != *"$nl" ]] && text+="$nl"
+	text+="${text:+$nl}$block$nl"
 fi
-mkdir -p "${AGENTS_OPENCODE:h}"
-print -r -- "$text" >"$AGENTS_OPENCODE"
+mkdir -p "${target:h}"
+print -rn -- "$text" >"$target"

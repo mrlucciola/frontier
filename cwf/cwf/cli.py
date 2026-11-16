@@ -3,8 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import platform
-import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -13,49 +11,18 @@ from . import VERSION
 from .common import Fault, DOMAINS, EXIT, result, read_json, write_json, scope_info, digest
 from .config import settings
 from .state import State
-from . import installer, operations
+from . import operations
 from .discovery import discover, safe_read, ignored
 
 ROOT=Path(__file__).resolve().parent.parent
-MANAGEMENT={"doctor","install","upgrade","rollback","uninstall","enable","disable","state","version","validate"}
 
 
-def doctor(home,config_root):
-    p=installer.paths(home,config_root); rec=installer.receipt(p)
-    checks=[]
-    if rec:
-        for c in rec["changes"]:
-            # Presence only: what a target holds is the operator's business, not a health signal.
-            path=Path(c["path"])
-            present=path.is_file() and installer.START in path.read_text(errors="replace") if c["kind"]=="guidance" else path.is_symlink() or path.exists()
-            checks.append({"target":c["path"],"present":present})
-    return {"framework_version":VERSION,"python":platform.python_version(),"os":platform.system(),
-            "machine":platform.machine(),"git_available":bool(shutil.which("git")),
-            "opencode_executable_available":bool(shutil.which("opencode")),"installation":rec.get("status") if rec else "not_installed",
-            "checks":checks,"live_skill_visibility":"NOT_TESTED","cli_behavior":"NOT_TESTED",
-            "ide_behavior":"NOT_TESTED","macos_qualification":"NOT_TESTED",
-            "instruction_file":str(installer.instruction_file(p))}
-
-
-def dispatch(command,action,req,home,config_root,ephemeral):
+def dispatch(command,action,req,home,ephemeral):
     if command=="version": return result({"version":VERSION}),0
-    if command=="doctor": return result(doctor(home,config_root)),0
     if command=="validate":
         from .contracts import SCHEMAS,validate
         if req.get("contract") not in SCHEMAS: raise Fault("Unknown contract")
         validate(req["record"],SCHEMAS[req["contract"]]); return result({"valid":True}),0
-    if command in ("install","upgrade"):
-        if action=="plan": return result(installer.plan(home,req.get("bundle",str(ROOT)),config_root,req.get("guidance",True))),0
-        if action=="apply":
-            plan=read_json(req["plan_file"])
-            if "data" in plan: plan=plan["data"]
-            return result(installer.apply(plan,home,config_root)),0
-        if action=="recover": return result(installer.recover(home,config_root)),0
-        raise Fault("Use install/upgrade plan, apply, or recover")
-    if command in ("rollback","uninstall"):
-        return result(installer.revert(home,config_root,rollback=command=="rollback")),0
-    if command in ("enable","disable"):
-        return result(installer.toggle(home,config_root,command=="enable",req.get("domain"))),0
     global_config=settings(home)
     if command!="state" and global_config["mode"]=="off": return result(status="skipped",reason="framework_off"),0
     if "scope" not in req or not isinstance(req["scope"],str): raise Fault("Explicit scope directory required")
@@ -119,17 +86,15 @@ def dispatch(command,action,req,home,config_root,ephemeral):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description="CWF local tools. Requests are JSON; no model/network calls.")
-    parser.add_argument("command",choices=["discover","inspect-source","checkpoint","resume","observe","batch","check","worktree","state","doctor","validate","install","upgrade","rollback","uninstall","enable","disable","version"])
+    parser.add_argument("command",choices=["discover","inspect-source","checkpoint","resume","observe","batch","check","worktree","state","validate","version"])
     parser.add_argument("action",nargs="?")
     parser.add_argument("--input",help="JSON file or - for stdin")
     parser.add_argument("--output",help="Write JSON result to this explicit file")
     parser.add_argument("--home",help="Target user home; temporary homes supported")
-    parser.add_argument("--config-root",help="opencode config directory; default <home>/.config/opencode")
     parser.add_argument("--ephemeral",action="store_true")
     parser.add_argument("--format",choices=["json","text"],default="json")
     args=parser.parse_args(argv)
     home=Path(args.home).expanduser().resolve() if args.home else Path.home().resolve()
-    config_root=Path(args.config_root or home/".config/opencode").expanduser().absolute()
     os.umask(0o077)
     try:
         if sys.version_info<(3,11): raise Fault("Python 3.11+ required","blocked")
@@ -140,7 +105,7 @@ def main(argv=None):
             req=json.loads(data)
         elif args.input: req=read_json(args.input)
         if not isinstance(req,dict): raise Fault("Request must be an object")
-        out,code=dispatch(args.command,args.action,req,home,config_root,args.ephemeral)
+        out,code=dispatch(args.command,args.action,req,home,args.ephemeral)
     except Fault as exc:
         status=exc.code if exc.code in ("blocked","partial","skipped") else "error"
         out=result({"message":str(exc),"details":exc.details},status,exc.code); code=EXIT[exc.code]
