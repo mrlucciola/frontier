@@ -51,7 +51,9 @@ write, refuses absolute or `..` paths, and reports one PASS/FAIL per file.
 - **B1 — recon at work.** Run `kiro-probe` (default mode: version, git and
   python3 presence, `~/.kiro` layout, steering and skills paths, symlink
   following, settings-file candidates). Then, manually, `kiro-probe --smoke`
-  (headless `kiro-cli chat --v2 --no-interactive` token echo). Paste the
+  (headless `kiro-cli chat --no-interactive` token echo; 2.17 has no
+  `--v2`/`--v3` flags — added 2.21.4 — so its headless run is the v2
+  runtime). Paste the
   report back and record it. Close B1 by vendoring the reference, confirming
   the global steering path, and adding steering/skills routes.
 - **B2 — per-component kiro sections.** Add kiro sections to pm, wt, cwf and
@@ -73,5 +75,10 @@ machine and logged under `kiro/docs/probe-log/` as
   /kiro/INSTALL.md).
 - Whether `~/.kiro` symlinked directories are followed (probe records
   filesystem support only).
-- Exit code of `kiro-cli chat --v2 --no-interactive` on a trusted machine,
+- Exit code of `kiro-cli chat --no-interactive` on a trusted machine,
   and the real settings-file inventory under `~/.kiro`.
+- See /kiro/docs/reference/README.md open-questions for what the pinned
+  pages settle about 2.17: AGENTS.md auto-load landed in 2.18.0 (2.17
+  inherits steering/skills/AGENTS.md via agent `extends`), hooks were
+  introduced 2.13.0 as V3-side (whether they fire on 2.17 v2 is a probe
+  question), and `~/.kiro/skills/` is named only by current docs.

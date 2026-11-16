@@ -126,7 +126,9 @@ def main(argv):
             line("SKIP", "smoke-token", "kiro-absent")
         else:
             prompt = "Reply with exactly %s and nothing else." % TOKEN
-            blob = run(["kiro-cli", "chat", "--v2", "--no-interactive", prompt], 120)
+            # 2.17 predates the --v2/--v3 harness flags (added 2.21.4, see
+            # kiro/docs/reference/changelog-2x.md); its headless run IS the v2 runtime.
+            blob = run(["kiro-cli", "chat", "--no-interactive", prompt], 120)
             if blob is None:
                 line("FAIL", "smoke-token", "timeout-or-exec-error")
             elif TOKEN in blob:
