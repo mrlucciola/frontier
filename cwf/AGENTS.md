@@ -6,6 +6,7 @@ Historical qualification records describe their original runs.
 
 | Work | Read |
 | --- | --- |
+| Scope, a new mechanism, or whether to keep one | [Product requirements](/cwf/docs/PRD.md) first; it wins over the specification |
 | Deployment or removal | [Setup](/cwf/INSTALL.md), then relevant [operations](/cwf/docs/OPERATIONS.md) sections |
 | Runtime behavior | Owning module in `cwf/`, its tests and relevant schema |
 | Skill or pattern text | `scripts/author_content.py` generates `skills/` and `patterns/`: edit it, then run `python3 -B cwf/scripts/author_content.py` |

@@ -1,6 +1,6 @@
 # Contextual Work Framework — v0.1.0 specification
 
-**Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment as built; the installer, receipts and rollback this document once specified were removed.
+**Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment as built; the installer, receipts and rollback this document once specified were removed. Requirements and scope are decided by the [product requirements](/cwf/docs/PRD.md), which win where this document disagrees.
 
 **Target:** A global, per-user opencode installation on macOS, available in terminal and IDE sessions, across repositories and outside repositories.
 
