@@ -18,9 +18,11 @@ implementation, tests, and documentation.
   next step. A refusal names what was refused and the command to run next, help is
   short enough to read whole, and a workspace the component has no state in gets
   no injected text.
-- **One maintained source.** Keep executable files in their owning component.
-  Provider integration should reference those files directly or through symlinks.
-  Keep shared requirements in one source and isolate necessary provider differences.
+- **One maintained source.** The checkout is the only copy. Deployment never
+  copies component files: a deployed path is a symlink into the checkout or a
+  marked block in a shared file. No release directories, version pointers,
+  manifests, checksums, receipts, or install journals. Keep shared requirements in
+  one source and isolate necessary provider differences.
 
 ## Contributing
 

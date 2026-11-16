@@ -42,7 +42,9 @@ it means opening three other files first, it is not done.
    Ticket ids and history belong in the ticket store and git, not in source.
 8. **Cut before you port.** A feature with no current user is dropped or
    deferred by an explicit ruling recorded in the component's docs, never
-   carried along and never lost silently.
+   carried along and never lost silently. The same holds before anything is
+   built: every mechanism in a design names the requirement it serves, and one
+   that serves none is cut.
 9. **Decoupled by default.** A component works alone. It reaches another
    component only through that component's command line, and only where the
    coupling removes real work. An extension point is a file the host finds by
@@ -80,6 +82,7 @@ is `523ae74:docs/programs/pm-wt-rewrite/initiatives/04-pm-log/reports/04-integra
 | 6 | Kept; the refusal sentence moved to the contract | `pm-e` `_rank` has one caller (orient.py:13), `_new(by=)` no caller passes `by` (import.py:56); `pm-e` lists refusals with no next command (park.py:28, hold.py:28, reopen.py:24) |
 | 7 | Kept | `pm-review` ticket ids in comments (`ticket:49`, `init.py:12`), none left: `rg "\b(fc\|cl\|fr)-[0-9a-f]{6}\b"` over `pm/` and `wt/` source prints nothing; `pm-e` store.py:422 and :403 lacked a why |
 | 8 | Kept | `pm/docs/design.md:330-346` "Not carried over", one ruling per dropped feature; `wt/cli/wt:22` drops `pending` with its replacement named |
+| 8 | Changed 2026-11-15: extended from ports to designs | `73f99fa:cwf/cwf/installer.py` (363 lines) and about 640 lines of tests and docs written for it served none of R01-R12 in `cwf/docs/SPECIFICATION.md`; a 35-line `cwf/deploy.sh` replaced them |
 | 9 | Changed: plugins by file presence added | `pm/docs/design.md:246-272`; `rg "\bwt\b\|worktree" pm/tools pm/cli` prints nothing; `wt/pm-plugin/{orient,post-take,pre-done}`; `wt/tools/lib/pm.zsh:7` reaches pm only by its command line |
 | 9 proposal: plugins by file presence | Folded into rule 9 | As above |
 | 10 | Kept; byte ceilings added | `pm-e` replay O(n^2) "measure on the largest real store before claiming this is fine"; `pm/tests/test_budgets.py:16`, `pm/docs/design.md:234-244` |
