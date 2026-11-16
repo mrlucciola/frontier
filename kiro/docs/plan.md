@@ -46,16 +46,19 @@ write, refuses absolute or `..` paths, and reports one PASS/FAIL per file.
 
 - **B0 (this batch, done at scaffold):** component skeleton, `deploy.sh`
   version gate, sync transport (`mk_sync.py`, `APPLY.sh`,
-  `mk_sync_branch.py`), `cli/kiro-probe`, tests, docs. Pinned 2.x reference
-  is vendored under `kiro/docs/reference/` by its owning branch.
-- **B1 — recon at work.** Run `kiro-probe` (default mode: version, git and
+  `mk_sync_branch.py`, which commits `MANIFEST.txt` and the `SYNC-*.txt`
+  chunks onto `kiro-sync` as the complete paste surface), `cli/kiro-probe`,
+  tests, docs. Pinned 2.x reference vendored under `kiro/docs/reference/`
+  and merged.
+- **B1 — recon at work.** Follow the [operator runbook](/kiro/docs/ops-work-machine.md).
+  Run `kiro-probe` (default mode: version, git and
   python3 presence, `~/.kiro` layout, steering and skills paths, symlink
   following, settings-file candidates). Then, manually, `kiro-probe --smoke`
   (headless `kiro-cli chat --no-interactive` token echo; 2.17 has no
   `--v2`/`--v3` flags — added 2.21.4 — so its headless run is the v2
   runtime). Paste the
-  report back and record it. Close B1 by vendoring the reference, confirming
-  the global steering path, and adding steering/skills routes.
+  report back and record it. Close B1 by confirming the global steering
+  path and adding steering/skills routes.
 - **B2 — per-component kiro sections.** Add kiro sections to pm, wt, cwf and
   icm: `deploy.sh` additions for kiro, `instructions/kiro.*.md` snippets, and
   a project-scope `.kiro/agents/frontier.json` (JSON-only, v2 fields above).

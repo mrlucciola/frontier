@@ -51,18 +51,13 @@ user data is touched.
 
 ## Work machine (paste-only)
 
-1. Dev machine, in the checkout:
-   `python3 kiro/tools/mk_sync.py --out .tmp/kiro-sync-bundle` prints the
-   chunk list with each chunk's sha256.
-2. Dev machine: `python3 kiro/tools/mk_sync_branch.py`, then run the push
-   command it prints (`git push --force origin kiro-sync`; point `origin` at
-   the public repo). The `kiro-sync` branch raw views bootstrap the small
-   files, `kiro/tools/APPLY.sh` first.
-3. At work: paste `MANIFEST.txt` and the `SYNC-*.txt` contents into one
-   directory (verify each chunk's sha256 while pasting), then
-   `sh APPLY.sh <chunks-dir> <target-root>` — it verifies bytes and sha
-   before writing and prints one PASS/FAIL per file.
-4. Restore bits lost in paste:
-   `chmod +x kiro/cli/kiro-probe kiro/tools/APPLY.sh kiro/deploy.sh`,
-   then recon: `kiro-probe > report.txt` and paste the report back to the
-   dev machine for the log in `kiro/docs/probe-log/`.
+Full operator procedure, in order, with commands: [Operator
+runbook](/kiro/docs/ops-work-machine.md). Summary: publish with
+`python3 -B kiro/tools/mk_sync_branch.py` on `kiro-main` (the branch carries
+source files plus `MANIFEST.txt` and `SYNC-*.txt` chunks), push the printed
+`git push --force origin kiro-sync`, then at work paste `kiro/tools/APPLY.sh`
+first, then `MANIFEST.txt` and every chunk, eyeball chunk sha256s, and run
+`sh APPLY.sh <chunks-dir> <target-root>` — it verifies bytes and sha before
+any write and prints one PASS/FAIL per file. Recon after apply:
+`python3 kiro/cli/kiro-probe`, report pasted back to
+`kiro/docs/probe-log/`.

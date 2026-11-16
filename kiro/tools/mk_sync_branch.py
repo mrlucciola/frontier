@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Refresh the LOCAL orphan branch kiro-sync from the current worktree.
 
-The branch holds exactly the mk_sync.py default file list, so its raw views
-on the public GitHub repo are the paste source for a firewalled machine.
+The branch holds the mk_sync.py default file list plus the MANIFEST.txt and
+SYNC-*.txt chunk files, so its raw views on the public GitHub repo are the
+complete paste source for a firewalled machine: APPLY.sh, the manifest, and
+every chunk are pasted from this branch and verified before any write.
 Plumbing only: a temporary GIT_INDEX_FILE, write-tree, a parentless
 commit-tree, and update-ref. It never checks out, never touches main, and
 never pushes; the operator runs the printed push command themselves.
 """
+import hashlib
 import os
 import subprocess
 import sys
@@ -14,13 +17,22 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mk_sync import DEFAULT_FROM, ROOT, collect  # one default list, no drift
+from mk_sync import DEFAULT_FROM, ROOT, bundle, collect  # one default list, no drift
 
 BRANCH = "kiro-sync"
 
 
 def git(env=None, *args):
     p = subprocess.run(("git", "-C", str(ROOT)) + args, env=env,
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        sys.stderr.write(p.stderr.strip() or "git %s failed\n" % " ".join(args))
+        raise SystemExit(1)
+    return p.stdout.strip()
+
+
+def git_stdin(env, data, *args):
+    p = subprocess.run(("git", "-C", str(ROOT)) + args, env=env, input=data,
                        capture_output=True, text=True)
     if p.returncode != 0:
         sys.stderr.write(p.stderr.strip() or "git %s failed\n" % " ".join(args))
@@ -43,13 +55,21 @@ def main():
         files = collect(DEFAULT_FROM)
         for rel, path in files:
             git(env, "add", "--", str(path))
+        chunks = bundle(DEFAULT_FROM)
+        for name, data in chunks:
+            blob = git_stdin(None, data.decode(), "hash-object", "-w", "--stdin")
+            git(env, "update-index", "--add", "--cacheinfo",
+                "100644,%s,%s" % (blob, name))
         tree = git(env, "write-tree")
         commit = git(None, "commit-tree", tree, "-m", "kiro: sync snapshot")
         git(None, "update-ref", "refs/heads/" + BRANCH, commit)
     finally:
         if os.path.exists(index):
             os.unlink(index)
-    print("branch %s -> %s (%d files, worktree copies)" % (BRANCH, commit, len(files)))
+    print("branch %s -> %s (%d files + %d bundle entries)" % (
+        BRANCH, commit, len(files), len(chunks)))
+    for name, data in chunks:
+        print("%s %s %d" % (name, hashlib.sha256(data).hexdigest(), len(data)))
     print("push when ready: git push --force origin kiro-sync")
     return 0
 

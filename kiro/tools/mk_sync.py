@@ -57,6 +57,32 @@ def record(rel, data):
     return text + "\n", sha
 
 
+def bundle(from_paths):
+    """[(name, bytes)]: MANIFEST.txt first, then SYNC-NNN.txt chunks. Shared
+    by the CLI main() and mk_sync_branch.py so branch and bundle never drift."""
+    manifest, buf, count, size, nchunks, out = [], [], 0, 0, 0, []
+
+    def flush():
+        nonlocal buf, count, size, nchunks
+        if not count:
+            return
+        nchunks += 1
+        out.append(("SYNC-%03d.txt" % nchunks, "".join(buf).encode()))
+        buf, count, size = [], 0, 0
+
+    for rel, path in collect(from_paths):
+        text, sha = record(rel, path.read_bytes())
+        manifest.append("%s %d %s" % (sha, len(path.read_bytes()), rel))
+        buf.append(text)
+        count += 1
+        size += len(text.encode())
+        if count >= MAX_FILES or size >= MAX_BYTES:
+            flush()
+    flush()
+    out.insert(0, ("MANIFEST.txt", ("\n".join(manifest) + "\n").encode()))
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="mk_sync", description=__doc__.splitlines()[0])
     ap.add_argument("--from", dest="from_paths", nargs="+", default=DEFAULT_FROM,
@@ -67,33 +93,11 @@ def main(argv=None):
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    manifest, buf, count, size, nchunks = [], [], 0, 0, 0
-    chunk_paths = []
-
-    def flush():
-        nonlocal buf, count, size, nchunks
-        if not count:
-            return
-        nchunks += 1
-        name = "SYNC-%03d.txt" % nchunks
-        data = "".join(buf).encode()
+    items = bundle(args.from_paths)
+    for name, data in items:
         (out_dir / name).write_bytes(data)
-        chunk_paths.append(name)
-        buf, count, size = [], 0, 0
 
-    for rel, path in collect(args.from_paths):
-        text, sha = record(rel, path.read_bytes())
-        manifest.append("%s %d %s" % (sha, len(path.read_bytes()), rel))
-        buf.append(text)
-        count += 1
-        size += len(text.encode())
-        if count >= MAX_FILES or size >= MAX_BYTES:
-            flush()
-    flush()
-    (out_dir / "MANIFEST.txt").write_text("\n".join(manifest) + "\n")
-
-    for name in ["MANIFEST.txt"] + chunk_paths:
-        data = (out_dir / name).read_bytes()
+    for name, data in items:
         print("%s %s %d" % (name, hashlib.sha256(data).hexdigest(), len(data)))
     return 0
 
