@@ -21,5 +21,5 @@ If CWF tools are unavailable, disabled, or blocked, use ordinary authorized insp
 2. Inspect relevant decisions and existing plans before creating a competing structure. Keep small work ephemeral.
 3. For substantial work, define finite items with acceptance, dependencies, write surfaces, shared resources, and one integration owner. Use `batch validate` for mechanical graph/ownership checks.
 4. Verify semantic independence before concurrency. Workers receive only task-relevant sources and their revisions, ownership boundaries, and return contract. Each worker returns changes, validation, and invalidated assumptions.
-5. Maintain a revisioned checkpoint for long/interrupted work. Revalidate sources when resuming. Only the integration owner updates shared batch state.
+5. If the repository's instructions name a ticket store or worktree tool, it owns tracked work: record continuation in the ticket store, make checkouts with the worktree tool, and run no CWF checkpoint, observe or worktree command. Otherwise maintain a revisioned checkpoint for long/interrupted work. Revalidate sources when resuming. Only the integration owner updates shared batch state.
 6. Verify integrated outcomes, not just individual completions. Preserve partial results and blockers without marking the whole batch complete.

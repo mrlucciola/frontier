@@ -1,0 +1,13 @@
+#!/bin/sh
+root=$(cd "$(dirname "$0")/.." && pwd)
+echo "tix $*" >> "$root/.tool-log"
+if [ "$1" = "show" ] && [ "$2" = "X-1" ]; then
+  cat <<'EOF'
+X-1: Export endpoint upgrade
+Three parts:
+1. Add CSV export to the export endpoint (export_orders in src/api.py).
+2. Add a rate limit to the export endpoint (src/middleware.py).
+3. Document both in README.md.
+EOF
+fi
+exit 0

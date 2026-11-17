@@ -39,7 +39,7 @@ The usage percentages discussed in the conversation inform evaluation coverage o
 - Local Markdown/text inputs and pasted task descriptions; references to unavailable external sources remain explicitly unresolved.
 - Lightweight product/strategy, architecture/design, documentation, planning, implementation, and framework-maintenance procedures.
 - Single-agent and multi-agent coordination contracts, plus guarded Git worktree helpers.
-- Local derived state, optional data-only configuration, enable/disable controls, installation receipts, rollback, and uninstall.
+- Local derived state, optional data-only configuration, and enable/disable controls. Deployment is links plus one marked block via `deploy.sh`; there are no receipts or rollback.
 - Automated fixture tests, behavioral evaluation prompts, and macOS CLI/IDE qualification instructions.
 
 ### Deferred enhancements
@@ -380,12 +380,12 @@ Only combinations passing the relevant gates may be labeled qualified. “Produc
 | M2 — Local evidence engine | Scope resolver, bounded enumeration/search, ranking, packets, cache and provenance | Determinism, bounds, freshness, privacy, and failure tests pass |
 | M3 — Skills and domain patterns | Six entrypoints, concise shared references, task intake, conceptual/non-Git paths | Activation/bypass fixtures and contextual quality cases pass in evaluated configuration |
 | M4 — Continuity and coordination | Revisioned checkpoints, batch validator, guarded worktrees, integration procedure | Resume, overlap, cycle, dirty-tree and integrated-failure cases pass |
-| M5 — Deployment | Installer plan/apply, receipts, toggles, doctor, upgrade, rollback, uninstall | Temporary-home coexistence/recovery tests pass; versioned ZIP reproducible |
+| M5 -- Deployment | `deploy.sh` links and one marked instruction block, idempotent | Temporary-home deploy tests pass; the checkout is the only copy (no receipts, ZIP or rollback) |
 | M6 — Target pilot | macOS CLI/IDE qualification and paired real-task pilot | Evidence matrix, measured outcomes, limitations, and qualified support list |
 
 M1-M5 produce the installation candidate. M6 requires actual target environments; do not substitute this authoring environment's tests for macOS or real opencode behavior.
 
-The candidate ZIP must include source, runtime payload, skills/references, schemas, fixtures/tests, this specification, installation/rollback guidance, and qualification prompts. It must not contain credentials, user source code, local caches, real prompts, or observations. Packaging does not activate or install it in the author's current account.
+The checkout is the only copy; there is no packaged archive. It must not contain credentials, user source code, local caches, real prompts, or observations. Reading it does not activate or install it in the author's current account.
 
 ## 17. Source grounding and design decisions
 

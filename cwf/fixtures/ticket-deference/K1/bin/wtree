@@ -1,0 +1,4 @@
+#!/bin/sh
+root=$(cd "$(dirname "$0")/.." && pwd)
+echo "wtree $*" >> "$root/.tool-log"
+exit 0

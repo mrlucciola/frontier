@@ -17,7 +17,7 @@ The source specification is preserved unchanged. This file records differences a
 | Telemetry | Command results and explicit summary exports; no persistent generic event stream | Reduce retained user data and write overhead. Pilot metrics are collected explicitly. |
 | Retention | Explicit prune/purge commands | No background jobs or silent removal of checkpoints. |
 | UI/runtime integration | Native skills plus optional global block; no `opencode.json` rewrite | Coexists with personalized installations; current loaded model context cannot be retracted. |
-| Skill creation | Authored as offline package assets, not installed personal skills in this environment | User explicitly prohibited live installation and requested a transferable ZIP. |
+| Skill creation | Authored as offline package assets, not installed personal skills in this environment | Live installation was prohibited at authoring time; the checkout is the only copy and `deploy.sh` links it (no ZIP). |
 | Qualification | Automated mechanics and limited explicit-skill fresh-agent exercises | Not full implicit-routing evaluation, paired cost study, macOS verification, or production certification. |
 
 These limits preserve standalone functionality and core scope. Retrieval quality for large repositories, broad implicit activation, and correction-cost benefits remain empirical pilot questions. The release is an installation candidate, not a claim that all acceptance scenarios have been behaviorally qualified.
