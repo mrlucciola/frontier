@@ -1,8 +1,8 @@
 # Fresh observation contract
 
 Read this when interpreting observations or changing the reducer, transport,
-output fields, or classification. [Usage](../README.md) covers invocation and
-[qualification](qualification.md) records the evidence and its limits.
+output fields, or classification. [Usage](/session-telemetry/README.md) covers invocation and
+[qualification](/session-telemetry/docs/qualification.md) records the evidence and its limits.
 
 ## Lifecycle and outcomes
 
@@ -14,8 +14,11 @@ configuration, log in, copy credentials, suppress hooks or use bypass flags.
 An interactive server request (including an approval) ends the measurement as
 `interactive_request_required`; it is never automatically approved. It sends
 an interrupt only for its own new turn on timeout/failure. Default observation
-limit is 180 seconds (`--timeout` may lower it); bounded process cleanup can
-add up to four seconds. A terminal turn allows up to five seconds to drain
+limit is 180 seconds (`--timeout` may lower it). The server runs in its own
+session; if it has not exited two seconds after its input closes, its whole
+process group gets SIGTERM, then SIGKILL, two seconds apart, so cleanup can
+add up to six seconds. Children the server moved to another process group are
+outside this cleanup. A terminal turn allows up to five seconds to drain
 shutdown output, including late usage. An abnormal exit or truncated stream
 cannot qualify as a successful measurement.
 

@@ -46,8 +46,11 @@ scores `agent_messages`, checks the fixture and records corrections separately.
    cumulative totals and the IDs of its existing messages.
 3. Runs `opencode run --standalone --format json --session <id>` followed by
    the prompt, one argument per word, with stdin closed and `PWD` set to
-   `--cwd`. It never passes `--auto` and never answers a permission request. On
-   timeout it terminates the process group.
+   `--cwd`. It never passes `--auto` and never answers a permission request.
+   The turn runs in its own session, so a terminal's Ctrl-C does not reach it;
+   on timeout, or when the runner is interrupted, the runner terminates the
+   turn's process group before exiting. A runner killed outright (SIGKILL, or an
+   unhandled SIGTERM) cannot, and leaves the turn running.
 4. Reads the session and its messages back through `opencode api --standalone`
    and reduces only the messages that did not exist before step 3.
 

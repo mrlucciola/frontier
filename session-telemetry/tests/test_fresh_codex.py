@@ -1,9 +1,12 @@
 """Schema-shaped fresh streams only. No authentication or session-log reads."""
 import copy
 import json
+import os
 from pathlib import Path
+import signal
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -37,6 +40,19 @@ def terminal(status="completed", items=None):
     return event("turn/completed", turn={"id": "turn", "status": status,
                  "startedAt": 1000, "completedAt": 1002, "durationMs": 1800,
                  "items": items or [], "error": None})
+
+
+def gone(pid, wait=5):
+    """True once `pid` no longer exists; an orphan's reaping by init can lag its death."""
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
 
 
 def observer(*events):
@@ -126,7 +142,7 @@ class ObservationTests(unittest.TestCase):
 # ephemeral/no-policy-override boundary, then emits controlled responses. It
 # never invokes Codex, reads transcripts, or requires network/authentication.
 SERVER = r'''
-import json, sys, time
+import json, subprocess, sys, time
 scenario = sys.argv[1]
 config = json.loads(sys.argv[2])
 events = json.loads(sys.argv[3])
@@ -155,6 +171,13 @@ if scenario == 'timeout':
     stop = read()
     assert stop['method'] == 'turn/interrupt'
     sys.exit(0)
+if scenario == 'stuck_tool':
+    # A tool command still running while the server ignores shutdown.
+    emit({'id':2, 'result':{'turn':{'id':'turn'}}})
+    tool = subprocess.Popen(['sleep', '60'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    open('tool.pid', 'w').write(str(tool.pid))
+    while True:
+        time.sleep(1)
 if scenario == 'early':
     for e in events:
         emit(e)
@@ -213,6 +236,17 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(r["outcome"], "timed_out")
         self.assertEqual(r["process_exit_code"], 0)
         self.assertIsNone(r["usage_snapshot"])
+
+    def test_cleanup_ends_the_server_process_group(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            command = [sys.executable, "-u", "-c", SERVER, "stuck_tool", json.dumps(CONFIG), "[]"]
+            r = fc.measure(command, cwd=Path(cwd), model="fixture-model", effort="high",
+                           prompt="test prompt", timeout=0.5)
+            tool = int((Path(cwd) / "tool.pid").read_text())
+        self.addCleanup(lambda: gone(tool, 0) or os.kill(tool, signal.SIGKILL))
+        self.assertEqual(r["outcome"], "timed_out")
+        self.assertEqual(r["process_exit_code"], -signal.SIGTERM)
+        self.assertTrue(gone(tool))
 
     def test_persisted_or_child_thread_is_rejected_before_turn(self):
         for field, value in (("ephemeral", False), ("parentThreadId", "parent")):

@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import selectors
+import signal
 import subprocess
 import time
 
@@ -210,7 +211,8 @@ def measure(command, *, cwd, model, effort, prompt, timeout=180):
 
     try:
         process = subprocess.Popen(command, cwd=cwd, stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   start_new_session=True)
         selector.register(process.stdout, selectors.EVENT_READ, "stdout")
         selector.register(process.stderr, selectors.EVENT_READ, "stderr")
         send({"id": 0, "method": "initialize", "params": {
@@ -298,10 +300,19 @@ def measure(command, *, cwd, model, effort, prompt, timeout=180):
             try:
                 process.wait(timeout=2)
             except subprocess.TimeoutExpired:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
+                # Signal the server's whole group while its unreaped leader still
+                # holds the group ID, so children it started do not outlive it.
+                for sig in (signal.SIGTERM, signal.SIGKILL):
+                    try:
+                        os.killpg(process.pid, sig)
+                    except OSError:
+                        pass  # already gone; wait() below still reaps it
+                    try:
+                        process.wait(timeout=2)
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+                if process.poll() is None:
                     process.kill()
                     process.wait()
             process.stdout.close()

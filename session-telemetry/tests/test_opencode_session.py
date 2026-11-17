@@ -6,8 +6,10 @@ import json
 import os
 from pathlib import Path
 import signal
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -19,6 +21,19 @@ SID = "ses_fixture1"
 PROMPT = "authorized prompt text"
 M1 = {"id": "m1", "providerID": "p1"}
 M2 = {"id": "m2", "providerID": "p2"}
+
+
+def gone(pid, wait=5):
+    """True once `pid` no longer exists; an orphan's reaping by init can lag its death."""
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
 
 
 def tk(inp=0, out=0, reasoning=0, read=0, write=0):
@@ -529,6 +544,30 @@ class TimeoutTests(FixtureCase):
         self.assertEqual(r["step_usage_sum"], {"tokens": dict.fromkeys(oc.TOKEN_FIELDS), "cost_usd": None})
         self.assertEqual(r["steps"][0]["tokens"], flat(9, 3))
         self.assertEqual(r["session_usage_delta"], {"tokens": flat(9, 3), "cost_usd": 0.5})
+
+    def test_interrupted_runner_ends_the_turn(self):
+        # Ctrl-C reaches the runner's process group, never the turn's own session.
+        self.finish(sleep=60)
+        self.state_path.write_text(json.dumps(self.state))
+        child = ("import sys\n"
+                 f"sys.path.insert(0, {str(Path(oc.__file__).parent)!r})\n"
+                 "import opencode_session as oc\n"
+                 "from pathlib import Path\n"
+                 f"oc.measure([sys.executable, '-S', '-B', {str(FAKE)!r}, {str(self.state_path)!r}],\n"
+                 f"           cwd=Path({str(self.cwd)!r}), phase='fresh', session_id='{SID}', prompt='go', timeout=120)\n")
+        runner = subprocess.Popen([sys.executable, "-B", "-c", child], stderr=subprocess.DEVNULL)
+        self.addCleanup(runner.wait)
+        turn = None
+        deadline = time.monotonic() + 20
+        while turn is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+            runs = json.loads(self.state_path.read_text()).get("runs")
+            turn = runs[0]["pid"] if runs else None
+        self.assertIsNotNone(turn)
+        self.addCleanup(lambda: gone(turn, 0) or os.killpg(turn, signal.SIGKILL))
+        runner.send_signal(signal.SIGINT)
+        self.assertNotEqual(runner.wait(timeout=20), 0)
+        self.assertTrue(gone(turn))
 
     def test_timeout_signal_is_sigterm(self):
         self.finish(sleep=60)

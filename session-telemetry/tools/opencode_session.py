@@ -156,24 +156,28 @@ def run_turn(client, argv, timeout):
                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                start_new_session=True)
     timed_out = False
+    out = err = b""
     try:
         out, err = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         timed_out = True
-        out = err = b""
-        for sig in (signal.SIGTERM, signal.SIGKILL):
-            try:
-                os.killpg(process.pid, sig)
-            except OSError:
-                pass  # already gone; communicate() below still reaps it
-            try:
-                out, err = process.communicate(timeout=5)
-                break
-            except subprocess.TimeoutExpired:
-                continue
-        if process.poll() is None:
-            process.kill()
-            out, err = process.communicate()
+    finally:
+        # The turn runs in its own session, so Ctrl-C never reaches it: a timeout
+        # or any interrupt of this runner ends the turn's process group here.
+        if process.returncode is None:
+            for sig in (signal.SIGTERM, signal.SIGKILL):
+                try:
+                    os.killpg(process.pid, sig)
+                except OSError:
+                    pass  # already gone; communicate() below still reaps it
+                try:
+                    out, err = process.communicate(timeout=5)
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+            if process.poll() is None:
+                process.kill()
+                out, err = process.communicate()
     # The stream's event schema is not published; keep counts and the session
     # IDs it names, never contents.
     stream = {"bytes": len(out), "json_lines": 0, "other_lines": 0, "event_types": Counter(),
