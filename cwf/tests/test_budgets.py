@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG_CEILING = 544
-BLOCK_CEILING = 654
+BLOCK_CEILING = 805
 
 
 def catalog_bytes():
@@ -31,9 +31,9 @@ class BudgetTests(unittest.TestCase):
                              "CATALOG_CEILING in cwf/tests/test_budgets.py with the measured cost" % (size, CATALOG_CEILING))
 
     def test_instruction_block_within_ceiling(self):
-        size = len((ROOT / "instructions/opencode.AGENTS.md").read_bytes())
+        size = len((ROOT / "instructions/kiro.steering.md").read_bytes())
         self.assertLessEqual(size, BLOCK_CEILING,
-                             "instructions/opencode.AGENTS.md is %d bytes, ceiling %d: shorten it, or raise "
+                             "instructions/kiro.steering.md is %d bytes, ceiling %d: shorten it, or raise "
                              "BLOCK_CEILING in cwf/tests/test_budgets.py with the measured cost" % (size, BLOCK_CEILING))
 
 

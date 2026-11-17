@@ -1,26 +1,27 @@
-# CWF setup for opencode
+# CWF setup for Kiro CLI v3
 
 Python 3.11+ is required. CWF uses only the Python standard library. `cwf/deploy.sh`
-links the checkout into opencode's locations and maintains one marked block; it
+links the checkout into the Kiro v3 surfaces and maintains one marked block; it
 copies nothing and records nothing. See "Deploy script" in
-[contributing](/docs/contributing.md).
+[contributing](/docs/contributing.md) and the [surface map](/docs/kiro-branch.md).
 
 ## Source to destination
 
 | Source in `cwf/` | Destination |
 | --- | --- |
-| `skills/cwf-<domain>` (six directories) | `~/.config/opencode/skills/cwf-<domain>`, symlinks |
+| `skills/cwf-<domain>` (six directories) | `~/.kiro/skills/cwf-<domain>`, symlinks (CONFIRM) |
 | `cwf.py` | `~/.local/bin/cwf`, symlink |
-| `instructions/opencode.AGENTS.md` | the block between `<!-- CWF:BEGIN -->` and `<!-- CWF:END -->` in `~/.config/opencode/AGENTS.md`; every other byte of that file is kept |
+| `instructions/kiro.steering.md` | the block between `<!-- CWF:BEGIN -->` and `<!-- CWF:END -->` in `~/.kiro/steering/frontier.md`; every other byte of that file is kept (CONFIRM) |
 
-`~/.config/opencode/opencode.json` is never read or written. Observations, task
-checkpoints and the discovery cache live under `~/.local/state/cwf`; they are
-optional, and deleting them loses only that recorded state.
+No other file under `~/.kiro/` is read or written; `permissions.yaml` is never
+written by deploy. Observations, task checkpoints and the discovery cache live
+under `~/.local/state/cwf`; they are optional, and deleting them loses only
+that recorded state.
 
 ## Run
 
 ```sh
-zsh /Users/matthias/projects/frontier-clean/cwf/deploy.sh
+zsh cwf/deploy.sh
 ```
 
 Run it again after any source edit that adds a skill or changes the block text.
@@ -29,28 +30,26 @@ Edits to existing skill files need no run: the links point at the checkout.
 ## Verify
 
 ```sh
-ls -l ~/.config/opencode/skills ~/.local/bin/cwf
+ls -l ~/.kiro/skills ~/.local/bin/cwf
 ~/.local/bin/cwf version
 ```
 
-Start a fresh session and send:
+Start a fresh `kiro-cli --v3` session and ask it to load the `cwf-maintain`
+skill (CONFIRM: the v3 skill-invocation syntax) and to list the CWF skills and
+the CWF block it sees in its instructions, changing nothing.
 
-```text
-Use @cwf-maintain to list the CWF skills and the CWF block you see in your instructions. Do not change configuration or write task or memory state.
-```
-
-Expected: six `cwf-*` skills and the CWF instruction text. opencode's documentation
-does not say whether symlinked skill directories are followed; the fresh session
-is the only check.
+Expected: six `cwf-*` skills and the CWF instruction text. Whether kiro v3
+follows symlinked skill directories is unverified; the fresh session is the
+only check.
 
 ## Remove
 
 ```sh
-rm ~/.config/opencode/skills/cwf-build ~/.config/opencode/skills/cwf-design ~/.config/opencode/skills/cwf-docs ~/.config/opencode/skills/cwf-maintain ~/.config/opencode/skills/cwf-plan ~/.config/opencode/skills/cwf-product
+rm ~/.kiro/skills/cwf-build ~/.kiro/skills/cwf-design ~/.kiro/skills/cwf-docs ~/.kiro/skills/cwf-maintain ~/.kiro/skills/cwf-plan ~/.kiro/skills/cwf-product
 rm ~/.local/bin/cwf
 ```
 
-Then open `~/.config/opencode/AGENTS.md` and delete the lines from
+Then open `~/.kiro/steering/frontier.md` and delete the lines from
 `<!-- CWF:BEGIN -->` through `<!-- CWF:END -->`. Removal leaves
 `~/.local/state/cwf` in place; delete it only to discard recorded observations and
 checkpoints.

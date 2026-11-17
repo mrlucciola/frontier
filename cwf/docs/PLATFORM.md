@@ -1,11 +1,26 @@
-# Platform assumptions and verification
+# Platform assumptions: Kiro v3 surfaces
 
-Official opencode documentation (OpenCode V2 pages, checked 2026-11-12):
+Official Kiro documentation describes the v3 era, and this branch targets it:
+agents run only through `kiro-cli --v3`, per the
+[branch policy](/docs/kiro-branch.md). No official documentation URL is cited
+here; none has been verified from this checkout (CONFIRM during recon).
 
-- https://opencode.ai/docs/skills/ -- global skills are discovered under `~/.config/opencode/skills` and the compatibility roots `~/.claude/skills` and `~/.agents/skills`; project skills under `.opencode/skills`, `.claude/skills` and `.agents/skills`, searched from the current directory up to the project root. The skill ID comes from the file path; the frontmatter `name` is a display label. Duplicate IDs are not merged: a later-registered source overrides an earlier one, and `~/.config/opencode/skills` and project `.opencode/skills` register after `~/.agents/skills`. The model loads a skill through the `skill` tool with its exact ID; a user names one as `@skill-id`. `permissions` rules with `"action": "skill"` allow, ask or deny by ID. `cwf/deploy.sh` links namespaced `cwf-<domain>` directories into `~/.config/opencode/skills`. The page does not say whether symlinked skill directories are followed.
-- https://opencode.ai/docs/instructions/ -- global guidance is `~/.config/opencode/AGENTS.md`, loaded before every `AGENTS.md` from the workspace directory toward the home directory. Sources are combined rather than used as overrides; there is no override file, and V2 does not fall back to `CLAUDE.md`. `instructions` entries in `opencode.json` load after the `AGENTS.md` files. CWF's optional owned block goes into the global `AGENTS.md`.
-- https://opencode.ai/docs/config/ -- global `~/.config/opencode/opencode.json(c)`, then project, then system and managed configuration. CWF does not read, replace or reformat `opencode.json`. No environment variable that relocates the config directory is documented there; `opencode debug paths config` (https://opencode.ai/docs/cli/) prints the directory in use; `deploy.sh` assumes `~/.config/opencode`.
+CWF uses these Kiro v3 surfaces, taken from the branch surface map. Each is
+CONFIRM pending work-machine recon:
 
-These are documented assumptions, not live-client qualification. Current documentation may differ from the installed opencode version, and the V1 pages differ from the above (V1 falls back to `CLAUDE.md`). Plugin distribution is a documented option (https://opencode.ai/docs/plugins/); this pilot deliberately uses a short local deploy script to support the requested per-computer rollout without a marketplace/service dependency.
+- Skills: `~/.kiro/skills/<name>` symlinks to the six `cwf-*` directories in
+  the checkout. Whether symlinked skill directories are followed is
+  unobserved; a fresh session is the only check.
+- Global instructions: one marked block in `~/.kiro/steering/frontier.md`,
+  one per component; every byte outside the markers is kept. How steering
+  files combine with project instructions is unobserved.
+- Skill loading: the session loads a skill through the `skill` tool by name;
+  user mention syntax for skills is unobserved.
 
-CWF does not depend on plugins, lifecycle hooks or special APIs. Model selection of a skill remains probabilistic; a short global instruction is guidance, not enforcement. Terminal and IDE sessions, custom config roots, managed installations, and discovery through the installed skill links must be checked on each pilot environment. Live visibility is never inferred from file existence.
+`deploy.sh` touches only these paths and writes no other file under
+`~/.kiro/`; `permissions.yaml` is reviewed by hand and never written by a
+deploy script. CWF does not depend on plugins, lifecycle hooks or special
+APIs. Model selection of a skill remains probabilistic; a short steering
+block is guidance, not enforcement. Live visibility is never inferred from
+file existence. Recon observations replace these CONFIRM markers; do not
+invent v3 behavior.

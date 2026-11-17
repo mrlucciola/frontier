@@ -5,7 +5,7 @@
 - Python 3.11+ must already be available. Check `python3 --version`; do not assume macOS includes an appropriate interpreter. CWF does not run Homebrew or install Python automatically.
 - Git is required only for Git-aware discovery and worktree operations. Core text work can run outside Git.
 - Run the commands below from `cwf/`. Quote paths containing spaces.
-- Check `docs/PLATFORM.md` against the installed opencode version during qualification. Never weaken sandbox or managed-device settings to make CWF work.
+- Check `docs/PLATFORM.md` against observed Kiro v3 behavior during qualification; record `kiro-cli --version` as information only. Never weaken sandbox or managed-device settings to make CWF work.
 - Installation makes no remote requests and does not commit/push repository changes.
 
 Every command accepts `--input file.json` or `--input -` for one JSON object. Keep task text out of interpolated shell strings. `--output file.json` saves the same result envelope printed to stdout. `--format text` prints a brief status plus the data. Request size is bounded to 1 MiB.
@@ -14,13 +14,13 @@ The default target is the current user's home. `--home /absolute/test-home` targ
 
 ## 2. Deploy
 
-`cwf/deploy.sh` links the six skills and `cwf.py` into the checkout and maintains one marked block in the global `AGENTS.md`; see [setup](/cwf/INSTALL.md). It is idempotent. The launcher is `~/.local/bin/cwf`; adding that directory to PATH is optional, so use its absolute path if PATH does not include it.
+`cwf/deploy.sh` links the six skills and `cwf.py` into the checkout and maintains one marked block in `~/.kiro/steering/frontier.md`; see [setup](/cwf/INSTALL.md). It is idempotent. The launcher is `~/.local/bin/cwf`; adding that directory to PATH is optional, so use its absolute path if PATH does not include it.
 
-Git history is the record of what changed. Durable edits belong in the source files; an edit made only to a deployed copy of the block lasts until the next run. No repository files are added by deployment. The block goes into the global `AGENTS.md` in the opencode config directory, which opencode combines with project `AGENTS.md` files. Existing instructions outside the markers are preserved.
+Git history is the record of what changed. Durable edits belong in the source files; an edit made only to a deployed copy of the block lasts until the next run. No repository files are added by deployment. The block goes into `~/.kiro/steering/frontier.md`, which carries one marked block per component (CONFIRM: how steering files combine with project instructions is unobserved). Existing instructions outside the markers are preserved.
 
 ## 3. Ordinary use
 
-Native descriptions let opencode consider a relevant skill and load it through its `skill` tool. Users can explicitly name `@cwf-build`, `@cwf-docs`, `@cwf-design`, `@cwf-product`, `@cwf-plan`, or `@cwf-maintain` in a prompt. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by deployment.
+Native descriptions let the session consider a relevant skill and load it through the `skill` tool (CONFIRM: kiro v3 skill loading and user mention syntax are unobserved). Users can explicitly name `cwf-build`, `cwf-docs`, `cwf-design`, `cwf-product`, `cwf-plan`, or `cwf-maintain` in a prompt. Unrelated everyday requests should not invoke CWF tools. Skill bodies and patterns are not loaded by deployment.
 
 Discovery request example, substituting your actual scope:
 

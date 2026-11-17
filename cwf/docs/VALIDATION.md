@@ -60,7 +60,7 @@ From `cwf/`:
 python3 -B -m unittest discover -s tests -v
 ```
 
-Tests create disposable homes/repositories, including paths containing spaces. They do not use real opencode configuration. Git is required for worktree cases. Python runtime has no third-party dependencies; the optional cross-validator is reported as skipped if absent.
+Tests create disposable homes/repositories, including paths containing spaces. They do not use the real `~/.kiro` configuration. Git is required for worktree cases. Python runtime has no third-party dependencies; the optional cross-validator is reported as skipped if absent.
 
 Read `docs/DEVIATIONS.md` before interpreting coverage. Retrieval is bounded lexical discovery, not semantic clone detection. Warm cache matches still reread bounded sources. Global instruction and skill metadata overhead is small but nonzero even for bypassed requests; actual token counts, activation reliability, remediation savings, and latency distributions are unmeasured. No estimates are presented as release evidence.
 

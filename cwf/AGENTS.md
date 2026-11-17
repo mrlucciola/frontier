@@ -1,7 +1,8 @@
 # CWF maintenance
 
 This component owns the standard-library CWF runtime, six skills, patterns,
-schemas, and `deploy.sh` with the opencode instruction block it maintains.
+schemas, and `deploy.sh` with the Kiro steering block it maintains.
+Historical qualification records describe their original runs.
 
 | Work | Read |
 | --- | --- |
@@ -27,8 +28,8 @@ Do not add local plans, databases, logs or secrets to this directory.
 
 The default tests use disposable homes and repositories; `test_deploy.py` runs
 `deploy.sh` only against a temporary `HOME`. There is no installed-client probe for
-opencode: discovery of the linked skills and the instruction sources a session
-loads are checked by hand in a fresh session.
+Kiro: discovery of the linked skills and the instruction sources a session
+loads are checked by hand in a fresh `kiro-cli --v3` session.
 
 Checkpoint, observe and worktree commands are for work no ticket tracks. Where
 the repository tracks work, its ticket notes and worktree tool own continuation

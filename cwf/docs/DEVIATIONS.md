@@ -15,7 +15,7 @@ This file records where the implementation is narrower than the specification.
 | Write-surface declarations | Concrete relative paths/directories, normalized and compared case-insensitively; globs refused | Conservative macOS collision handling; no incomplete glob-intersection claim. |
 | Telemetry | Command results and explicit summary exports; no persistent generic event stream | Reduce retained user data and write overhead. Pilot metrics are collected explicitly. |
 | Retention | Explicit prune/purge commands | No background jobs or silent removal of checkpoints. |
-| UI/runtime integration | Native skills plus optional global block; no `opencode.json` rewrite | Coexists with personalized installations; current loaded model context cannot be retracted. |
+| UI/runtime integration | Native skills plus one optional steering block; no rewrite of other `~/.kiro/` files | Coexists with personalized installations; current loaded model context cannot be retracted. |
 | Skill delivery | Skills live in the checkout; `deploy.sh` links them | The checkout is the only copy (R13). |
 | Qualification | Automated mechanics and limited explicit-skill fresh-agent exercises | Not full implicit-routing evaluation, paired cost study, macOS verification, or production certification. |
 

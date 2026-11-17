@@ -1,3 +1,4 @@
 Before substantive work, load the matching `cwf-*` skill without being asked: cwf-build before changing code, cwf-design to review architecture or duplication, cwf-docs for documentation, cwf-plan for multi-part planning, cwf-product for requirements.
+The session loads a skill through the `skill` tool by name (CONFIRM: kiro v3 skill loading and any mention syntax are unverified on the work machine).
 Questions, personal or general topics, and trivial edits (a typo, one line) skip CWF.
 Where the repository's instructions name a ticket store or worktree tool, it owns tracked work: record continuation and findings in the ticket store, make checkouts with the worktree tool, and run no CWF checkpoint, observe or worktree command. Untracked work needs no ticketing system or repository initialization.

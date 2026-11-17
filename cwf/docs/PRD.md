@@ -36,7 +36,7 @@ Two things supplement the core and are never required by it:
 ## Users and context
 
 One operator, deploying once per user on macOS. The supported harness is
-opencode. Work happens inside and outside repositories, from ordinary prompts,
+Kiro CLI v3. Work happens inside and outside repositories, from ordinary prompts,
 batches, or tickets.
 
 ## Requirements
@@ -44,7 +44,7 @@ batches, or tickets.
 | ID | Requirement |
 | --- | --- |
 | R01 | Deploy once per user with `deploy.sh`: links into the checkout and one marked block. A source edit is live without redeploying, except a new skill or changed block text. No per-repository setup. |
-| R02 | Support opencode. Add another harness only with its own files and evidence that each piece helps there. Keep text that differs per harness in per-harness files. |
+| R02 | Support Kiro CLI v3. Add another harness only with its own files and evidence that each piece helps there. Keep text that differs per harness in per-harness files. |
 | R03 | Cover product and strategy work, architecture and design, documentation, planning, implementation and review, and maintaining CWF itself. |
 | R04 | Treat ordinary prompts and batches as first-class input. Tickets are one optional input; CWF never requires a ticket store. |
 | R05 | Before introducing a solution, look for an existing implementation, convention or accepted decision that already covers it, and reuse or extend it where it fits. |
@@ -73,7 +73,7 @@ batches, or tickets.
 
 Measured on paired, interleaved cohorts of the six evaluation scenarios against
 the same harness, model and settings without CWF. Results are from the first
-cohort (opencode 2.0.32, 2026-11-15, three runs per scenario per arm).
+cohort (2026-11-15, three runs per scenario per arm, on the pre-Kiro harness).
 
 | Measure | Target | First cohort |
 | --- | --- | --- |

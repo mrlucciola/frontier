@@ -4,7 +4,11 @@
 
 Test whether contextual outcomes improve without unacceptable overhead or interference. No pilot results are prefilled. Use fresh sessions and disposable fixture copies; preserve a clean baseline separately. Ticket-free work is mandatory.
 
-Record OS/architecture, Python/Git, opencode version and surface (terminal/IDE), model/reasoning configuration, enabled skills, scope sources, framework release, cold/warm state, and exact task prompt. Do not mix explicit skill invocation with implicit activation evidence.
+Record OS/architecture, Python/Git, `kiro-cli --version` output (recorded as
+information only, never a gate), surface, model/reasoning configuration,
+enabled skills, scope sources, framework release, cold/warm state, and exact
+task prompt. Do not mix explicit skill invocation with implicit activation
+evidence.
 
 ## Scenario prompts
 

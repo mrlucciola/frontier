@@ -2,7 +2,8 @@
 
 **Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment. Requirements and scope are decided by the [product requirements](/cwf/docs/PRD.md), which win where this document disagrees.
 
-**Target:** A global, per-user opencode installation on macOS, available in terminal and IDE sessions, across repositories and outside repositories.
+**Target:** A global, per-user Kiro CLI v3 setup on macOS, available in
+`kiro-cli --v3` sessions, across repositories and outside repositories.
 
 **Working name:** Contextual Work Framework (CWF). This name and the `cwf-` namespace are implementation identifiers, not an established standard.
 
@@ -15,7 +16,7 @@ These requirements are the trace target for section 15. The current requirements
 | ID | Requirement |
 | --- | --- |
 | R01 | Install once per user/computer; work across directories without mandatory repository installation or initialization. |
-| R02 | Support opencode on macOS in terminal and IDE sessions; preserve personalized configurations and existing shared or personal skills. |
+| R02 | Support Kiro CLI v3 on macOS; preserve personalized configurations and existing shared or personal skills. |
 | R03 | Cover product work, strategy, architecture, software design, documentation, PRDs, ERDs, planning, and implementation. |
 | R04 | Treat ordinary prompts and batches as first-class inputs. Tickets, backlogs, and agentic ticketing systems are optional sources. |
 | R05 | Investigate relevant existing implementations, artifacts, conventions, and accepted decisions before introducing competing solutions. |
@@ -71,13 +72,15 @@ Team conventions normally guide implementation. If a convention conflicts with c
 
 ## 4. Installation and storage layout
 
-Framework-specific paths are conventions introduced by this specification, not native opencode features.
+Framework-specific paths are conventions introduced by this specification, not
+native Kiro v3 features; each follows the branch surface map and is CONFIRM
+pending recon.
 
 | Path | Purpose |
 | --- | --- |
-| `~/.config/opencode/skills/cwf-<domain>` | Symlinks to the skill directories in the checkout |
+| `~/.kiro/skills/cwf-<domain>` | Symlinks to the skill directories in the checkout (CONFIRM) |
 | `~/.local/bin/cwf` | Symlink to `cwf.py` in the checkout |
-| `~/.config/opencode/AGENTS.md` | One delimited activation block; all surrounding content is preserved |
+| `~/.kiro/steering/frontier.md` | One delimited activation block; all surrounding content is preserved (CONFIRM) |
 | `~/.config/cwf/config.json` | Personal framework settings, exclusions, and explicitly configured adapter bindings |
 | `~/.local/state/cwf/` | Private scope registry, SQLite state and task records; optional, recreated on the next write |
 | `<scope>/.cwf.json` | Optional team-maintained, data-only source mappings and conventions |
@@ -195,7 +198,7 @@ For the widget example, the useful outcome is candidates for v1, v2, migration d
 
 ### Framework configuration
 
-All keys below belong to CWF, not opencode. Effective order: command options, explicit session overrides, approved scope settings, personal defaults, built-in defaults. Security restrictions intersect: a narrower scope may add exclusions but cannot silently remove personal exclusions, grant external access, enable execution, or export data.
+All keys below belong to CWF, not Kiro. Effective order: command options, explicit session overrides, approved scope settings, personal defaults, built-in defaults. Security restrictions intersect: a narrower scope may add exclusions but cannot silently remove personal exclusions, grant external access, enable execution, or export data.
 
 Configuration fields: `schema_version`, `mode` (`active`, `advisory`, `off`), enabled domains, source roots/exclusions, packet/scan limits, retention limits, adapter bindings, and local validation mappings. Repository `.cwf.json` is optional and data-only. Unknown fields, executable values, path escapes, and unsupported schema versions produce diagnostics; never evaluate arbitrary expressions.
 
@@ -273,8 +276,8 @@ No adapters to other components are implemented by inference. Future integration
 
 `cwf/deploy.sh` is the whole deployment, held to "Deploy script" in `docs/contributing.md`.
 
-1. It links the namespaced `cwf-<domain>` skill directories and `cwf.py` into the checkout. It rewrites only the text between the `CWF` markers in the global `AGENTS.md` and appends the block when the markers are absent; every other byte is kept.
-2. It does not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, unrelated skills or `opencode.json`.
+1. It links the namespaced `cwf-<domain>` skill directories and `cwf.py` into the checkout. It rewrites only the text between the `CWF` markers in `~/.kiro/steering/frontier.md` and appends the block when the markers are absent; every other byte is kept.
+2. It does not alter model/provider settings, sandbox rules, approvals, existing hooks, Git configuration, unrelated skills or other Kiro configuration.
 3. Running it again leaves the same result. A missing source file stops it before anything is written. There is no receipt, manifest, checksum, rollback or upgrade step: git history records what changed, and the checkout wins over any deployed copy.
 4. Removal is the command list in `cwf/INSTALL.md`. State under `~/.local/state/cwf` is kept unless the operator deletes it.
 
@@ -346,7 +349,7 @@ Savings are desirable; preventing remediation within a bounded overhead budget i
 
 - **G1 -- Build correctness:** all required automated tests pass; schemas consistent; no unresolved destructive-operation defects.
 - **G2 — Behavioral candidate:** all critical safety/coexistence cases pass; A01–A06, A08, A11, A14–A18 demonstrate expected behavior in the tested model configuration. Any failure is reported, not averaged away.
-- **G3 -- Local compatibility:** run clean and personalized deploy, activation, disable, and removal on macOS CLI and IDE. Record OS, architecture, Python, Git, opencode version and surface, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
+- **G3 -- Local compatibility:** run clean and personalized deploy, activation, disable, and removal on macOS CLI and IDE. Record OS, architecture, Python, Git, Kiro v3 release (information only, never a gate), surface, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
 - **G4 — Pilot qualification:** minimum two independent users/computers, shared and independent repositories, and a non-Git workspace. Include ticket-free single/batch work. Human review confirms useful results and acceptable correction/overhead behavior. This small pilot does not establish universal reliability.
 
 Only combinations passing the relevant gates may be labeled qualified. “Production-ready” must identify its supported configurations and known limitations; it is not a blanket label for the archive.
@@ -370,20 +373,22 @@ Only combinations passing the relevant gates may be labeled qualified. “Produc
 
 ## 16. Platform grounding and design principles
 
-The target pilot requires actual target environments; tests in a development environment do not substitute for macOS or real opencode behavior.
+The target pilot requires actual target environments; tests in a development environment do not substitute for macOS or real Kiro v3 behavior.
 
 CWF relies on scoped instructions, narrow triggers, direct invocation, evidence-based validation, provenance, and recovery. It does not require custom archive routing, thread renaming, exhaustive final markers, numerical readiness scores, or a ticket-centric workflow.
 
 ### Platform grounding
 
-Official opencode documentation (details in `docs/PLATFORM.md`):
+Official Kiro documentation describes the v3 era; no URL is cited here because
+none has been verified from this checkout (CONFIRM). The
+[branch surface map](/docs/kiro-branch.md) and
+[platform page](/cwf/docs/PLATFORM.md) list the surfaces this component uses
+and their CONFIRM items.
 
-- [Skills](https://opencode.ai/docs/skills/): metadata-first loading through the `skill` tool, global/project discovery paths including `~/.agents/skills`, and path-derived IDs where a later duplicate overrides an earlier one. These support the native skill design; symlink support is not documented, and actual visibility is still qualified locally.
-- [Instructions](https://opencode.ai/docs/instructions/): global and project `AGENTS.md` files and `instructions` entries are combined, with no override file. This motivates an owned block in the global file that preserves personalized instructions.
-- [Config](https://opencode.ai/docs/config/): user/project/system configuration precedence. `deploy.sh` does not change unrelated runtime settings.
-- [Plugins](https://opencode.ai/docs/plugins/): plugin discovery and hook handlers. Plugins are deferred so baseline behavior does not depend on installing or trusting additional lifecycle handlers.
-
-Platform behavior can change. Pilots verify supported versions against current documentation and the installed clients; this specification establishes no version-specific compatibility.
+Platform behavior can change. Recon on the work machine must verify observed
+Kiro v3 behavior and settle the CONFIRM markers; nothing pins or gates on
+`kiro-cli --version`, and this specification establishes no version-specific
+compatibility.
 
 ### Design principles
 
