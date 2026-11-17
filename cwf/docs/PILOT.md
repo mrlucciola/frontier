@@ -1,4 +1,4 @@
-# M6 pilot protocol
+# Pilot protocol
 
 ## Purpose
 

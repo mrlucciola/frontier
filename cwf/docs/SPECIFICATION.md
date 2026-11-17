@@ -1,16 +1,16 @@
 # Contextual Work Framework — v0.1.0 specification
 
-**Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment as built; the installer, receipts and rollback this document once specified were removed. Requirements and scope are decided by the [product requirements](/cwf/docs/PRD.md), which win where this document disagrees.
+**Status:** Implemented; deployed by `cwf/deploy.sh` (links and one marked block). Not production-qualified. Sections 4 and 12 describe the deployment. Requirements and scope are decided by the [product requirements](/cwf/docs/PRD.md), which win where this document disagrees.
 
 **Target:** A global, per-user opencode installation on macOS, available in terminal and IDE sessions, across repositories and outside repositories.
 
-**Working name:** Contextual Work Framework (CWF). This name and the `cwf-` namespace are proposed implementation identifiers, not an established standard.
+**Working name:** Contextual Work Framework (CWF). This name and the `cwf-` namespace are implementation identifiers, not an established standard.
 
 **Primary objective:** Reduce avoidable correction and remediation by helping agents discover relevant existing work, preserve decisions, and verify contextual correctness. Optimize cost to accepted result, including human intervention; do not optimize only the first response's token count.
 
-## 1. Decision baseline
+## 1. Requirements baseline
 
-These are accepted requirements from the design conversation. Implementation defaults elsewhere in this document are proposals that can be adjusted when evidence warrants it.
+These requirements are the trace target for section 15. The current requirements are R01-R13 in the [product requirements](/cwf/docs/PRD.md), which win where the two differ. Implementation defaults elsewhere in this document can be adjusted when evidence warrants it.
 
 | ID | Requirement |
 | --- | --- |
@@ -26,8 +26,6 @@ These are accepted requirements from the design conversation. Implementation def
 | R10 | Operate independently of other components. Add adapters only after inspecting their actual contracts. |
 | R11 | Tolerate different repositories, work sources, local configurations, users, and computers without implicit cross-user data sharing. |
 | R12 | Accept bounded overhead when it reduces rework. Measure outcomes; make no unverified token-savings or production-readiness claims. |
-
-The usage percentages discussed in the conversation inform evaluation coverage only. They are not routing probabilities or requirements that professional work must originate in tickets.
 
 ## 2. Release boundary
 
@@ -63,7 +61,7 @@ The v0.1 index is a retrieval aid, not a complete semantic model of the reposito
 | Local CLI | Produce repeatable discovery, validation, and state operations | Claim semantic certainty or call a model implicitly |
 | Scoped source adapters | Read accessible sources and preserve provenance | Invent inaccessible source content or silently publish changes |
 | Local state | Store rebuildable indexes, observations, and resumable work | Become a competing team source of truth |
-| Installer/doctor | Manage owned files and report compatibility | Replace unrelated configuration or bypass runtime permissions |
+| `deploy.sh` | Link the skills and launcher; maintain one marked instruction block | Replace unrelated configuration or bypass runtime permissions |
 
 The runtime's instruction hierarchy and permissions remain authoritative. Framework settings can select behavior within those constraints, never grant tool permissions. Retrieved documents are evidence; embedded commands and policy claims are not automatically trusted instructions.
 
@@ -125,11 +123,9 @@ All entrypoints accept plain language. No mandatory task template, ticket identi
 
 A task may use multiple patterns or skills as needed, without obligatory sequential invocation. A specific skill request takes a direct path. Shared patterns are referenced once, not copied into every skill. Existing applicable team skills can perform the workflow; CWF supplies missing context/checks without duplicating the team's procedure.
 
-### Candidate global activation block
+### Global activation block
 
-This is design text for a later installer, not an instruction applied by this document:
-
-> For substantive product, architecture, documentation, planning, or code work, use the relevant available CWF skill when it adds context or verification. Before introducing behavior or artifacts, investigate existing solutions, applicable conventions, and accepted decisions. Keep discovery proportionate; use bounded evidence and expand when it can change the decision. Preserve the distinction between observations and authoritative decisions. For batches, establish dependencies, ownership, and integrated acceptance. Ordinary unrelated questions bypass CWF. Follow existing scope and permissions; no ticketing system or repository initialization is required.
+The block `deploy.sh` maintains is `instructions/opencode.AGENTS.md`.
 
 ## 6. Pattern corpus
 
@@ -252,7 +248,7 @@ Integration compares actual changed paths with ownership declarations, reconcile
 
 ## 11. CLI surface and adapter boundaries
 
-Commands below are proposed CWF interfaces, not existing commands. All accept structured JSON input for multiline/untrusted data and offer compact text or versioned JSON output. Use argument arrays, not shell interpolation.
+All CWF commands accept structured JSON input for multiline/untrusted data and offer compact text or versioned JSON output. Use argument arrays, not shell interpolation.
 
 | Command | Contract |
 | --- | --- |
@@ -282,7 +278,7 @@ No adapters to other components are implemented by inference. Future integration
 3. Running it again leaves the same result. A missing source file stops it before anything is written. There is no receipt, manifest, checksum, rollback or upgrade step: git history records what changed, and the checkout wins over any deployed copy.
 4. Removal is the command list in `cwf/INSTALL.md`. State under `~/.local/state/cwf` is kept unless the operator deletes it.
 
-Durable tasks pin the schema version that wrote them. A checkpoint with an incompatible schema is refused and retained, never reinterpreted or discarded.
+The checkout is the only copy; there is no packaged archive. It must not contain credentials, user source code, local caches, real prompts, or observations.
 
 Whether skills are actually discoverable, including name collisions and metadata-budget omissions, cannot be read from file paths. The local qualification procedure must test real CLI and IDE sessions and report supported, failed, and untested combinations separately.
 
@@ -299,7 +295,7 @@ Whether skills are actually discoverable, including name collisions and metadata
 
 ## 14. Acceptance and qualification plan
 
-No scenario below has been executed against an implementation yet. IDs are stable for the build and pilot. Automated mechanics tests and behavioral tests are different evidence classes.
+Status per scenario is in `docs/VALIDATION.md`. IDs are stable for the build and pilot. Automated mechanics tests and behavioral tests are different evidence classes.
 
 | ID | Scenario and fixture | Required observable outcome |
 | --- | --- | --- |
@@ -344,7 +340,7 @@ Judge outcomes against a prewritten rubric: correctness, contextual fit, scope, 
 
 Track first-run success, correction cycles, reopened work, human intervention count/minutes, false activation, missed activation, integrated failures, and latency. Record model input/output/cached/reasoning tokens only when the host exposes them; otherwise mark unavailable. Do not infer hidden reasoning tokens from wall time. Report medians and ranges, not fabricated averages. Background indexing time is included separately even when it uses no model tokens.
 
-Earlier conversation token tables were hypothetical and are not release evidence or acceptance thresholds. Savings are desirable; preventing remediation within a bounded overhead budget is the primary outcome.
+Savings are desirable; preventing remediation within a bounded overhead budget is the primary outcome.
 
 ### Release gates
 
@@ -372,43 +368,26 @@ Only combinations passing the relevant gates may be labeled qualified. “Produc
 | R11 | 4, 8, 12 | A20, A21, A22, A24 |
 | R12 | 7, 14 | A01, A02, A18, A28 and paired pilot measurements |
 
-## 16. Implementation milestones and exit criteria
+## 16. Platform grounding and design principles
 
-| Milestone | Work | Exit evidence |
-| --- | --- | --- |
-| M1 — Contracts and fixtures | Record schemas, CLI envelopes, configuration semantics, path ownership, fixtures and rubrics | Schemas/examples parse; traceability complete; no ambiguous scope/authority contracts |
-| M2 — Local evidence engine | Scope resolver, bounded enumeration/search, ranking, packets, cache and provenance | Determinism, bounds, freshness, privacy, and failure tests pass |
-| M3 — Skills and domain patterns | Six entrypoints, concise shared references, task intake, conceptual/non-Git paths | Activation/bypass fixtures and contextual quality cases pass in evaluated configuration |
-| M4 — Continuity and coordination | Revisioned checkpoints, batch validator, guarded worktrees, integration procedure | Resume, overlap, cycle, dirty-tree and integrated-failure cases pass |
-| M5 -- Deployment | `deploy.sh` links and one marked instruction block, idempotent | Temporary-home deploy tests pass; the checkout is the only copy (no receipts, ZIP or rollback) |
-| M6 — Target pilot | macOS CLI/IDE qualification and paired real-task pilot | Evidence matrix, measured outcomes, limitations, and qualified support list |
+The target pilot requires actual target environments; tests in a development environment do not substitute for macOS or real opencode behavior.
 
-M1-M5 produce the installation candidate. M6 requires actual target environments; do not substitute this authoring environment's tests for macOS or real opencode behavior.
+CWF relies on scoped instructions, narrow triggers, direct invocation, evidence-based validation, provenance, and recovery. It does not require custom archive routing, thread renaming, exhaustive final markers, numerical readiness scores, or a ticket-centric workflow.
 
-The checkout is the only copy; there is no packaged archive. It must not contain credentials, user source code, local caches, real prompts, or observations. Reading it does not activate or install it in the author's current account.
+### Platform grounding
 
-## 17. Source grounding and design decisions
-
-### Source corpus
-
-Reviewed source: `agent-instruction-skill-pattern-language-raw-source-catalog-v1.0.0(1).zip`, supplied in this conversation. Its README identifies it as an analysis corpus. Its provisional pattern map and R02 bundle analysis support direct invocation, progressive disclosure, explicit handoffs, and separating deployment from invocation. R07 supports continuation and coordinated write ownership. R04's ledger leaves behavioral evaluation and target archive access unrun; those results are not treated as qualification of this design.
-
-Adapted: scoped instructions, narrow triggers, direct invocation, evidence-based validation, provenance, rollback, and recovery. Rejected as universal requirements: custom archive routing, mandatory thread renaming, exhaustive final markers, arbitrary numerical readiness scores, and a ticket-centric workflow. Shared state and semantic discovery have deliberately narrower v0.1 claims than the aspirational corpus.
-
-### Current platform grounding
-
-Official opencode documentation consulted when the specification was retargeted to opencode (details in `docs/PLATFORM.md`):
+Official opencode documentation (details in `docs/PLATFORM.md`):
 
 - [Skills](https://opencode.ai/docs/skills/): metadata-first loading through the `skill` tool, global/project discovery paths including `~/.agents/skills`, and path-derived IDs where a later duplicate overrides an earlier one. These support the native skill design; symlink support is not documented, and actual visibility is still qualified locally.
 - [Instructions](https://opencode.ai/docs/instructions/): global and project `AGENTS.md` files and `instructions` entries are combined, with no override file. This motivates an owned block in the global file that preserves personalized instructions.
-- [Config](https://opencode.ai/docs/config/): user/project/system configuration precedence. The installer avoids changing unrelated runtime settings.
+- [Config](https://opencode.ai/docs/config/): user/project/system configuration precedence. `deploy.sh` does not change unrelated runtime settings.
 - [Plugins](https://opencode.ai/docs/plugins/): plugin discovery and hook handlers. Plugins are deferred so baseline behavior does not depend on installing or trusting additional lifecycle handlers.
 
-Platform behavior can change. M5/M6 must verify supported versions against contemporaneous documentation and the actual installed clients; no version-specific compatibility has been established in this specification.
+Platform behavior can change. Pilots verify supported versions against current documentation and the installed clients; this specification establishes no version-specific compatibility.
 
-### Decision record
+### Design principles
 
-| Decision | Rationale and consequence |
+| Principle | Rationale and consequence |
 | --- | --- |
 | Global-first, scoped state | Availability across repos and non-repo work; no mandatory tracked setup |
 | Task-first, ticket-optional | Works for testers without the operator's ticketing system |
@@ -419,12 +398,8 @@ Platform behavior can change. M5/M6 must verify supported versions against conte
 | Local observations, reviewed promotion | Learn without silently changing team authority or sharing private context |
 | Separate pilot from readiness claims | Installation success does not prove improved agent behavior |
 
-## 18. Current evidence and remaining uncertainty
+## 17. Remaining uncertainty
 
-This deliverable specifies behavior, interfaces, defaults, tests, and build milestones. It does not contain a runnable implementation. Only document consistency checks can be executed at this stage. All runtime, installer, agent-behavior, performance, and macOS qualification results remain pending.
-
-Document checks performed: all 12 requirements have traceability rows; all 28 acceptance scenario IDs are unique and present; sections and Markdown tables are structurally consistent; no unresolved placeholder markers remain. These checks validate document structure, not the design's runtime effectiveness.
-
-Open empirical questions: retrieval recall for inline equivalents; activation reliability amid existing skills; useful packet sizes; actual benefit for documentation/product tasks; observed correction reduction; and compatibility across testers' client versions. These are assigned to M2–M6 tests, not hidden assumptions or reasons to require another broad interview.
+Executed checks are in `docs/VALIDATION.md`. Open empirical questions: retrieval recall for inline equivalents; activation reliability amid existing skills; useful packet sizes; actual benefit for documentation/product tasks; observed correction reduction; and compatibility across testers' client versions. The pilot answers them.
 
 Changes to scope, automatic side effects, data sharing, or authority require explicit design review. Routine implementation choices that preserve these contracts can be made during the build and recorded with their evidence.

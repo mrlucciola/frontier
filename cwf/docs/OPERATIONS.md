@@ -4,7 +4,7 @@
 
 - Python 3.11+ must already be available. Check `python3 --version`; do not assume macOS includes an appropriate interpreter. CWF does not run Homebrew or install Python automatically.
 - Git is required only for Git-aware discovery and worktree operations. Core text work can run outside Git.
-- Use the extracted bundle as a working directory for the commands below. Quote paths containing spaces.
+- Run the commands below from `cwf/`. Quote paths containing spaces.
 - Check `docs/PLATFORM.md` against the installed opencode version during qualification. Never weaken sandbox or managed-device settings to make CWF work.
 - Installation makes no remote requests and does not commit/push repository changes.
 
@@ -32,7 +32,7 @@ Discovery request example, substituting your actual scope:
 ~/.local/bin/cwf discover --input discover-request.json
 ```
 
-Evidence is lexical and bounded. `complete_within_scope` is not semantic completeness. A partial packet remains useful: inspect its exclusions, failed reads, and omitted results. Narrow the query or use `inspect-source` for an explicitly relevant file; no opaque continuation handle is implemented in this release.
+Evidence is lexical and bounded. `complete_within_scope` is not semantic completeness. A partial packet remains useful: inspect its exclusions, failed reads, and omitted results. Narrow the query or use `inspect-source` for an explicitly relevant file; there is no continuation handle.
 
 Targeted read request:
 

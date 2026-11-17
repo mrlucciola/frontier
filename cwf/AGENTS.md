@@ -2,7 +2,6 @@
 
 This component owns the standard-library CWF runtime, six skills, patterns,
 schemas, and `deploy.sh` with the opencode instruction block it maintains.
-Historical qualification records describe their original runs.
 
 | Work | Read |
 | --- | --- |

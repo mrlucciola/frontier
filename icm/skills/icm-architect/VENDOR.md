@@ -11,9 +11,9 @@ in `icm-run/references/` and let the workspace's own files override.
 
 ## Pin and bump
 
-`PIN` in `vendor.sh` holds the full SHA. First pull: `ICM_ARCHITECT_COMMIT=main bash
-vendor.sh`, paste the printed SHA into `PIN`, commit the tree, the lock, and the script
-together. Bump the same way, deliberately. Upstream is active and its templates define
+`PIN` in `vendor.sh` holds the full SHA. To bump, deliberately: run
+`ICM_ARCHITECT_COMMIT=<ref> bash vendor.sh`, paste the printed SHA into `PIN`, and
+commit the tree, the lock, and the script together. Upstream is active and its templates define
 stage numbering (`01_name`) that icm-run's detection also accepts alongside `01-name`.
 
 ## What the skill provides
@@ -23,8 +23,8 @@ stage numbering (`01_name`) that icm-run's detection also accepts alongside `01-
 - Restructure mode: inventory -> classify (catalog/contract/factory/product/dead)
   -> reference-integrity check -> approval gate -> copy-verify-remove -> walk test
 - scripts/: standard-library Python a workspace copies into `_tools/` (link check,
-  graph, index generation, quote check). The permission rule they need is in the
-  top-level README.
+  graph, index generation, quote check). The permission rule they need is in
+  step 2 of [setup](/icm/INSTALL.md).
 
 ## Known skew between upstream sources
 

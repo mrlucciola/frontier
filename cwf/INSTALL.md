@@ -14,9 +14,8 @@ copies nothing and records nothing. See "Deploy script" in
 | `instructions/opencode.AGENTS.md` | the block between `<!-- CWF:BEGIN -->` and `<!-- CWF:END -->` in `~/.config/opencode/AGENTS.md`; every other byte of that file is kept |
 
 `~/.config/opencode/opencode.json` is never read or written. Observations, task
-checkpoints and the discovery cache live under `~/.local/state/cwf` and
-`~/.local/share/cwf`; they are optional, and deleting them loses only that
-recorded state.
+checkpoints and the discovery cache live under `~/.local/state/cwf`; they are
+optional, and deleting them loses only that recorded state.
 
 ## Run
 
@@ -53,15 +52,16 @@ rm ~/.local/bin/cwf
 
 Then open `~/.config/opencode/AGENTS.md` and delete the lines from
 `<!-- CWF:BEGIN -->` through `<!-- CWF:END -->`. Removal leaves
-`~/.local/state/cwf` and `~/.local/share/cwf` in place; delete them only to
-discard recorded observations and checkpoints.
+`~/.local/state/cwf` in place; delete it only to discard recorded observations and
+checkpoints.
 
-## Leaving the old installer
+## Copied-release leftovers
 
-Earlier versions installed a copied release. The operator runs these once; deploy
-does not.
+`~/.agents/skills/cwf-*` links and `~/.local/share/cwf` belong to a copied-release
+install that `deploy.sh` does not use or remove. Where they exist, the operator
+removes them once:
 
 ```sh
 rm ~/.agents/skills/cwf-build ~/.agents/skills/cwf-design ~/.agents/skills/cwf-docs ~/.agents/skills/cwf-maintain ~/.agents/skills/cwf-plan ~/.agents/skills/cwf-product
-rm -r ~/.local/share/cwf ~/.local/state/cwf
+rm -r ~/.local/share/cwf
 ```

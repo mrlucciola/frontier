@@ -82,39 +82,35 @@ cohort (opencode 2.0.32, 2026-11-15, three runs per scenario per arm).
 | Activation without naming (R06) | In each scenario whose task matches a CWF skill, that skill loads in at least 2 of 3 runs | Fails: planning skill 3/3; build and design skills 0/6 |
 | Activation when named | Every named skill loads | 9/9 |
 | Stays out of unrelated requests | No CWF skill loads | Holds |
-| Fixed cost per step | The skill names and descriptions, and the instruction block, stay within the byte ceilings in `cwf/tests/test_budgets.py` (today 1,049 and 505 bytes). Growing either raises its ceiling in the same change, with the measured bytes | Holds by construction: the ceilings are today's sizes |
+| Fixed cost per step | The skill names and descriptions, and the instruction block, stay within the byte ceilings in `cwf/tests/test_budgets.py`. Growing either raises its ceiling in the same change, with the measured bytes | Holds by construction: the ceilings are today's sizes |
 
-Targets were revised on 2026-11-16. The first cohort's original cost gate, a
-median total-input reduction of at least 20% across all six scenarios, could not
-be met by design: on three or four of them CWF is meant to stay out, where the
-best case is break-even less the catalog cost. It also measured first-pass input,
-not the cost to an accepted result. Fixed cost is a byte ceiling because it is
-deterministic: it comes from the text the harness carries on every step, which
-a cohort of three runs cannot resolve to a percent.
+The cost target covers only the scenarios CWF targets: on the others CWF is
+meant to stay out, where the best case is break-even less the catalog cost. It
+counts the cost to an accepted result, not first-pass input alone. Fixed cost is
+a byte ceiling because it is deterministic: it comes from the text the harness
+carries on every step, which a cohort of three runs cannot resolve to a percent.
 
-The first cohort's decision was revise. The gains to keep: the planning scenario
-passed 3/3 against 0/3, and the coding scenario used 12.7% less total input.
+In the first cohort the planning scenario passed 3/3 against 0/3, and the coding
+scenario used 12.7% less total input.
 
 ## Mechanisms and the requirement each serves
 
 | Mechanism | Serves | Status |
 | --- | --- | --- |
 | Six skills | R03, R05, R06 | Keep; build and design miss R06 |
-| Shared pattern files | R05 | Keep; each skill directory carries its own copy, linked by a skill-relative path (fc-122dd5) |
+| Shared pattern files | R05 | Keep; each skill directory carries its own copy, linked by a skill-relative path |
 | Instruction block | R06 | Keep |
 | `deploy.sh` | R01, R13 | Keep |
 | `discover`, `inspect-source` | R05, R07 | Keep |
 | `batch validate` | R08 | Keep |
 | `check` | R07 | Keep |
 | JSON schemas | R07 | Keep |
-| `observe` and the observation store | R09 | Kept; worth developing, no work planned |
-| `checkpoint`, `resume` | R04, for untracked work only | Kept; overlaps the ticket store, no work planned |
-| Worktree helpers | Non-goal: managing checkouts | Cut, ruled 2026-11-16; scheduled after the pattern-link fix (fc-4e0b99) |
-| Discovery cache | None: a cached result is never returned | Cut, ruled 2026-11-16; same ticket |
-| Checkpoint version pin and state schema version | None (R13) | Removed 2026-11-16 |
-| `scripts/author_content.py`, generating skills and patterns from Python strings | R05: keeps the six per-skill pattern copies identical to `patterns/` | Kept; the pattern-link fix (fc-122dd5) copies the patterns into every skill directory through it |
+| `observe` and the observation store | R09 | Keep; worth developing, no work planned |
+| `checkpoint`, `resume` | R04, for untracked work only | Keep; overlaps the ticket store, no work planned |
+| Worktree helpers | Non-goal: managing checkouts | To be cut (fc-4e0b99) |
+| Discovery cache | None: a cached result is never returned | To be cut (fc-4e0b99) |
+| `scripts/author_content.py`, generating skills and patterns from Python strings | R05: keeps the six per-skill pattern copies identical to `patterns/` | Keep; it writes the patterns into every skill directory |
 
 ## Evidence
 
-The first cohort, its pre-registration and scoring are on ticket fc-686428; the
-revision work is fc-dbdea5; the pattern-link defect is fc-122dd5.
+The first cohort, its pre-registration and scoring are on ticket fc-686428.

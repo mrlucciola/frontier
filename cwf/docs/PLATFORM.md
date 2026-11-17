@@ -1,6 +1,6 @@
 # Platform assumptions and verification
 
-Official opencode documentation checked when CWF was retargeted to opencode (2026-11-12, OpenCode V2 pages):
+Official opencode documentation (OpenCode V2 pages, checked 2026-11-12):
 
 - https://opencode.ai/docs/skills/ -- global skills are discovered under `~/.config/opencode/skills` and the compatibility roots `~/.claude/skills` and `~/.agents/skills`; project skills under `.opencode/skills`, `.claude/skills` and `.agents/skills`, searched from the current directory up to the project root. The skill ID comes from the file path; the frontmatter `name` is a display label. Duplicate IDs are not merged: a later-registered source overrides an earlier one, and `~/.config/opencode/skills` and project `.opencode/skills` register after `~/.agents/skills`. The model loads a skill through the `skill` tool with its exact ID; a user names one as `@skill-id`. `permissions` rules with `"action": "skill"` allow, ask or deny by ID. `cwf/deploy.sh` links namespaced `cwf-<domain>` directories into `~/.config/opencode/skills`. The page does not say whether symlinked skill directories are followed.
 - https://opencode.ai/docs/instructions/ -- global guidance is `~/.config/opencode/AGENTS.md`, loaded before every `AGENTS.md` from the workspace directory toward the home directory. Sources are combined rather than used as overrides; there is no override file, and V2 does not fall back to `CLAUDE.md`. `instructions` entries in `opencode.json` load after the `AGENTS.md` files. CWF's optional owned block goes into the global `AGENTS.md`.

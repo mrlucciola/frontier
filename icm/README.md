@@ -1,7 +1,7 @@
 # ICM
 
 Interpretable Context Methodology provides skills for building workspaces and
-executing their stages. The current detection hook recognizes a root `CONTEXT.md`
+executing their stages. The detection hook recognizes a root `CONTEXT.md`
 and a numbered `stages/` directory. Workspace execution rules live with the skills
 and the workspace's own contracts.
 
