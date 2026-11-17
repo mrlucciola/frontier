@@ -24,6 +24,10 @@ TOKEN_FIELDS = ("input", "output", "reasoning", "cache_read", "cache_write")
 REQUIRED_TOKENS = ("input", "output")
 STEP_TIMES = ("created", "firstToken", "streamed", "completed")
 PATH_KEYS = ("config", "data", "db", "state", "cache")
+# The one input field kept per tool: what a skill load or a delegation targeted.
+TOOL_TARGETS = {"skill": "id", "subagent": "agent"}
+# A failed host probe leaves one configuration field unknown; the turn's usage is still measured.
+PROBE_DIAGNOSTICS = ("cli_version_unavailable", "paths_unavailable", "config_sources_unavailable")
 PAGE_LIMIT = 100
 MAX_PAGES = 50
 API_TIMEOUT = 60
@@ -197,7 +201,7 @@ def run_turn(client, argv, timeout):
 
 
 def reduce_messages(messages, prompt):
-    """Reduce the phase's new messages. Tool input/output and reasoning are discarded."""
+    """Reduce the phase's new messages. Tool input (but its target), output and reasoning are discarded."""
     reduced = {"steps": [], "agent_messages": [], "tool_items": [], "skills": [],
                "context_messages": [], "idle": [], "user_messages": 0, "user_message_texts": [],
                "prompt_echoed": False, "other_message_types": Counter()}
@@ -224,8 +228,12 @@ def reduce_messages(messages, prompt):
                 if isinstance(part, dict) and part.get("type") == "tool":
                     state = part.get("state") if isinstance(part.get("state"), dict) else {}
                     times = part.get("time") if isinstance(part.get("time"), dict) else {}
+                    given = state.get("input") if isinstance(state.get("input"), dict) else {}
+                    key = TOOL_TARGETS.get(part.get("name"))
+                    target = given.get(key) if key else None
                     reduced["tool_items"].append({
                         "id": part.get("id"), "message_id": message["id"], "name": part.get("name"),
+                        "target": target if isinstance(target, str) else None,
                         "status": state.get("status"), "executed": part.get("executed"),
                         "time": {k: number(times.get(k)) for k in ("created", "ran", "completed")}})
         elif kind == "skill":
@@ -290,7 +298,7 @@ def classify(failure, run, reduced, session, phase_usage, diagnostics):
         return "process_failed", evidence
     if outcome != "succeeded":
         return "incomplete", evidence
-    if diagnostics:
+    if any(k not in PROBE_DIAGNOSTICS for k in diagnostics):
         return "invalid_telemetry", evidence
     if phase_usage is None:
         return "completed_usage_unavailable", evidence
@@ -302,20 +310,34 @@ def classify(failure, run, reduced, session, phase_usage, diagnostics):
     return "completed_with_usage", evidence
 
 
-def host_configuration(client):
-    """Version and resolved paths. Config sources are hashed, never printed."""
+def host_configuration(client, diagnostics):
+    """Version and resolved paths. Config sources are hashed, never printed.
+
+    A probe that fails or times out is named in `diagnostics`, never a silent null.
+    """
     configuration = {"cli_version": None, "paths": None,
                      "config_sources_sha256": None, "config_sources_bytes": None}
-    code, out, _ = client.output("--version")
-    if code == 0:
+
+    def probe(diagnostic, *args):
+        try:
+            code, out, _ = client.output(*args)
+        except subprocess.TimeoutExpired:
+            code = None
+        if code != 0:
+            diagnostics[diagnostic] += 1
+            return None
+        return out
+
+    out = probe("cli_version_unavailable", "--version")
+    if out is not None:
         configuration["cli_version"] = out.decode(errors="replace").strip() or None
-    code, out, _ = client.output("debug", "paths")
-    if code == 0:
+    out = probe("paths_unavailable", "debug", "paths")
+    if out is not None:
         rows = dict(line.split(None, 1) for line in out.decode(errors="replace").splitlines()
                     if len(line.split(None, 1)) == 2)
         configuration["paths"] = {k: rows.get(k) for k in PATH_KEYS}
-    code, out, _ = client.output("debug", "config")
-    if code == 0:
+    out = probe("config_sources_unavailable", "debug", "config")
+    if out is not None:
         configuration["config_sources_sha256"] = hashlib.sha256(out).hexdigest()
         configuration["config_sources_bytes"] = len(out)
     return configuration
@@ -333,7 +355,7 @@ def measure(command, *, cwd, phase, session_id, prompt, model=None, agent=None, 
     configuration = {}
     words = prompt_words(prompt)
     try:
-        configuration = host_configuration(client)
+        configuration = host_configuration(client, diagnostics)
         existing = session_info(client, session_id)
         if words is None:
             failure = "unsupported_prompt"

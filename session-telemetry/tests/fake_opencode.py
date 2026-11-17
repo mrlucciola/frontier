@@ -16,7 +16,8 @@ next_turn keys (all optional):
   exit_code     process exit code
   sleep         seconds to sleep after the state is saved, before any output
 Other state keys: page_size (server page cap), endless (message list never ends),
-permissions (session.permission.list data), api_override ({operation: {stdout, code}}).
+permissions (session.permission.list data), api_override ({operation: {stdout, code}}),
+probe_exit ({"version" | "paths" | "config": exit code}; the probe prints only to stderr).
 """
 import json
 import os
@@ -134,6 +135,11 @@ def main():
     state.setdefault("calls", []).append(args)
     state.setdefault("dirs", []).append({"pwd": os.environ.get("PWD"), "cwd": os.getcwd()})
     save(path, state)
+    probe = {("--version",): "version", ("debug", "paths"): "paths", ("debug", "config"): "config"}
+    failing = state.get("probe_exit", {}).get(probe.get(tuple(args)))
+    if failing:
+        sys.stderr.write("Error: port 49374 already in use\n")
+        sys.exit(failing)
     if args[:1] == ["--version"]:
         print("opencode v0.0.0-fixture")
     elif args[:2] == ["debug", "paths"]:

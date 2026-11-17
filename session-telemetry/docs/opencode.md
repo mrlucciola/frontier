@@ -37,7 +37,9 @@ scores `agent_messages`, checks the fixture and records corrections separately.
 ## What a run does
 
 1. Reads `opencode --version` and `opencode debug paths`, and hashes the output
-   of `opencode debug config` without retaining it.
+   of `opencode debug config` without retaining it. A probe that exits nonzero
+   or times out leaves its field `null` and adds `cli_version_unavailable`,
+   `paths_unavailable` or `config_sources_unavailable` to `diagnostics`.
 2. Asks `opencode api --standalone session.get` for the session. `fresh` stops
    with `session_already_exists` if it is found; `resume` stops with
    `session_not_found` if it is not. For `resume` it records the session's
@@ -75,6 +77,11 @@ the runner changes none of them.
   `completed_with_usage`. `session_info_keys` lists the field names the real
   Session.Info carried; on 2.0.32 `session_agent` and `session_model` were null
   in the smoke rows, so read the agent and model from `steps`.
+- A host probe diagnostic does not change the outcome: the turn's usage is still
+  measured, but its configuration is not identified. A cohort that compares
+  configurations must exclude such rows or fix the host. On 2.0.32 `debug
+  config` needs the managed service and exits 1 when its port is taken;
+  `opencode service set port <free port>` in that root restored the hash.
 - `steps` has one entry per assistant message created by this turn, with its
   model, `finish`, `tokens`, `cost_usd`, `time` and any error type or retry
   attempt. `assistant_steps` is their count. It is a count of assistant
@@ -91,14 +98,22 @@ the runner changes none of them.
   and `session_usage_delta` is their difference (for `fresh`, the totals
   themselves). The delta can exceed the step sum because OpenCode also records
   usage that belongs to no step, such as title generation. Report both; never
-  add them.
+  add them. A step that was still running at a timeout or abort reports no
+  tokens, so every field it lacks is `null` in the sum: the turn's step usage is
+  unknown, not the total of the finished steps. Those steps keep their own
+  `tokens`; a sum over them is a lower bound and must be labeled as one.
 - `step_span` gives the earliest step `created` and the latest step `completed`
   in the units OpenCode reports. `observer_run_elapsed_s` is the observer's own
   monotonic interval around the `opencode run` process, including server
   startup and shutdown. Neither is inference-only latency.
 - `tool_items` keep the tool part ID, name, status, `executed` flag and times.
-  Tool input, tool output and reasoning text are discarded. `skills` keep the
-  skill ID and name of each skill message. `context_messages` keep the
+  Tool output, reasoning text and tool input are discarded, except one input
+  field kept as `target`: the skill ID (`input.id`) of a `skill` call and the
+  agent (`input.agent`) of a `subagent` call; `null` for other tools or a
+  non-string value. On 2.0.32 a skill load and a delegation appear only as these
+  tool calls. `skills` keep the skill ID and name of each message of type
+  `skill`, which the published API describes but 2.0.32 never produced, so read
+  skill activation from `tool_items`. `context_messages` keep the
   description, SHA-256 and byte length of each system or synthetic message, not
   its text. `agent_messages` keep assistant text for the task's rubric.
 - `completion_evidence` says what showed the turn ended: `idle_message`,
@@ -178,5 +193,16 @@ fc-3868ea) showed:
   row and 4,622 plus 4,096 in another, about 8,700 either way. The split between
   `input` and `cache_read` follows the provider's cache state, not the workload.
 
-Not checked against the client: pagination, tool and skill messages, failed and
+Cohort rows on 2.0.32 (C3 fc-686428, 59 rows; D2 fc-15f966, 72 rows;
+2026-11-14 and 2026-11-15) showed:
+
+- No message of type `skill`. Each skill load was a tool part named `skill`
+  whose `state.input.id` is the skill ID; each delegation a tool part named
+  `subagent` with input keys `agent`, `description` and `prompt`.
+- `debug config` exited 1 while another process held the managed service's
+  default port 49374, on every D2 row and on C3 rows until the port moved.
+- A turn that timed out mid-step left that step with null tokens.
+
+The runner's handling of these is checked only by fixtures built from those
+notes, not by a rerun. Not checked against the client: pagination, failed and
 interrupted turns, and permission requests.

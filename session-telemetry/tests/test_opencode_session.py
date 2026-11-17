@@ -29,9 +29,9 @@ def flat(inp=0, out=0, reasoning=0, read=0, write=0):
     return {"input": inp, "output": out, "reasoning": reasoning, "cache_read": read, "cache_write": write}
 
 
-def tool(tid, name="bash", status="completed", executed=True, time=None):
+def tool(tid, name="bash", status="completed", executed=True, time=None, given=None):
     return {"type": "tool", "id": tid, "name": name, "executed": executed,
-            "state": {"status": status, "input": {"command": "SECRET_INPUT"},
+            "state": {"status": status, "input": given or {"command": "SECRET_INPUT"},
                       "content": [{"type": "text", "text": "SECRET_OUTPUT"}]},
             "time": time or {"created": 1000, "ran": 1001, "completed": 1002}}
 
@@ -301,12 +301,12 @@ class PrivacyTests(FixtureCase):
                             err], add_tokens=tk(3, 3), exit_code=1)
         r = self.measure()
         self.assertEqual(r["tool_items"], [
-            {"id": "tool_ok", "message_id": "msg_a1", "name": "bash", "status": "completed", "executed": True,
-             "time": {"created": 1000, "ran": 1001, "completed": 1002}},
-            {"id": "tool_run", "message_id": "msg_a1", "name": "read", "status": "running", "executed": False,
-             "time": {"created": 5, "ran": None, "completed": None}},
-            {"id": "tool_err", "message_id": "msg_a1", "name": "edit", "status": "error", "executed": True,
-             "time": {"created": 1000, "ran": 1001, "completed": 1002}}])
+            {"id": "tool_ok", "message_id": "msg_a1", "name": "bash", "target": None, "status": "completed",
+             "executed": True, "time": {"created": 1000, "ran": 1001, "completed": 1002}},
+            {"id": "tool_run", "message_id": "msg_a1", "name": "read", "target": None, "status": "running",
+             "executed": False, "time": {"created": 5, "ran": None, "completed": None}},
+            {"id": "tool_err", "message_id": "msg_a1", "name": "edit", "target": None, "status": "error",
+             "executed": True, "time": {"created": 1000, "ran": 1001, "completed": 1002}}])
         self.assertEqual(r["skills"], [{"id": "msg_sk", "skill": "skill-id", "name": "Skill Name"}])
         self.assertEqual(r["context_messages"], [
             {"id": "msg_sys", "type": "system", "description": "AGENTS.md",
@@ -320,6 +320,55 @@ class PrivacyTests(FixtureCase):
         self.assertEqual(r["agent_messages"], [{"id": "msg_a1", "text": "visible"}])
         self.assertNotIn("SECRET", json.dumps(r, ensure_ascii=False))
         self.assertNotIn(PROMPT, json.dumps(r))
+
+    def test_skill_and_subagent_tool_calls_keep_only_their_target(self):
+        # As observed on 2.0.32: a skill load is a `skill` tool part, a delegation a `subagent` part.
+        content = [tool("tool_sk", "skill", given={"id": "cwf-plan", "extra": "SECRET_ARG"}),
+                   tool("tool_sub", "subagent", given={"agent": "general", "description": "SECRET_DESC",
+                                                       "prompt": "SECRET_PROMPT"}),
+                   tool("tool_odd", "skill", given={"id": {"nested": "SECRET_SHAPE"}}),
+                   tool("tool_sh", "bash", given={"id": "SECRET_ID", "agent": "SECRET_AGENT"})]
+        self.finish(assistant("msg_a1", tk(3, 3), content=content), add_tokens=tk(3, 3))
+        r = self.measure()
+        self.assertEqual(r["outcome"], "completed_with_usage")
+        self.assertEqual([(t["name"], t["target"]) for t in r["tool_items"]],
+                         [("skill", "cwf-plan"), ("subagent", "general"), ("skill", None), ("bash", None)])
+        self.assertEqual(r["skills"], [])
+        self.assertNotIn("SECRET", json.dumps(r))
+
+
+class HostProbeTests(FixtureCase):
+    def test_failed_probe_is_named_and_does_not_void_the_usage(self):
+        cases = {"config": ("config_sources_unavailable", "config_sources_sha256"),
+                 "paths": ("paths_unavailable", "paths"), "version": ("cli_version_unavailable", "cli_version")}
+        for probe, (diagnostic, field) in cases.items():
+            with self.subTest(probe=probe):
+                self.state = {"sessions": {}, "probe_exit": {probe: 1}}
+                self.finish(assistant("msg_a1", tk(4, 2)), add_tokens=tk(4, 2))
+                r = self.measure()
+                self.assertEqual(r["outcome"], "completed_with_usage")
+                self.assertEqual(r["diagnostics"], {diagnostic: 1})
+                self.assertIsNone(r["configuration"][field])
+                self.assertEqual(len(self.runs()), 1)
+
+    def test_failed_probe_does_not_hide_a_disqualifying_diagnostic(self):
+        self.state["probe_exit"] = {"config": 1}
+        self.finish(assistant("msg_a1", tk(4, 2)), add_tokens=tk(4, 2),
+                    set_info={"location": {"directory": "/somewhere/else"}})
+        r = self.measure()
+        self.assertEqual(r["outcome"], "invalid_telemetry")
+        self.assertEqual(r["diagnostics"], {"config_sources_unavailable": 1, "location_not_cwd": 1})
+
+    def test_probe_timeout_is_named(self):
+        # A managed service that never answers: `debug config` hangs past the request limit.
+        hang = ("import runpy, sys, time\n"
+                "if sys.argv[2:] == ['debug', 'config']: time.sleep(30)\n"
+                f"runpy.run_path({str(FAKE)!r}, run_name='__main__')")
+        self.finish(assistant("msg_a1", tk(4, 2)), add_tokens=tk(4, 2))
+        with mock.patch.object(oc, "API_TIMEOUT", 2):
+            r = self.measure(command=[sys.executable, "-S", "-B", "-c", hang, str(self.state_path)])
+        self.assertEqual(r["outcome"], "completed_with_usage")
+        self.assertEqual(r["diagnostics"], {"config_sources_unavailable": 1})
 
 
 class UsageClassTests(FixtureCase):
@@ -469,6 +518,18 @@ class TimeoutTests(FixtureCase):
         self.assertEqual(r["session_usage_delta"], {"tokens": flat(9, 3), "cost_usd": 0.5})
         self.assertEqual(r["run_stream"]["bytes"], 0)
 
+    def test_timeout_step_sum_is_unknown_where_the_aborted_step_is(self):
+        # As observed in C3: the step running at the timeout reports no tokens.
+        done = assistant("msg_a1", tk(9, 3), 0.5, "tool-calls")
+        aborted = assistant("msg_a2", finish=None)
+        del aborted["cost"]
+        self.finish(done, aborted, idle_outcome=None, add_tokens=tk(9, 3), add_cost=0.5, sleep=60)
+        r = self.measure(timeout=1.0)
+        self.assertEqual(r["outcome"], "timed_out")
+        self.assertEqual(r["step_usage_sum"], {"tokens": dict.fromkeys(oc.TOKEN_FIELDS), "cost_usd": None})
+        self.assertEqual(r["steps"][0]["tokens"], flat(9, 3))
+        self.assertEqual(r["session_usage_delta"], {"tokens": flat(9, 3), "cost_usd": 0.5})
+
     def test_timeout_signal_is_sigterm(self):
         self.finish(sleep=60)
         r = self.measure(timeout=1.0)
@@ -580,8 +641,8 @@ class HelperTests(unittest.TestCase):
             {"id": "msg_y", "type": 7}, {"id": "msg_z", "type": "model-switched"},
             {"id": "msg_s", "type": "system"}, assistant("msg_b", content="notalist")], "hi")
         self.assertEqual(reduced["agent_messages"], [{"id": "msg_a", "text": "ab"}])
-        self.assertEqual(reduced["tool_items"], [{"id": "t", "message_id": "msg_a", "name": None, "status": None,
-                                                   "executed": None,
+        self.assertEqual(reduced["tool_items"], [{"id": "t", "message_id": "msg_a", "name": None, "target": None,
+                                                   "status": None, "executed": None,
                                                    "time": {"created": None, "ran": None, "completed": None}}])
         self.assertTrue(reduced["prompt_echoed"])
         self.assertEqual(reduced["other_message_types"], {"untyped": 2, "model-switched": 1})
