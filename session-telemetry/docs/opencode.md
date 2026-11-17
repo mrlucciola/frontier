@@ -134,7 +134,11 @@ Outcomes other than `completed_with_usage` exit 1: `failed`, `interrupted`,
 `completed_usage_unavailable`, `completed_usage_partial`, `completed_zero_usage`,
 `invalid_telemetry`, `unsupported_prompt`, `session_already_exists`,
 `session_not_found`, `session_not_created`, `api_error` and `launch_error`. A failed or timed-out
-turn keeps whatever usage the session recorded; it is not free work.
+turn keeps whatever usage the session recorded; it is not free work. Any
+diagnostic other than the three host probe ones (`location_not_cwd`,
+`prompt_not_verbatim`, `regressing_session_totals`) turns an otherwise
+completed turn into `invalid_telemetry`. An exit 0 row can therefore still
+carry probe diagnostics; check `diagnostics` before comparing configurations.
 
 ## Not available on this surface
 
