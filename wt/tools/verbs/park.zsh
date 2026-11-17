@@ -52,7 +52,7 @@ wt_verb() {
     return 2
   fi
 
-  local env_session=${PM_SESSION_ID:-${CODEX_THREAD_ID:-}}
+  local env_session=${PM_SESSION_ID:-}
   # The environment wins for pm calls: ParkTest.test_waits_on_note_and_session_in_resume_line
   # passes --session for the resume line only, while pm must keep acting as the holder.
   local pm_session=${env_session:-$session_opt}

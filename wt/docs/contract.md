@@ -38,8 +38,8 @@ long-lived ticket whose records must reach the default branch every turn. It rej
 session: it adopts the existing claim.
 
 `start` adopts a ticket already taken by the claim it would itself write (same actor and
-same session token: `--session`, else `PM_SESSION_ID`, else `CODEX_THREAD_ID`, else
-`CLAUDE_CODE_SESSION_ID`), prints one `adopting existing claim` line and skips the take.
+same session token: `--session`, else `PM_SESSION_ID`), prints one `adopting existing
+claim` line and skips the take.
 A different token, a different actor, or a bare-name claim refuses. `wt start --force`
 passes `--force` to `pm take` (blocked ticket, operator-sanctioned only); end a
 force-taken ticket with `wt park`, never `wt finish` (start prints a reminder; not
@@ -171,7 +171,7 @@ forms.
   commit `git branch --show-current` prints the default branch there, or `<id>` in a
   worktree; if the main checkout is off its default branch, stop and report it.
 - One ticket, one worktree, one branch, at `<repo>/.wt/<id>`: never under `.tmp/`,
-  `.claude/`, `.codex/`, `.agents/` or outside the repo. Start it before the first edit;
+  `.kiro/`, `.agents/` or outside the repo. Start it before the first edit;
   edit only under it. Never work a ticket you do not hold.
 - Run `wt` from the main checkout (it resolves the main checkout from inside a linked
   worktree too). In a multi-agent run only the orchestrator runs `wt`; a worker edits and
@@ -187,43 +187,21 @@ forms.
   names that path. A fresh worktree has no installs or env files; whoever starts it makes
   it runnable and never copies secrets (`.env*`, `*.pem`, `*.key`, credentials) in.
   Gitignore `.tmp/`, `.local/` and `.wt/*`, keeping `!.wt/gate` and `!.wt/known-red`.
-- Claude Code's built-in worktrees (`isolation: worktree`, `EnterWorktree`,
-  `claude --worktree`) are for throwaway work that is never merged.
 - A worktree with no ticket behind it is an orphan: report it, never remove it; only the
   session that created it or the operator removes it.
 
 ## Sandbox notes
 
-Claude:
+Kiro:
 
-- `wt` is allow-listed (`wt *` in posture) and runs with no prompt. Each registered
-  worktree adds about three deny paths to the Bash sandbox profile; near 220 every
-  sandboxed command fails `E2BIG`. The list is built at session start, so budget one
-  session restart into any phase that churns more than two or three worktrees.
-- Admin dirs `.git/worktrees/<id>` may be undeletable depending on when the sandbox was
-  last rebuilt (`EPERM` on `rmdir`); that is the deferred teardown above.
-- The sandbox denies any literal `.vscode` path segment for writes and deletes. A
-  tracked `.vscode/*` file makes `git worktree add` fail (`Operation not permitted`,
-  then `fatal: Could not reset index`). Untrack it and gitignore `.vscode/`. A worktree
-  whose checkout contains `.claude/` leaves residue on a sandboxed remove; the operator
-  finishes it with `git worktree remove --force`.
-- A sandboxed `git branch -d` may print `could not write config file .git/config` and
-  `update of config-file failed` yet still delete the branch (exit 0); that is expected.
-- Stay rooted in the main checkout; do not `cd` into a worktree.
-
-Codex:
-
-- Worktree lifecycle writes `.git`, so the session needs a profile that allows it; under
-  a read-only floor the commands fail, so stop and report.
-- Launch at the main checkout so `.wt/` and `.git/` are inside the writable root.
-- Start as actor `codex`: `wt start <id> --as codex`. The session token defaults to
-  `$PM_SESSION_ID` or `$CODEX_THREAD_ID`; if neither is set pass
-  `--session <id>`, or the claim is a bare `codex` name.
-- If a teardown reports `failed to delete '...': Operation not permitted`, the sandbox
-  policy regressed; report it, do not `rm -rf`.
-- `wt` and the git and pm commands it runs work inside the sandbox with no rule. An
-  escalation prompt for one of them means the session root or profile is wrong; never ask
-  for an allow rule, which would run the command outside the sandbox.
+- Sandbox posture on the work machine is pending recon (CONFIRM). Until recon observes
+  it, treat a sandboxed permission failure in a worktree lifecycle command as a
+  regression: stop and report it, never `rm -rf` or a sandbox-disabled retry.
+- Launch at the main checkout so `.wt/` and `.git/` are inside the writable root, and
+  stay rooted there; do not `cd` into a worktree.
+- Start as your own actor name: `wt start <id> --as <name>`. The session token comes
+  from `--session` or `$PM_SESSION_ID`; with neither set, pass `--session <id>`, or the
+  claim carries a bare actor name no later session can adopt.
 
 ## Help and byte ceilings
 

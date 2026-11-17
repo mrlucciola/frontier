@@ -8,7 +8,7 @@
 
 wt_verb() {
   emulate -L zsh
-  local id="" actor=${WT_ACTOR:-} session=${PM_SESSION_ID:-${CODEX_THREAD_ID:-}}
+  local id="" actor=${WT_ACTOR:-} session=${PM_SESSION_ID:-}
   local store_opt="" repo_opt="" arg
   local -i force=0
   while (( $# )); do
@@ -77,7 +77,7 @@ wt_verb() {
   local prior holder sid tok="" mine="" took=0 out rc
   prior=$(wt_pm_get "$store" "$id" status 2>/dev/null)
   holder=$(wt_pm_get "$store" "$id" holder 2>/dev/null)
-  sid=${session:-${CLAUDE_CODE_SESSION_ID:-}}
+  sid=$session
   if [[ -n $sid ]]; then
     tok=$(print -rn -- "$sid" | /usr/bin/shasum -a 256)
     tok=${tok[1,8]}

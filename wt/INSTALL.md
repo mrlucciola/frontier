@@ -43,11 +43,12 @@ Environment variables wt reads:
 | Variable | Effect |
 | --- | --- |
 | `WT_ACTOR` | Default for `--as` on `start` |
-| `PM_SESSION_ID` | Session token for claims; first choice |
-| `CODEX_THREAD_ID` | Session token when `PM_SESSION_ID` is unset |
-| `CLAUDE_CODE_SESSION_ID` | Session token when both above are unset (`start`'s adoption check) |
+| `PM_SESSION_ID` | Session token for claims when `--session` is not given |
 | `WT_FAULT_REPORT_DIR` | Directory for the deduplicated fault rows; default `$HOME/frontier/docs/backlog/inbox/infra-faults` |
-| `GIT_PAIRS_FILE` | Git-pairs file read by the cross-repo guard; default `~/.claude/git-pairs.json` |
+| `GIT_PAIRS_FILE` | Git-pairs file read by the cross-repo guard; default `~/.kiro/git-pairs.json` |
+
+A Kiro-exported session variable is a CONFIRM recon item; until recon confirms one,
+the token comes from `--session` or `PM_SESSION_ID` only.
 
 ## Disable and remove
 

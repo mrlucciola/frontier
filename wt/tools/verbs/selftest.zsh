@@ -137,8 +137,8 @@ wt_verb() {
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
   export GIT_AUTHOR_NAME=selftest GIT_AUTHOR_EMAIL=selftest@example.invalid
   export GIT_COMMITTER_NAME=selftest GIT_COMMITTER_EMAIL=selftest@example.invalid
-  export PM_SESSION_ID=wt-selftest PM_AGENT=claude/worker
-  unset WT_ACTOR PM_ACTOR CLAUDE_CODE_SESSION_ID CODEX_THREAD_ID
+  export PM_SESSION_ID=wt-selftest PM_AGENT=kiro/worker
+  unset WT_ACTOR PM_ACTOR
 
   if ! git init -q -b main "$repo" >/dev/null 2>&1; then
     rm -r -- "$scratch"

@@ -4,7 +4,7 @@ usage: crossrepo.py SOURCE TARGET SUBCOMMAND
 
 Exit 0 to allow. Exit 1 and print the reason to refuse. The two paths are the same
 repository once linked worktrees map to their main checkout; otherwise a declared pair
-in $GIT_PAIRS_FILE (default ~/.claude/git-pairs.json, {"pairs":[{"source","targets","git"}]})
+in $GIT_PAIRS_FILE (default ~/.kiro/git-pairs.json, {"pairs":[{"source","targets","git"}]})
 must list SUBCOMMAND. A missing or unreadable pairs file declares nothing, so the
 answer is refuse.
 """
@@ -12,7 +12,7 @@ import json
 import os
 import sys
 
-PAIRS_FILE_DEFAULT = "~/.claude/git-pairs.json"
+PAIRS_FILE_DEFAULT = "~/.kiro/git-pairs.json"
 NEVER_PAIR = {"push", "remote", "config", "submodule", "checkout"}
 
 
@@ -99,7 +99,7 @@ def main(argv):
     if same_repository(source, target) or pair_allows(load_pairs(), source, target, sub):
         return 0
     print("cross-repo %s into %s is not a declared git-pairs pair from %s "
-          "(~/.claude/git-pairs.json); wt refuses what gitguard would refuse. "
+          "(~/.kiro/git-pairs.json); wt refuses what gitguard would refuse. "
           "Standing need: ask the operator to add the pair." % (sub, target, source))
     return 1
 

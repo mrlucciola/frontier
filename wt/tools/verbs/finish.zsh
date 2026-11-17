@@ -18,7 +18,7 @@ typeset -ga WT_RED_TICKETS WT_RED_MATCH WT_SCAN_HITS WT_SCAN_UNMATCHED WT_SCAN_S
 wt_verb() {
   emulate -L zsh
   setopt extendedglob
-  local verb=${WT_VERB:-finish} id="" note="" findings="" session=${PM_SESSION_ID:-${CODEX_THREAD_ID:-}}
+  local verb=${WT_VERB:-finish} id="" note="" findings="" session=${PM_SESSION_ID:-}
   local store_opt="" repo_opt="" arg
   local -i keep_open=0 no_gate=0 have_note=0 have_findings=0
   [[ $verb == land ]] && keep_open=1

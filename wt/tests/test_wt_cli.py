@@ -30,8 +30,7 @@ CLI = os.environ.get("WT_CLI_UNDER_TEST", "")
 SIDE = os.environ.get("WT_PM_SIDE", "old")
 UNBUILT_LOG = os.environ.get("WT_UNBUILT_LOG", "")
 
-IDENTITY_VARS = ("CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CODEX_THREAD_ID",
-                 "CODEX_AGENT_IDENTITY", "PM_AGENT", "WT_ACTOR", "PM_SESSION_ID",
+IDENTITY_VARS = ("PM_AGENT", "WT_ACTOR", "PM_SESSION_ID",
                  "PM_ACTOR")
 OLD_STATUS = {"open": "open", "claimed": "taken", "done-unmerged": "parked",
               "closed": "done"}
@@ -394,7 +393,7 @@ class WtCase(unittest.TestCase):
             "PM_TELEMETRY_DIR": "-",
             # Old pm writes `human:<actor>` claims without a provider, which no session
             # could adopt; the agents wt serves always carry one.
-            "PM_AGENT": "claude/worker",
+            "PM_AGENT": "kiro/worker",
             "GIT_PAIRS_FILE": pairs,
             "PM_STORES": os.path.join(self.root, "new-stores"),
             "PM_PLUGINS": os.path.join(self.root, "plugins"),
@@ -762,43 +761,23 @@ class StartTest(WtCase):
         self.assert_refuses(repo, ticket, "--session", "sy")
         self.assert_adopts(repo, ticket, "--session", "sx")
 
-    def test_claude_code_session_id_is_the_fallback_token(self):
-        """With no `--session` and no `PM_SESSION_ID`, `CLAUDE_CODE_SESSION_ID` is the
-        session token."""
-        repo, ticket = self.started_by(env={"CLAUDE_CODE_SESSION_ID": "cc1"})
-        self.assert_refuses(repo, ticket, "--session", "cc2")
-        self.assert_adopts(repo, ticket, "--session", "cc1")
-        self.assert_adopts(repo, ticket, env={"CLAUDE_CODE_SESSION_ID": "cc1"})
-
-    def test_codex_thread_id_is_the_default_session(self):
-        """`CODEX_THREAD_ID` is the default `--session` when `PM_SESSION_ID` is unset;
-        park folds it into the resume line the same way."""
-        repo, ticket = self.started_by(env={"CODEX_THREAD_ID": "th1"})
-        self.assert_refuses(repo, ticket, "--session", "th2")
-        self.assert_adopts(repo, ticket, "--session", "th1")
-        self.assert_adopts(repo, ticket, env={"CODEX_THREAD_ID": "th1"})
-        self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada",
-                                 env={"CODEX_THREAD_ID": "th1"}).code, 0)
+    def test_pm_session_id_is_the_default_session(self):
+        """With no `--session`, `PM_SESSION_ID` is the session token; park folds it
+        into the resume line the same way."""
+        env = {"PM_SESSION_ID": "pm1"}
+        repo, ticket = self.started_by(env=env)
+        self.assert_refuses(repo, ticket, "--session", "pm2")
+        self.assert_adopts(repo, ticket, "--session", "pm1")
+        self.assert_adopts(repo, ticket, env=env)
+        self.assertEqual(self.wt(repo, "start", ticket, "--as", "ada", env=env).code, 0)
         wt_path = self.worktree(repo, ticket)
         self.commit_file(wt_path, "work.txt", "work\n", "%s: work" % ticket)
-        parked = self.wt(repo, "park", ticket, "--findings", "none",
-                         env={"CODEX_THREAD_ID": "th1"})
+        parked = self.wt(repo, "park", ticket, "--findings", "none", env=env)
         self.assertEqual(parked.code, 0, parked.text)
         notes = [n for n in self.pm.notes(repo, ticket) if "branch %s @ " % ticket in n]
         self.assertEqual(len(notes), 1, self.pm.notes(repo, ticket))
-        self.assertTrue(notes[0].endswith("wt start %s --as ada --session th1 && "
+        self.assertTrue(notes[0].endswith("wt start %s --as ada --session pm1 && "
                                           "wt finish %s" % (ticket, ticket)), notes[0])
-
-    def test_pm_session_id_wins_over_the_other_two_variables(self):
-        """With `PM_SESSION_ID`, `CODEX_THREAD_ID` and `CLAUDE_CODE_SESSION_ID` all set,
-        `PM_SESSION_ID` is the token (the default `--session` and pm's own order)."""
-        both = {"PM_SESSION_ID": "pm1", "CODEX_THREAD_ID": "th1",
-                "CLAUDE_CODE_SESSION_ID": "cc1"}
-        repo, ticket = self.started_by(env=both)
-        self.assert_refuses(repo, ticket, "--session", "th1")
-        self.assert_refuses(repo, ticket, "--session", "cc1")
-        self.assert_adopts(repo, ticket, "--session", "pm1")
-        self.assert_adopts(repo, ticket, env=both)
 
     def test_worktree_add_eperm_appends_the_restart_hint(self):
         """`start` appends a restart/resume hint when `git worktree add` fails with

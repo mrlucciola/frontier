@@ -22,7 +22,7 @@ plugin transcripts; the last runs the byte-ceiling tests.
 | Work | Read |
 | --- | --- |
 | A verb | [Contract](/wt/docs/contract.md), then that verb's cases in `tests/test_wt_cli.py` |
-| Help text, byte ceilings, or what an agent is told | [Instruction map](/wt/docs/instruction-map.md), then `tests/test_budgets.py` |
+| Help text, byte ceilings, or what an agent is told | `tests/test_budgets.py` |
 | The plugin in `pm-plugin/` | `tests/t/`, and pm's design section "Plugins" |
 | A characterization test that looks wrong | Stop and report it. `tests/test_wt_cli.py` is accepted; edit it only on an explicit ruling |
 
