@@ -62,8 +62,8 @@ a symlink into the component that owns it. pm runs executables found by name ins
 ## Harness hooks
 
 `pm hook session-start|prompt|stop` reads one JSON object on stdin and answers in plain
-text. Registrations for Claude Code are `pm/config/claude/hooks.json`; opencode uses
-`pm/hooks/opencode/pm.ts`. Setup is in [pm/INSTALL.md](/pm/INSTALL.md#harness-hooks).
+text. The kiro v3 registration is `pm/config/kiro/hooks.json`. Setup is in
+[pm/INSTALL.md](/pm/INSTALL.md#harness-hooks).
 
 ## Routes
 

@@ -8,18 +8,15 @@ def actor(as_name=None):
         return as_name
     if os.environ.get("PM_ACTOR"):
         return os.environ["PM_ACTOR"]
-    if os.environ.get("CLAUDE_CODE_SESSION_ID"):
-        return "claude"
-    if os.environ.get("CODEX_THREAD_ID"):
-        return "codex"
     return os.environ.get("USER") or "unknown"
 
 
 def token():
-    for name in ("PM_SESSION_ID", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID"):
-        sid = os.environ.get(name)
-        if sid:
-            return hashlib.sha256(sid.encode("utf-8")).hexdigest()[:8]
+    # PM_SESSION_ID is the only source; a kiro-exported session variable is a
+    # CONFIRM recon item (docs/kiro-branch.md).
+    sid = os.environ.get("PM_SESSION_ID")
+    if sid:
+        return hashlib.sha256(sid.encode("utf-8")).hexdigest()[:8]
     return None
 
 

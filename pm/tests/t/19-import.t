@@ -9,11 +9,11 @@ The claim in the fixture carries this session's token, so the ticket is still yo
 
   $ pm
   yours:
-    ol-cccccc  P1  taken  tag the commit  @claude
+    ol-cccccc  P1  taken  tag the commit  @sess-1
   parked:
     ol-dddddd  P2  parked  announce the release
   $ pm show ol-cccccc
-  ol-cccccc  P1  taken  tag the commit  @claude
+  ol-cccccc  P1  taken  tag the commit  @sess-1
   under: ol-aaaaaa release 1.0
   related: ol-dddddd
   labels: release
@@ -38,7 +38,7 @@ Notes keep their dates and kinds. Edit-trail notes are left behind.
   $ pm show ol-aaaaaa
   ol-aaaaaa  P2  open  release 1.0 [epic]
   children: 1 taken, 1 done
-    ol-cccccc  P1  taken  tag the commit  @claude
+    ol-cccccc  P1  taken  tag the commit  @sess-1
 
   $ pm new "next ticket"
   ol-5

@@ -5,8 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook session-start",
-            "timeout": 10
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook session-start"
           }
         ]
       }
@@ -16,8 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook prompt",
-            "timeout": 5
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook prompt"
           }
         ]
       }
@@ -27,8 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook stop",
-            "timeout": 10
+            "command": "/Users/matthias/projects/frontier-clean/pm/cli/pm hook stop"
           }
         ]
       }

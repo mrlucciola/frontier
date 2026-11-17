@@ -85,11 +85,10 @@ open --done--> done            parked --reopen--> open
 
 `by` is `<actor>#<token>`, or `<actor>` alone when no session is known.
 
-- **Actor:** `--as name` where a verb takes it, else `$PM_ACTOR`, else `claude` when
-  `$CLAUDE_CODE_SESSION_ID` is set, else `codex` when `$CODEX_THREAD_ID` is set,
-  else `$USER`.
+- **Actor:** `--as name` where a verb takes it, else `$PM_ACTOR`, else `$USER`.
 - **Token:** the first eight hex digits of the SHA-256 of the session id, taken
-  from `$PM_SESSION_ID`, then `$CLAUDE_CODE_SESSION_ID`, then `$CODEX_THREAD_ID`.
+  from `$PM_SESSION_ID`, set by `--session <id>`; a kiro-exported session variable
+  is a CONFIRM recon item.
 
 A ticket is "yours" when its holder's token equals yours, or, when neither side has
 a token, when the actors are equal. `$PM_NOW`, when set, is the clock.
@@ -279,8 +278,8 @@ worktrees and overdue pilots, `cmd` for `pm dispatch` and a dashboard.
 ## Harness hooks
 
 `pm hook <event>` reads one JSON object on stdin with any of `cwd`, `session_id`,
-`prompt`, `stop_hook_active`, and answers in plain text. These are Claude Code's
-key names; another harness sends the same shape.
+`prompt`, `stop_hook_active`, and answers in plain text; unknown keys are ignored.
+Kiro's v3 hook stdin is CONFIRM recon at the work machine.
 
 | Event | Prints | Exit |
 | --- | --- | --- |
@@ -321,11 +320,10 @@ pm/
   tools/plugins.py       run cmd, pre, post and orient files
   tools/verbs/<verb>.py  one file per verb; its docstring is `pm help <verb>`
   plugins/dispatch  plugins/pilot   two plugins a user may symlink in
-  hooks/opencode/pm.ts   calls `pm hook`
-  config/claude/hooks.json
+  config/kiro/hooks.json   kiro v3 hook registrations
   tests/run_transcripts.py   tests/t/*.t   tests/test_budgets.py
   docs/design.md
-  README.md  AGENTS.md  CLAUDE.md  INSTALL.md
+  README.md  AGENTS.md  INSTALL.md
 ```
 
 The dispatcher holds one table of verb, short usage and summary; `pm help` prints

@@ -19,7 +19,7 @@ ORDER = ("open", "taken", "parked", "done")
 
 
 def _name(identity):
-    """`agent:claude/claude#e8bc163c` -> `claude#e8bc163c`; no identity -> `import`."""
+    """`agent:harness/sess-1#e8bc163c` -> `sess-1#e8bc163c`; no identity -> `import`."""
     if not identity or not isinstance(identity, str):
         return "import"
     rest = identity.split(":", 1)[1] if ":" in identity else identity

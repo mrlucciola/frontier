@@ -27,7 +27,7 @@ copies under `.tmp/`, and is run when `verbs/import.py` changes.
 | Any verb, event or output | [Design](/pm/docs/design.md), then the transcripts in `tests/t/` |
 | A transcript or the design that looks wrong | Stop and report what looks wrong. Never edit the design, `tests/t/` or `tests/fixtures/` |
 | Size budgets or locking | `tests/test_budgets.py`, `tests/test_concurrency.py`, the design's "Size budgets" |
-| The harness hooks | `tools/verbs/hook.py`, `config/claude/hooks.json`, `hooks/opencode/pm.ts`, the design's "Harness hooks" |
+| The harness hooks | `tools/verbs/hook.py`, `config/kiro/hooks.json`, the design's "Harness hooks" |
 | The shipped plugins in `plugins/` (`dispatch`, `pilot`) or `tools/plugins.py` | The design's "Plugins" section, transcripts 15, 22 and 23 |
 
 After a docs change, run `python3 -B docs/check_structure.py`.
