@@ -1,6 +1,6 @@
 ---
 name: cwf-product
-description: "Develop product requirements, PRDs, prioritization, or technical strategy using relevant evidence. Exclude everyday personal planning and simple rewrites."
+description: "Load before writing requirements, a PRD, prioritization, or product strategy."
 ---
 
 # CWF Product

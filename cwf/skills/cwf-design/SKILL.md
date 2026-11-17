@@ -1,6 +1,6 @@
 ---
 name: cwf-design
-description: "Design or review software architecture, ERDs, interfaces, and substantive code design against existing context. Exclude trivial edits and unrelated questions."
+description: "Load before reviewing or deciding architecture, ERDs, interfaces, or duplication across code."
 ---
 
 # CWF Design

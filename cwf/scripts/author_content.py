@@ -7,12 +7,12 @@ sys.path.insert(0,str(ROOT))
 from cwf.contracts import SCHEMAS
 
 DESCRIPTIONS={
- "product":"Develop product requirements, PRDs, prioritization, or technical strategy using relevant evidence. Exclude everyday personal planning and simple rewrites.",
- "design":"Design or review software architecture, ERDs, interfaces, and substantive code design against existing context. Exclude trivial edits and unrelated questions.",
- "docs":"Create or reconcile professional documentation against authoritative sources and current behavior. Exclude simple rewriting without a contextual question.",
- "plan":"Decompose substantive work, coordinate batches, or resume initiatives using dependencies and ownership. Accept plain prompts; no tickets required. Exclude everyday life planning.",
- "build":"Implement, debug, refactor, or review code using existing-solution discovery and contextual verification. Accept ordinary prompts or supplied tasks. Exclude trivial formatting and unrelated questions.",
- "maintain":"Inspect, configure, evaluate, or repair the Contextual Work Framework itself. Exclude ordinary task execution and general unrelated tool questions."
+ "product":"Load before writing requirements, a PRD, prioritization, or product strategy.",
+ "design":"Load before reviewing or deciding architecture, ERDs, interfaces, or duplication across code.",
+ "docs":"Load before drafting or reconciling documentation against requirements or other documents.",
+ "plan":"Load before planning multi-part work: decomposing, sequencing, or coordinating batches.",
+ "build":"Load before changing code: implementing, fixing, refactoring, or validating a change.",
+ "maintain":"Load only to inspect, configure, or repair CWF itself."
 }
 STEPS={
  "product":"""1. Establish the problem, audience, desired outcome, constraints, and non-goals. Distinguish evidence from hypotheses.

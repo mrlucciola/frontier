@@ -1,6 +1,6 @@
 ---
 name: cwf-build
-description: "Implement, debug, refactor, or review code using existing-solution discovery and contextual verification. Accept ordinary prompts or supplied tasks. Exclude trivial formatting and unrelated questions."
+description: "Load before changing code: implementing, fixing, refactoring, or validating a change."
 ---
 
 # CWF Build

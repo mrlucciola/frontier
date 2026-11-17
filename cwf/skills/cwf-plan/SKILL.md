@@ -1,6 +1,6 @@
 ---
 name: cwf-plan
-description: "Decompose substantive work, coordinate batches, or resume initiatives using dependencies and ownership. Accept plain prompts; no tickets required. Exclude everyday life planning."
+description: "Load before planning multi-part work: decomposing, sequencing, or coordinating batches."
 ---
 
 # CWF Plan

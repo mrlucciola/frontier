@@ -1,4 +1,3 @@
-For substantive product, architecture, documentation, planning, or code work, use the relevant available `cwf-*` skill when useful.
-Investigate existing solutions, conventions, and accepted decisions before adding competing behavior or artifacts.
-Keep discovery bounded and proportionate. For batches, establish dependencies, ownership, and integrated acceptance.
-Unrelated everyday questions bypass CWF. Follow existing scope and permissions. Where the repository's instructions name a ticket store or worktree tool, it owns tracked work: record continuation and findings in the ticket store, make checkouts with the worktree tool, and run no CWF checkpoint, observe or worktree command. Untracked work needs no ticketing system or repository initialization.
+Before substantive work, load the matching `cwf-*` skill without being asked: cwf-build before changing code, cwf-design to review architecture or duplication, cwf-docs for documentation, cwf-plan for multi-part planning, cwf-product for requirements.
+Questions, personal or general topics, and trivial edits (a typo, one line) skip CWF.
+Where the repository's instructions name a ticket store or worktree tool, it owns tracked work: record continuation and findings in the ticket store, make checkouts with the worktree tool, and run no CWF checkpoint, observe or worktree command. Untracked work needs no ticketing system or repository initialization.

@@ -1,6 +1,6 @@
 ---
 name: cwf-docs
-description: "Create or reconcile professional documentation against authoritative sources and current behavior. Exclude simple rewriting without a contextual question."
+description: "Load before drafting or reconciling documentation against requirements or other documents."
 ---
 
 # CWF Docs

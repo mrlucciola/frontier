@@ -1,6 +1,6 @@
 ---
 name: cwf-maintain
-description: "Inspect, configure, evaluate, or repair the Contextual Work Framework itself. Exclude ordinary task execution and general unrelated tool questions."
+description: "Load only to inspect, configure, or repair CWF itself."
 ---
 
 # CWF Maintain
