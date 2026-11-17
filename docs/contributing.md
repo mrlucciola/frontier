@@ -27,14 +27,12 @@ stays out of the index until it does.
 | File | Required | Contents | Rule |
 | --- | --- | --- | --- |
 | `AGENTS.md` | Always | Maintenance routes and validation, in the [template](#agentsmd-template) form | `C-AGENTS` |
-| `CLAUDE.md` | Always | Exactly `@AGENTS.md`, so Claude loads the component's `AGENTS.md` when it works in the directory | `C-CLAUDE` |
 | `README.md` | Always | Purpose, supported providers, and links to `AGENTS.md` and to `INSTALL.md` when present | `C-README`, `C-README-ROUTE` |
 | `INSTALL.md` | When the component has `skills/`, `hooks/`, `instructions/`, `config/`, or `cli/` | What `deploy.sh` links and where, how to run and verify it, and the commands that remove it | `C-INSTALL` |
 | `deploy.sh` | Same condition as `INSTALL.md` | The component's whole deployment, in the [deploy script](#deploy-script) form | Not checked yet |
 
 A component without provider integration documents its setup in `README.md`.
-The repository root has `CLAUDE.md` (exactly `@AGENTS.md`), `AGENTS.md`,
-`README.md`, and this page (`R-FILE`, `R-CLAUDE`).
+The repository root has `AGENTS.md`, `README.md`, and this page (`R-FILE`).
 
 ## Optional directories
 
@@ -53,8 +51,8 @@ tests/              Component tests
 docs/               Detailed design and reference documentation
 ```
 
-Document exact provider destinations, such as paths under `~/.claude/`,
-`~/.codex/`, or `~/.config/opencode/`, in the component's setup guide.
+Document exact provider destinations, such as paths under `~/.kiro/`, in the
+component's setup guide.
 
 ## `AGENTS.md` template
 
@@ -94,14 +92,13 @@ read that paragraph. The route table's first header may be `Work` instead of
 
 ## Links
 
-Routing documents are the root `CLAUDE.md`, `AGENTS.md`, and `README.md`, every
+Routing documents are the root `AGENTS.md` and `README.md`, every
 `docs/*.md` page, and each component's `AGENTS.md`, `README.md`, and
 `INSTALL.md`. In them:
 
 - `L-ROOT`: a local link target is repository-root-relative with a leading `/`,
-  such as `/docs/contributing.md`. Claude's documentation hook writes this form
-  on every edit; write it by hand elsewhere. Inside a worktree, `/` is the
-  worktree root. Same-page `#fragment` links are allowed.
+  such as `/docs/contributing.md`; write it by hand. Inside a worktree, `/` is
+  the worktree root. Same-page `#fragment` links are allowed.
 - `L-TARGET`: the target exists inside the repository.
 - `L-ANCHOR`: a `#fragment` on a markdown target matches one of its headings.
 
@@ -143,11 +140,11 @@ block.
 #!/usr/bin/env zsh
 # Deploy <component>: links into this checkout and one marked block. Safe to run again.
 here="${0:A:h}"
-snippet="$here/instructions/opencode.AGENTS.md"
+snippet="$here/instructions/kiro.steering.md"
 [[ -r "$snippet" ]] || { print -u2 "missing $snippet"; exit 1 }
 
-# opencode: skills
-dest="$HOME/.config/opencode/skills"
+# kiro: skills
+dest="$HOME/.kiro/skills"
 mkdir -p "$dest"
 for d in "$here/skills"/*(/); do
 	ln -sfn "$d" "$dest/${d:t}"
@@ -157,8 +154,8 @@ done
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$here/cli/<name>" "$HOME/.local/bin/<name>"
 
-# opencode: instruction block
-target="$HOME/.config/opencode/AGENTS.md"
+# kiro: instruction block
+target="$HOME/.kiro/steering/frontier.md"
 begin='<!-- NAME:BEGIN -->' end='<!-- NAME:END -->' nl=$'\n'
 block="$begin$nl$(<"$snippet")$nl$end"
 text=""

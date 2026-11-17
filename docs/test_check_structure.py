@@ -57,12 +57,10 @@ class CheckStructureTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name).resolve()
-        self.write("CLAUDE.md", "@AGENTS.md\n")
         self.write("AGENTS.md", "# Agents\n\nUse the [index](/README.md#components).\n")
         self.write("README.md", ROOT_README)
         self.write("docs/contributing.md", CONTRIBUTING)
         self.write("alpha/README.md", ALPHA_README)
-        self.write("alpha/CLAUDE.md", "@AGENTS.md\n")
         self.write("alpha/AGENTS.md", AGENTS)
         self.write("alpha/tests/test_a.py", "")
         (self.root / "docs").mkdir(exist_ok=True)
@@ -107,18 +105,15 @@ class CheckStructureTest(unittest.TestCase):
         self.assertTrue(out.splitlines()[-1].startswith("check_structure: ok (1 components, 0 exempted)"))
 
     def test_violation_line_format(self):
-        (self.root / "alpha/CLAUDE.md").unlink()
         self.replace("alpha/AGENTS.md", "# Alpha maintenance", "# Alpha")
         lines = self.assert_flags("A-TITLE").splitlines()
-        self.assertEqual(lines[-1], "check_structure: 2 violations (1 components, 0 exempted)")
+        self.assertEqual(lines[-1], "check_structure: 1 violations (1 components, 0 exempted)")
         for line in lines[:-1]:
             self.assertRegex(line, r"^\S+?(:\d+)?: [A-Z]-[A-Z-]+ .+$")
 
     def test_root_files(self):
-        self.write("CLAUDE.md", "x\n")
         (self.root / "AGENTS.md").unlink()
-        out = self.assert_flags("AGENTS.md: R-FILE missing required root file")
-        self.assertIn("CLAUDE.md: R-CLAUDE", out)
+        self.assert_flags("AGENTS.md: R-FILE missing required root file")
 
     def test_index_table_missing(self):
         self.replace("README.md", "## Components", "## Parts")
@@ -143,12 +138,6 @@ class CheckStructureTest(unittest.TestCase):
         self.track()
         self.write("pm/x.txt", "x\n")
         self.assert_passes(track=False)
-
-    def test_component_claude_shim(self):
-        self.write("alpha/CLAUDE.md", "@README.md\n")
-        self.assert_flags("alpha/CLAUDE.md: C-CLAUDE")
-        (self.root / "alpha/CLAUDE.md").unlink()
-        self.assert_flags("alpha/CLAUDE.md: C-CLAUDE")
 
     def test_component_readme_missing(self):
         (self.root / "alpha/README.md").unlink()

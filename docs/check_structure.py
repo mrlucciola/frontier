@@ -14,8 +14,8 @@ import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SHIM = "@AGENTS.md"
-ROOT_FILES = ("CLAUDE.md", "AGENTS.md", "README.md", "docs/contributing.md")
+
+ROOT_FILES = ("AGENTS.md", "README.md", "docs/contributing.md")
 INTEGRATION_DIRS = ("skills", "hooks", "instructions", "config", "cli")
 INDEX_HEADER = ["Component", "Purpose", "Development instructions"]
 ROUTE_HEADERS = (["Change", "Read"], ["Work", "Read"])
@@ -27,8 +27,8 @@ RUN_MESSAGE = ('no validation block: a paragraph beginning "Run" that says '
                '"from the repository root", followed by a sh fence')
 
 RULES = (
-    "R-FILE", "R-CLAUDE", "I-TABLE", "I-ROW", "I-MISSING", "I-UNINDEXED",
-    "C-AGENTS", "C-README", "C-CLAUDE", "C-INSTALL", "C-README-ROUTE",
+    "R-FILE", "I-TABLE", "I-ROW", "I-MISSING", "I-UNINDEXED",
+    "C-AGENTS", "C-README", "C-INSTALL", "C-README-ROUTE",
     "A-TITLE", "A-TABLE", "A-RUN", "A-CWD", "A-TARGET",
     "L-TARGET", "L-ROOT", "L-ANCHOR", "X-ROW", "X-STALE",
 )
@@ -197,9 +197,6 @@ def check_files(report, name):
     for filename, rule in (("AGENTS.md", "C-AGENTS"), ("README.md", "C-README")):
         if not (base / filename).is_file():
             add(filename, rule, "missing required component file")
-    shim = base / "CLAUDE.md"
-    if not shim.is_file() or shim.read_text(errors="replace").strip() != SHIM:
-        add("CLAUDE.md", "C-CLAUDE", 'missing or not exactly "%s"' % SHIM)
     install = base / "INSTALL.md"
     reason = next((d for d in INTEGRATION_DIRS if (base / d).is_dir()), None)
     if reason and not install.is_file():
@@ -358,9 +355,6 @@ def main(argv):
     for name in ROOT_FILES:
         if not (ROOT / name).is_file():
             flag(report, name, 0, "R-FILE", "missing required root file")
-    shim = ROOT / "CLAUDE.md"
-    if shim.is_file() and shim.read_text(errors="replace").strip() != SHIM:
-        flag(report, "CLAUDE.md", 0, "R-CLAUDE", 'must contain exactly "%s"' % SHIM)
 
     indexed = check_index(report)
     known = tracked | set(indexed or ())
@@ -378,7 +372,7 @@ def main(argv):
                        "tracked top-level directory is not in the README.md component index; "
                        "add a row there or an exemption in docs/contributing.md", name)
 
-    docs = [(ROOT / n, None) for n in ("CLAUDE.md", "AGENTS.md", "README.md")]
+    docs = [(ROOT / n, None) for n in ("AGENTS.md", "README.md")]
     docs += [(p, None) for p in sorted((ROOT / "docs").glob("*.md"))]
     docs += [(ROOT / c / n, c) for c in sorted(known) for n in ("AGENTS.md", "README.md", "INSTALL.md")]
     for doc, component in docs:

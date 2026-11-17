@@ -36,11 +36,30 @@ There is no manifest, checksum, chunk, or apply step. Correctness at work is
 established by reading the files back and by the components' own checks, not
 by byte validation.
 
-## Open v3 questions (close them at the work machine)
+## Kiro surface map
 
-- Which global paths the v3 runtime reads (steering, skills, `~/.kiro/`
-  layout) and whether it auto-loads `AGENTS.md`.
-- Agent definition format and location the runtime actually honors
-  (markdown agents, project vs global scope).
-- Exit behavior of headless `kiro-cli --v3 chat` runs, as far as the pm and
-  wt hooks care.
+Every component targets these Kiro v3 surfaces. Paths marked CONFIRM are the
+layout the v3-era docs name but this branch has not yet verified on the work
+machine; keep the marker until recon settles it.
+
+| Concern | Kiro v3 destination |
+| --- | --- |
+| Global instructions | `~/.kiro/steering/frontier.md`, one marked block per component (CONFIRM) |
+| Project instructions | `<repo>/.kiro/steering/` (CONFIRM) |
+| Skills | `~/.kiro/skills/<name>` symlinks; project scope `<repo>/.kiro/skills/` (CONFIRM) |
+| Hooks | `~/.kiro/hooks/<component>.json`, PascalCase triggers (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`), command handlers (CONFIRM) |
+| Agents | markdown agent definitions, `~/.kiro/agents/` or `<repo>/.kiro/agents/` (CONFIRM) |
+| Permissions | `permissions.yaml`, reviewed by hand; never written by a deploy script (CONFIRM) |
+| Entry instructions | `AGENTS.md` read natively; no shim files of any other name |
+
+Session identity is `--session <id>` or `PM_SESSION_ID` only; a Kiro-exported
+session variable is a CONFIRM recon item. Component-owned user data lives
+under `~/.kiro/` beside the surfaces above.
+
+## Deferred until recon
+
+Kiro analogs that need observed v3 behavior before they can be written: the
+session-telemetry runners, hook trust/registration mechanics, the
+`permissions.yaml` schema, and the headless `kiro-cli --v3 chat` contract.
+Components carry their old wiring's kiro-shaped files and mark the unknowns;
+they do not invent v3 behavior.

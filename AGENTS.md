@@ -29,7 +29,7 @@ that binds them.
 
 Preserve other contributors' work and stay within the requested scope. Run the
 relevant component checks and update documentation affected by the change. After
-changing a `README.md`, `AGENTS.md`, `CLAUDE.md`, `INSTALL.md`, a `docs/` page, or
+changing a `README.md`, `AGENTS.md`, `INSTALL.md`, a `docs/` page, or
 a top-level directory, run `python3 -B docs/check_structure.py` from the
 repository root.
 Report validation and outstanding work at handoff. For ticketed work, persist
