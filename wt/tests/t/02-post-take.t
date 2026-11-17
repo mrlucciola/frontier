@@ -4,7 +4,7 @@ post-take hints wt start only in a repository that uses worktrees.
   $ ln -s "$FIXTURES/../../../wt/pm-plugin" "$PM_PLUGINS/wt"
   $ pm new "one" --take
   t-1
-  $ mkdir -p .worktrees
+  $ mkdir -p .wt
   $ pm new "two" --take
   t-2
   next: wt start t-2

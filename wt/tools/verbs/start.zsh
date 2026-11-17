@@ -1,6 +1,6 @@
 # wt start <id> [--as NAME] [--session ID] [--store PATH] [--repo PATH] [--force]
 # Takes the ticket through pm (or adopts your own claim: same --as and session) and adds
-# the worktree at <repo>/.worktrees/<id> on branch <id>. An existing branch is a parked
+# the worktree at <repo>/.wt/<id> on branch <id>. An existing branch is a parked
 # resume, rebased onto the default branch. --as defaults to $WT_ACTOR.
 # Run it from the main checkout before your first edit; then edit only under the worktree
 # and commit with git -C <path>, explicit paths. "not claimable": pick other work, never

@@ -37,7 +37,7 @@ wt_default_branch() {
 
 wt_worktree_path() {
   emulate -L zsh
-  print -r -- "$1/.worktrees/$2"
+  print -r -- "$1/.wt/$2"
   return 0
 }
 

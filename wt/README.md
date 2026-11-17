@@ -1,7 +1,7 @@
 # wt
 
 Worktree lifecycle for ticketed work: one worktree per ticket at
-`<repo>/.worktrees/<ticket-id>` on branch `<ticket-id>`, entered and left only through
+`<repo>/.wt/<ticket-id>` on branch `<ticket-id>`, entered and left only through
 `wt`. A zsh command, one file per verb under `wt/tools/verbs/`.
 
 | Verb | Does |
@@ -24,6 +24,9 @@ are recorded with `pm emit <id> wt.<name> key=value`. Each call carries `WT_CALL
 so the plugin's guards let wt's own `pm done` and `pm take` through.
 
 ## Files in the target repo
+
+Everything wt keeps in a repo is under `.wt/`: the worktrees, plus two committed
+files. Gitignore `.wt/*` with `!.wt/gate` and `!.wt/known-red`.
 
 - `.wt/gate`: an executable run in the worktree by `finish` and `land`; non-zero
   refuses the merge. Not executable also refuses. No file, no gate.

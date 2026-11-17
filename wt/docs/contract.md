@@ -3,7 +3,8 @@
 Reference for the `wt` command: its verbs, refusals and output lines. The suite
 `wt/tests/test_wt_cli.py` is the authority on exact wording.
 
-A worktree always lives at `<repo>/.worktrees/<id>` on branch `<id>`, one per ticket.
+A worktree always lives at `<repo>/.wt/<id>` on branch `<id>`, one per ticket, beside
+wt's committed config `.wt/gate` and `.wt/known-red`.
 `wt` talks to [pm](/pm/README.md) only through its command line: `pm get`, `pm take`,
 `pm done`, `pm park`, `pm drop` and `pm emit`, with `WT_CALLER=1` set on each call so
 the plugin's guards let wt through.
@@ -182,7 +183,7 @@ forms.
 - The main checkout stays on its default branch and nobody switches it. Before every
   commit `git branch --show-current` prints the default branch there, or `<id>` in a
   worktree; if the main checkout is off its default branch, stop and report it.
-- One ticket, one worktree, one branch, at `<repo>/.worktrees/<id>`: never under `.tmp/`,
+- One ticket, one worktree, one branch, at `<repo>/.wt/<id>`: never under `.tmp/`,
   `.claude/`, `.codex/`, `.agents/` or outside the repo. Start it before the first edit;
   edit only under it. Never work a ticket you do not hold.
 - Run `wt` from the main checkout (it resolves the main checkout from inside a linked
@@ -198,7 +199,7 @@ forms.
   is durable uncommitted state: never delete, move or `git clean` it unless the user
   names that path. A fresh worktree has no installs or env files; whoever starts it makes
   it runnable and never copies secrets (`.env*`, `*.pem`, `*.key`, credentials) in.
-  Gitignore `.tmp/`, `.local/` and `.worktrees/`.
+  Gitignore `.tmp/`, `.local/` and `.wt/*`, keeping `!.wt/gate` and `!.wt/known-red`.
 - Claude Code's built-in worktrees (`isolation: worktree`, `EnterWorktree`,
   `claude --worktree`) are for throwaway work that is never merged.
 - A worktree with no ticket behind it is an orphan: report it, never remove it; only the
@@ -227,7 +228,7 @@ Codex:
 
 - Worktree lifecycle writes `.git`, so the session needs a profile that allows it; under
   a read-only floor the commands fail, so stop and report.
-- Launch at the main checkout so `.worktrees/` and `.git/` are inside the writable root.
+- Launch at the main checkout so `.wt/` and `.git/` are inside the writable root.
 - Start as actor `codex`: `wt start <id> --as codex`. The session token defaults to
   `$PM_SESSION_ID` or `$CODEX_THREAD_ID`; if neither is set pass
   `--session <id>`, or the claim is a bare `codex` name.

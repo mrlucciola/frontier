@@ -1,5 +1,5 @@
 #!/bin/zsh
 [[ "${WT_CALLER:-}" == 1 ]] && exit 0
-[[ -d "$PM_STORE/.worktrees/$PM_ID" ]] || exit 0
+[[ -d "$PM_STORE/.wt/$PM_ID" ]] || exit 0
 print -r -- "wt: $PM_ID has a worktree. Run: wt finish $PM_ID (merge and close) or wt park $PM_ID (set aside)"
 exit 1

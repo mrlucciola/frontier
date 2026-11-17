@@ -21,7 +21,7 @@ typeset -ra WT_VERBS=(${WT_TABLE%%\|*})
 wt_help() {
   emulate -L zsh
   local row usage summary
-  print -r -- "wt keeps one worktree per ticket: <repo>/.worktrees/<id> on branch <id>."
+  print -r -- "wt keeps one worktree per ticket: <repo>/.wt/<id> on branch <id>."
   print -r -- "Run it from the main checkout. Enter with start, leave with finish or park;"
   print -r -- "never rm, switch or force-remove a worktree by hand. One verb: wt help <verb>"
   print

@@ -455,7 +455,7 @@ class WtCase(unittest.TestCase):
         return repo
 
     def worktree(self, repo, ticket):
-        return os.path.join(repo, ".worktrees", ticket)
+        return os.path.join(repo, ".wt", ticket)
 
     def branch_exists(self, repo, name):
         return self.git(repo, "rev-parse", "--verify", "-q", "refs/heads/%s" % name,
@@ -582,7 +582,7 @@ class AdapterTest(WtCase):
 class StartTest(WtCase):
     def test_claims_and_adds_worktree(self):
         """`start` ... claim via pm ... add/resume the worktree; a worktree always lives at
-        `<target_repo>/.worktrees/<id>` on branch `<id>`."""
+        `<target_repo>/.wt/<id>` on branch `<id>`."""
         repo = self.make_repo()
         ticket = self.pm.file_ticket(repo, "work")
         result = self.wt(repo, "start", ticket, "--as", "ada", session="s1")
@@ -2231,16 +2231,16 @@ class StatusPruneTest(StartedCase):
         `<path>  <branch>  <pm status>` (the old pm's words)."""
         repo, ticket, wt_path = self.started()
         self.git(repo, "worktree", "add", "-q", "-b", "stray",
-                 os.path.join(repo, ".worktrees", "stray"))
+                 os.path.join(repo, ".wt", "stray"))
         result = self.wt(repo, "status")
         self.assertEqual(result.code, 0, result.text)
         mine = self.status_line(result, wt_path)
         words = {"taken", "claimed"}
         self.assertTrue(mine.startswith("%s  %s  " % (wt_path, ticket)), mine)
         self.assertIn(mine.split("  ", 2)[2].split(" ")[0], words, mine)
-        orphan = self.status_line(result, os.path.join(repo, ".worktrees", "stray"))
+        orphan = self.status_line(result, os.path.join(repo, ".wt", "stray"))
         self.assertTrue(orphan.startswith("%s  stray  FOREIGN/ORPHAN" %
-                                          os.path.join(repo, ".worktrees", "stray")), orphan)
+                                          os.path.join(repo, ".wt", "stray")), orphan)
         self.assertFalse(any(l.startswith(repo + "  ") for l in result.lines()), result.text)
 
     def test_status_with_no_worktrees(self):
@@ -2470,7 +2470,7 @@ class ResolutionTest(StartedCase):
 
     def test_registered_prefix_from_another_repo(self):
         """A prefix registered to repo B, `start` run with cwd in repo A: the ticket is
-        taken in B and the worktree is `B/.worktrees/<id>`."""
+        taken in B and the worktree is `B/.wt/<id>`."""
         a, b = self.two()
         self.pm.register_store("bb", b)
         ticket = self.pm.file_ticket(b, "there")

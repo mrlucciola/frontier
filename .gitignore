@@ -1,6 +1,11 @@
 # Agent scratch
 .tmp/
 
+# wt: worktrees live in .wt/<id>; its config files there are committed
+.wt/*
+!.wt/gate
+!.wt/known-red
+
 # Python
 __pycache__/
 *.pyc

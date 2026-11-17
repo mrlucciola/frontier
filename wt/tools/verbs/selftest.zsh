@@ -42,7 +42,7 @@ wt_st_run() {
 
   # start; finish
   id=$(wt_st_new "$repo" "case 1") || { wt_st_fail start "$id"; return 0 }
-  wtp=$repo/.worktrees/$id
+  wtp=$repo/.wt/$id
   out=$(builtin cd -q -- "$repo" && "$wt" start "$id" --as selftest 2>&1)
   [[ -d $wtp ]] || { wt_st_fail start "no worktree at $wtp: $out"; return 0 }
   wt_st_ok "start"
@@ -58,7 +58,7 @@ wt_st_run() {
 
   # start; park; resume; finish
   id=$(wt_st_new "$repo" "case 2") || { wt_st_fail park "$id"; return 0 }
-  wtp=$repo/.worktrees/$id
+  wtp=$repo/.wt/$id
   (builtin cd -q -- "$repo" && "$wt" start "$id" --as selftest >/dev/null 2>&1)
   wt_st_commit "$wtp" b.txt work
   out=$(builtin cd -q -- "$repo" && "$wt" park "$id" 2>&1) || wt_st_fail park "exit $?: $out"
@@ -87,7 +87,7 @@ wt_st_run() {
 
   # land
   id=$(wt_st_new "$repo" "case 4") || { wt_st_fail land "$id"; return 0 }
-  wtp=$repo/.worktrees/$id
+  wtp=$repo/.wt/$id
   (builtin cd -q -- "$repo" && "$wt" start "$id" --as selftest >/dev/null 2>&1)
   wt_st_commit "$wtp" d.txt work
   out=$(builtin cd -q -- "$repo" && "$wt" land "$id" 2>&1) || wt_st_fail land "exit $?: $out"
