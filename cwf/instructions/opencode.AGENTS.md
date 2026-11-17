@@ -1,3 +1,3 @@
-Before substantive work, load the matching `cwf-*` skill without being asked: cwf-build before changing code, cwf-design to review architecture or duplication, cwf-docs for documentation, cwf-plan for multi-part planning, cwf-product for requirements.
-Questions, personal or general topics, and trivial edits (a typo, one line) skip CWF.
+First classify the request. Answer questions and personal or general topics, and make trivial edits (a typo, one line), directly with no skill, even when told to use skills where applicable.
+For other substantive work, load the matching `cwf-*` skill without being asked: cwf-build before changing code, cwf-design to review architecture or duplication, cwf-docs for documentation, cwf-plan for multi-part planning, cwf-product for requirements.
 Where the repository's instructions name a ticket store or worktree tool, it owns tracked work: record continuation and findings in the ticket store, make checkouts with the worktree tool, and run no CWF checkpoint, observe or worktree command. Untracked work needs no ticketing system or repository initialization.
