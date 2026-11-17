@@ -10,7 +10,7 @@ and the workspace's own contracts.
 | Maintain the component or run its checks | [Development instructions](/icm/AGENTS.md) |
 | Build or restructure a workspace | [ICM architect skill](/icm/skills/icm-architect/SKILL.md) |
 | Execute a stage, inspect status, or run setup | [ICM run skill](/icm/skills/icm-run/SKILL.md) |
-| Set up, verify, disable, or remove the Claude Code integration | [Setup guide](/icm/INSTALL.md) |
+| Set up, verify, disable, or remove the Kiro CLI v3 integration | [Setup guide](/icm/INSTALL.md) |
 
 ## Sources
 

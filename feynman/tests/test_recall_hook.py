@@ -1,10 +1,11 @@
 """Run tools/concept-graph/recall.sh against a temporary store.
 
-Component-level test: it exercises the hook AND the component's settings fragment,
+Component-level test: it exercises the hook AND the component's hook fragment,
 so it lives in feynman/tests/, not beside the tool (tool-only tests stay in
 tools/concept-graph/tests/). Checks: silent exit 0 with no store, silent on a prompt
-with no lexicon token and python is NOT started, valid Claude JSON on a hit, and the
-fragment registers the script. Run: python3 feynman/tests/test_recall_hook.py
+with no lexicon token and python is NOT started, a valid JSON envelope on a hit
+(CONFIRM: the kiro v3 hook stdout contract), and the fragment registers the script.
+Run: python3 feynman/tests/test_recall_hook.py
 """
 import json
 import os
@@ -17,7 +18,7 @@ COMPONENT = pathlib.Path(__file__).resolve().parent.parent
 TOOL = COMPONENT / "tools/concept-graph"
 HOOK = TOOL / "recall.sh"
 CG = TOOL / "cg.py"
-FRAGMENT = COMPONENT / "config/settings.feynman.fragment.json"
+FRAGMENT = COMPONENT / "config/kiro/hooks.json"
 FAILS = []
 
 
@@ -37,8 +38,8 @@ def main():
     frag = json.loads(FRAGMENT.read_text())
     cmds = [h["command"] for grp in frag["hooks"].get("UserPromptSubmit", []) for h in grp["hooks"]]
     check(any("concept-graph/recall.sh" in c for c in cmds), "fragment registers recall.sh: %r" % cmds)
-    allows = frag.get("permissions", {}).get("allow", [])
-    check(any("concept-graph/cg.py" in a for a in allows), "fragment allows cg.py: %r" % allows)
+    check(".kiro/tools/concept-graph/recall.sh" in " ".join(cmds), "fragment names the kiro install path: %r" % cmds)
+    check("permissions" not in frag, "permissions live in permissions.yaml, not here")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)

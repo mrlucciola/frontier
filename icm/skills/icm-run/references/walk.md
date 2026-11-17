@@ -4,7 +4,7 @@ The five-layer load order. Stop reading as soon as you have what the stage needs
 
 | Layer | File | Question | Budget |
 |---|---|---|---|
-| 0 | `AGENTS.md` / `CLAUDE.md` | Where am I, where does everything live | ~800 tok |
+| 0 | `AGENTS.md` | Where am I, where does everything live | ~800 tok |
 | 1 | root `CONTEXT.md` | Which stage handles this task | ~300 tok |
 | 2 | `stages/<current>/CONTEXT.md` | What exactly do I do | 200 to 500 tok |
 | 3 | rows the Inputs table marks reference | What rules apply (internalize) | 500 to 2k tok |

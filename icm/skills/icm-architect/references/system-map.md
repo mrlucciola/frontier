@@ -26,7 +26,7 @@ Product language and file/type names often disagree. State both once in the cata
 
 ## Where it lives
 
-Propose before writing. Prefer a `map/` shelf next to existing orientation (`developer-docs/`, `docs/`, vault root) so the subject's entry file (`AGENTS.md`, `CLAUDE.md` or whatever it already uses) can add one routing row. Do not drop a map inside `src/` or scatter cards through the tree you are mapping. The map's entry file is `map/AGENTS.md`.
+Propose before writing. Prefer a `map/` shelf next to existing orientation (`developer-docs/`, `docs/`, vault root) so the subject's entry file (`AGENTS.md` or whatever it already uses) can add one routing row. Do not drop a map inside `src/` or scatter cards through the tree you are mapping. The map's entry file is `map/AGENTS.md`.
 
 ## Target tree (smallest that carries the work)
 

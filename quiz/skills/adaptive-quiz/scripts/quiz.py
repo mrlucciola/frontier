@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fixed-bank adaptive quiz with a local answer store. Python 3.9+, standard library only.
 
-Data: $KNOWLEDGE_HOME/quiz.sqlite3 (default ~/.claude/knowledge). Separate from the feynman
+Data: $KNOWLEDGE_HOME/quiz.sqlite3 (default ~/.kiro/knowledge). Separate from the feynman
 component's card store, linked by identity: concept keys equal feynman card slugs, so the
 same key names the same idea in both stores. Nothing reads or writes across them.
 """
@@ -46,7 +46,7 @@ def sha(value):
 
 
 def data_dir():
-    return Path(os.environ.get("KNOWLEDGE_HOME", str(Path.home() / ".claude" / "knowledge"))).expanduser().resolve()
+    return Path(os.environ.get("KNOWLEDGE_HOME", str(Path.home() / ".kiro" / "knowledge"))).expanduser().resolve()
 
 
 # --- scope: identical derivation to feynman/scripts/kg.py so repo scopes line up across both stores ---

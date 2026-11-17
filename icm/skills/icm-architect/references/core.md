@@ -51,7 +51,7 @@ Rules: inputs are exact backticked paths, split working vs reference. The proces
 
 ## Naming
 
-- The entry file is `AGENTS.md`. A tool that reads another name gets a one-line pointer, never a second copy (syntax as of October 2026): `CLAUDE.md` holds `@AGENTS.md` for Claude Code; `GEMINI.md` holds `@./AGENTS.md` for Gemini CLI; anything else gets a file that says "Read AGENTS.md first."
+- The entry file is `AGENTS.md`, read natively by the runtime; never create shim or pointer files of another name.
 - Stage folders: `NN_kebab-name` (`01_research`). Ordinal-only prefixes (`00-tracker.md`) for ordered files inside a folder.
 - Underscore folders are about the workspace, not of the work, and sort to the top: `_shared/` (the factory), `_templates/`, `_tools/` (scripts), `_meta/` (schema and rules), `_archive/`.
 - Records and nodes: kebab-case slugs for machine-facing files, or Title Case where a person browses daily (an Obsidian vault). Pick one per workspace and write the choice into the schema; drift between schema and files is the most common decay.

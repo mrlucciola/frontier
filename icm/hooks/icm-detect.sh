@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook: if the working directory is an ICM workspace, add one line
 # of context so the agent runs `status` before doing anything else.
-# Runs from this component; registered by config/settings.icm.fragment.json.
+# Runs from this component; registered by config/kiro/hooks.json.
 set -u
 
 is_icm=0
@@ -12,15 +12,13 @@ if [ -f CONTEXT.md ] && [ -d stages ]; then
 fi
 [ "$is_icm" -eq 1 ] || exit 0
 
-# Claude Code auto-loads CLAUDE.md, so it is the entry file whenever present.
 entry="none"
 [ -f AGENTS.md ] && entry="AGENTS.md"
-[ -f CLAUDE.md ] && entry="CLAUDE.md (already loaded)"
-[ -f AGENTS.md ] && [ -f CLAUDE.md ] && entry="CLAUDE.md (already loaded; AGENTS.md also present and should be a pointer, do not read it)"
 
 # Escape for JSON (backslash and double quote only; paths with other control chars are not expected).
 dir="$(printf '%s' "$PWD" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 msg="ICM workspace detected at $dir. Entry file: $entry. Run status (icm-run skill) before acting. Load only what the current stage's Inputs table lists."
 
+# The envelope below is the carried-over shape; CONFIRM the kiro v3 hook stdout contract in recon.
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$msg"
 exit 0

@@ -18,7 +18,7 @@ The graph is a directory of markdown cards. Every read and write goes through on
 command. Use this literal form so the permission rule matches:
 
 ```
-python3 ~/.claude/tools/concept-graph/cg.py <subcommand> ...
+python3 ~/.kiro/tools/concept-graph/cg.py <subcommand> ...
 ```
 
 `cg` below means that command. Card schema and field rules: `references/card.md`.
@@ -75,7 +75,7 @@ Full-weight template: `references/protocol.md`.
 - Inside an ICM workspace (root `CONTEXT.md` plus a numbered `stages/` tree) do not
   fire on ordinary questions; an explicit `/feynman` still works and writes only to the
   concept store, never into the workspace.
-- `cg grade <slug>` asks a model to grade the explanation blind. Run it only when the
+- `cg grade <slug> --grader <argv>` asks a model to grade the explanation blind. Run it only when the
   user asks for a grade; it costs a model call.
 
 ## Anti-triggers

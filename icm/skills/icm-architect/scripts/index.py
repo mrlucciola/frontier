@@ -20,7 +20,7 @@ try:
 except Exception:
     pass
 
-NOT_NOTES = {"_index.md", "index.md", "log.md", "context.md", "agents.md", "claude.md", "gemini.md"}
+NOT_NOTES = {"_index.md", "index.md", "log.md", "context.md", "agents.md"}
 
 
 def split(text):

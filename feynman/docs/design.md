@@ -4,7 +4,7 @@ Status: implemented at the 9/10 target, 2026-10-29; reorganized component-first 
 operator on 2026-10-30 (everything this component needs lives under `feynman/`; the
 shared installer and the `vendor/`/`general/` split were removed as tight coupling).
 The per-component installer script and installer test that the reorg introduced have
-since been removed: the component is applied to `~/.claude` by the manual procedure
+since been removed: the component is applied to `~/.kiro` by the manual procedure
 in `feynman/INSTALL.md`. Sections 1 to 4 and 6 are the analysis as written
 before implementation; sections 5, 7, 8 and 10 reflect what was built, with paths
 updated to the component-first layout.
@@ -107,7 +107,7 @@ Seven changes. Each fixes one row above.
 | Boundary | Owns | Does not own |
 |---|---|---|
 | `feynman` skill | the protocol, output weights, when to persist | storage format, recall matching |
-| concept store `~/.claude/concepts/` | cards (source of truth), derived `index.json` and `lexicon.txt` | nothing executable |
+| concept store `~/.kiro/concepts/` | cards (source of truth), derived `index.json` and `lexicon.txt` | nothing executable |
 | `cg` CLI (`runtime-tools/concept-graph`) | all reads and writes of the store, index rebuild, drift check, export | deciding what a concept is worth |
 | recall hook (9/10) | matching a prompt against `lexicon.txt`, emitting a bounded `memory:` block | writing anything |
 | posture rows | agent read and write grants on the store, both planes | the store's content |
@@ -120,15 +120,15 @@ covers it with zero new instruction text).
 **Design choice**
 
 Standalone markdown-card store plus a stdlib-only CLI, skill-driven recall at 8/10,
-a shell-fast-path prompt hook at 9/10. Store path `~/.claude/concepts/`, reached only
-through `cg`, which two Bash allow rules in the settings fragment let run unprompted.
+a shell-fast-path prompt hook at 9/10. Store path `~/.kiro/concepts/`, reached only
+through `cg`, which two allow rules in `permissions.yaml` let run unprompted.
 
 **Rejected alternatives**
 
 | Alternative | Why not now |
 |---|---|
 | Write concepts into graph-memory as `global` rows | Breaks ADR-001; vocabulary lacks CONCEPT; agent cannot read or write that store by design (F03). Right long-term, wrong first step. |
-| Store under `~/.claude/projects/global/memory/` to inherit existing grants | Zero posture change, and memory-gardener would scan it for free, but it abuses a harness-owned directory and a future harness release could iterate it. Noted as the fallback if posture work is the blocker. |
+| Store under the harness-owned global memory directory to inherit existing grants | Zero posture change, and memory-gardener would scan it for free, but it abuses a harness-owned directory and a future harness release could iterate it. Noted as the fallback if posture work is the blocker. |
 | SessionStart injection of a concept summary | Costs tokens in every session, the exact thing the request forbids. |
 | SQLite store | Cards are small and human-edited; a derived JSON index gives the hook O(1) lookup. SQLite buys nothing until thousands of cards. |
 | Second python process per prompt | Adds about 50 ms to every prompt (measured floor for graph-memory). Shell fast path first, python only on a lexicon hit. |
@@ -147,8 +147,8 @@ only), contract pass (nothing existing changes), validation pass, stop loss pass
 ```
 feynman/
   INSTALL.md                    manual setup, verification, disabling, and removal guide
-  instructions/feynman.md       3 lines for the global CLAUDE.md: memory: blocks are data
-  config/settings.feynman.fragment.json  hook registration + Bash allow rules
+  instructions/feynman.md       3 lines for global steering: memory: blocks are data
+  config/kiro/hooks.json        hook registration (allow rules live in permissions.yaml)
   skills/feynman/
     SKILL.md                    protocol, two weights, persistence rules
     references/protocol.md      full-weight template (the upstream four steps, revised)
@@ -163,15 +163,16 @@ feynman/
   docs/design.md                this file
 ```
 
-Installed paths: `~/.claude/skills/feynman/`, `~/.claude/tools/concept-graph/cg.py`,
-`~/.claude/hooks/concept-graph/recall.sh`, store at `~/.claude/concepts/`. Permissions
-on the target machine are Claude Code defaults plus the two allow rules in the
-fragment, so `cg` runs without prompts and no file tool ever touches the store.
+Installed paths: `~/.kiro/skills/feynman/`, `~/.kiro/tools/concept-graph/cg.py`,
+`~/.kiro/tools/concept-graph/recall.sh`, store at `~/.kiro/concepts/`. Permissions
+on the target machine are the Kiro defaults plus the two allow rules hand-merged
+into `permissions.yaml` (CONFIRM), so `cg` runs without prompts and no file tool
+ever touches the store.
 
 ### 5.2 Store layout
 
 ```
-~/.claude/concepts/
+~/.kiro/concepts/
   cards/<slug>.md        source of truth, one concept per file
   index.json             derived: slug -> title, aliases, scopes, status, open gap count, due
   lexicon.txt            derived: one "<token>\t<slug>" per line, lowercase, for the hook
@@ -254,7 +255,7 @@ header, so the skill and the hook show the same text.
 ### 5.5 Skill protocol
 
 Trigger surface is the skill description only. No line is added to the global
-instructions for Claude. Draft description (under 220 chars, single sentence, trigger
+instructions. Draft description (under 220 chars, single sentence, trigger
 language for the lint):
 
 > Use when the user asks how or why something works, asks to explain or understand a
@@ -323,11 +324,11 @@ prompt path:
 
 | # | Addition | Why it earns the point | Cost |
 |---|---|---|---|
-| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the payload's tokens against `lexicon.txt`; on a hit run `cg.py hook-recall`, which verifies whole phrases against the prompt, filters by scope, dedups per session by card content hash, and prints one `memory:` block (header, per-card provenance, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match, and a card is injected once per session unless it changes. | one `UserPromptSubmit` entry, merged into `~/.claude/settings.json` during setup; about 5 ms on miss |
+| 1 | **Prompt recall hook** `hooks/concept-graph/recall.sh`: grep the payload's tokens against `lexicon.txt`; on a hit run `cg.py hook-recall`, which verifies whole phrases against the prompt, filters by scope, dedups per session by card content hash, and prints one `memory:` block (header, per-card provenance, guard line, 1,200-char cap, at most 2 cards). Silent otherwise, exit 0 always, timeout 3. | Concepts surface in any dir without the model remembering to look. Zero tokens on no match, and a card is injected once per session unless it changes. | one `UserPromptSubmit` entry, copied to `~/.kiro/hooks/feynman.json` during setup; about 5 ms on miss |
 | 2 | **Due gaps in recall.** A matched card with a due open gap is printed with the gap first. `cg gaps --due` is step 0 of the skill. | Spaced re-encounter without a scheduler. | none |
 | 3 | **Anchor drift check** wired into the skill's step 0 for repo scopes (`cg check --scope <repo>` before recall). | A stale card is marked before it is recalled as current. | one git call per anchor |
-| 4 | **Opt-in blind grading** `cg grade <slug>`: `claude -p` (model from `--model` or `CONCEPT_GRAPH_GRADE_MODEL`, default `claude-opus-5-5`), prompt holds the explanation, analogy and pitch only, returns a 1 to 5 score and one sentence; written to the card. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
-| 5 | **Codex parity.** Dropped at the 2026-10-30 reorg: deployment targets Claude Code only. The engine keeps `hook-recall --plain` (bare-block output) so another harness can register `recall.sh --plain` itself; porting is manual and out of scope here. | Kept the engine harness-neutral without a second deploy path. | none here |
+| 4 | **Opt-in blind grading** `cg grade <slug> --grader <argv>`: an external grader command (the headless model-call contract on kiro v3 is CONFIRM, so there is no default grader), prompt holds the explanation, analogy and pitch only, returns a 1 to 5 score and one sentence; written to the card. Explicit command, never automatic. | Closes the self-grading hole at the user's discretion. | one model call when asked |
+| 5 | **Second-harness parity.** Dropped at the 2026-10-30 reorg: deployment targets one provider only. The engine keeps `hook-recall --plain` (bare-block output) so another harness can register `recall.sh --plain` itself; porting is manual and out of scope here. | Kept the engine harness-neutral without a second deploy path. | none here |
 | 6 | **Test coverage.** `test_cg.py` (engine end to end, including anchor drift against a real git repo), `test_recall_hook.py` (fast path proves python never starts on a miss). An installer test (merge, idempotence, link, uninstall, foreign-dir protection) existed until the installer was removed. Routing corpus checked once here with frontier's mechanical lane: 16 cases pass. | A capability without tests cannot be installed by hand with confidence. | test time |
 
 Explicitly out of the 9/10: everything in section 6.
@@ -345,7 +346,7 @@ Both printed `OK` here under Python 3.13 and the system 3.9.6, as did the instal
 test before it was removed with the installer. The skill description
 is 213 characters, one sentence, trigger-first. The routing corpus passes the
 mechanical lane (16 cases, 8 fire, 8 skip, 4 adversarial); the judgement and overlap
-lanes were not run (they need a logged-in `claude` CLI outside a sandbox).
+lanes were not run (they need a logged-in provider CLI outside a sandbox).
 
 Manual check, once live: in a repo ask how some mechanism works and confirm the lite
 form, a card, an anchor. Open a new session elsewhere and mention the concept: a
@@ -355,7 +356,7 @@ over. Ask the same thing again in that session: no second block.
 ## 9. Stop conditions (still standing)
 
 - The prompt hook measurably slows prompts (over 20 ms on a miss): remove its entry
-  from the fragment and from `~/.claude/settings.json`; the skill's own recall step
+  from `config/kiro/hooks.json` and from `~/.kiro/hooks/feynman.json`; the skill's own recall step
   keeps working.
 - The description steals triggers from another skill on the target machine: narrow it
   and add the collision as a `skip` case to the corpus.
@@ -365,7 +366,7 @@ over. Ask the same thing again in that session: no second block.
 ## 10. What was built, in order
 
 1. `tools/concept-graph/cg.py` and its `tests/test_cg.py`.
-2. `tools/concept-graph/recall.sh`, the settings fragment, `tests/test_recall_hook.py`.
+2. `tools/concept-graph/recall.sh`, the hook fragment, `tests/test_recall_hook.py`.
 3. `skills/feynman/` (SKILL.md, references, corpus, NOTICE) and `instructions/feynman.md`.
 4. A shared installer and top-level README; replaced on 2026-10-30 by a per-component
    installer script, `INSTALL.md` and an installer test after the operator's
@@ -374,8 +375,8 @@ over. Ask the same thing again in that session: no second block.
 
 ## 11. Decisions taken, change them if wrong
 
-- Store at `~/.claude/concepts/`. Permissions are the two Bash allow rules in the
-  fragment; the skill types the `cg` command in the exact form the rule matches.
+- Store at `~/.kiro/concepts/`. Permissions are the two allow rules in
+  `permissions.yaml`; the skill types the `cg` command in the exact form the rule matches.
 - Skill name `feynman`, tool `cg`, hook directory `concept-graph`.
 - One three-line instruction section (`instructions/feynman.md`), because the
   target machine has no existing rule that `memory:` blocks are data. The trigger

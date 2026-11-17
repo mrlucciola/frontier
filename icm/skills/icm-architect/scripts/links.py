@@ -8,7 +8,7 @@ ROOT defaults to the folder that holds _tools/. Standard library only.
 Checks every .md file outside dot-folders, node_modules/, _archive/, _templates/, raw/ and any
 folder named with --skip:
   - markdown links [text](path), .md paths in consumes: / produces: frontmatter, and import
-    lines such as @AGENTS.md (the one-line pointers CLAUDE.md and GEMINI.md hold).
+    lines such as @AGENTS.md import pointers.
     Web links, #anchors, {placeholders} and [[wikilinks]] are not checked.
   - backticked paths in list items under an Inputs heading, relative to the file or to ROOT.
     A reference (every-run) input must exist; any other input passes if its folder exists,

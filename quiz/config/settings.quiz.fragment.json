@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python3 ~/.claude/skills/adaptive-quiz/scripts/quiz.py:*)"
-    ]
-  }
-}

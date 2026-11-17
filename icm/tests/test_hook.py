@@ -1,8 +1,8 @@
 """Run hooks/icm-detect.sh against fixture workspaces.
 
 Checks: exit 0 always, silent outside an ICM workspace, valid JSON inside one,
-CLAUDE.md preferred as the entry file, paths with quotes survive escaping, and
-the settings fragment registers the hook at its path in this component.
+AGENTS.md as the entry file, paths with quotes survive escaping, and the hook
+fragment registers the hook at its path in this component.
 Standard library only. Run: python3 -B icm/tests/test_hook.py
 """
 import json
@@ -14,13 +14,12 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK = ROOT / "hooks/icm-detect.sh"
-FRAGMENT = ROOT / "config/settings.icm.fragment.json"
+FRAGMENT = ROOT / "config/kiro/hooks.json"
 
 CASES = [
     # name, entries, expect_output, expected substrings
-    ("both-entries", ["CONTEXT.md", "AGENTS.md", "CLAUDE.md", "stages/01-research/", "stages/02_script/"],
-     True, ["Entry file: CLAUDE.md", "AGENTS.md also present"]),
-    ("claude-only", ["CONTEXT.md", "CLAUDE.md", "stages/01-research/"], True, ["Entry file: CLAUDE.md"]),
+    ("agents-entry", ["CONTEXT.md", "AGENTS.md", "stages/01-research/", "stages/02_script/"],
+     True, ["Entry file: AGENTS.md"]),
     ("agents-only", ["CONTEXT.md", "AGENTS.md", "stages/01_research/"], True, ["Entry file: AGENTS.md"]),
     ("no-entry", ["CONTEXT.md", "stages/01-a/"], True, ["Entry file: none"]),
     ("stages-but-no-context", ["stages/01-a/"], False, []),
@@ -63,6 +62,7 @@ class HookTests(unittest.TestCase):
         cmds = [h["command"] for grp in frag["hooks"]["SessionStart"] for h in grp["hooks"]]
         self.assertEqual(cmds, ['"$HOME/projects/frontier-clean/icm/hooks/icm-detect.sh"'])
         self.assertTrue(os.access(HOOK, os.X_OK), "the fragment runs the hook directly")
+        self.assertNotIn("permissions", frag, "permissions live in permissions.yaml, not here")
 
 
 if __name__ == "__main__":

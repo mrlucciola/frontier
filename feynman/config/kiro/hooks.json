@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.kiro/tools/concept-graph/recall.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

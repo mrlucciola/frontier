@@ -28,6 +28,6 @@ Nothing else. No entry file, no root CONTEXT.md, no sibling outputs, no "here is
 
 If sub-agents write to a repo, the orchestrator creates one git worktree per sub-agent, hands each the path, and collects a diff or branch name back. Sub-agents never create or remove worktrees themselves, and no two edit the same tree.
 
-## Vendor notes
+## Sub-agent mechanics
 
-How to spawn differs (Claude Code subagents and Agent Teams; Codex sub-agents; some runtimes have none). The vendor layer may add a note on mechanics. The rule above about what goes in the prompt does not change by vendor. If the runtime has no sub-agents, run the units sequentially yourself with the same per-unit context discipline.
+How to spawn sub-agents differs by runtime (Kiro v3 mechanics: CONFIRM; some runtimes have none). The rule above about what goes in the prompt does not change by runtime. If the runtime has no sub-agents, run the units sequentially yourself with the same per-unit context discipline.

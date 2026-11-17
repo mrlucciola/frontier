@@ -164,10 +164,10 @@ class QuizTests(unittest.TestCase):
         self.assertEqual(json.loads(doctor.stdout)['counts']['sessions'], 8)
         self.assertEqual(json.loads(doctor.stdout)['integrity'], 'ok')
 
-    def test_default_data_dir_is_claude_knowledge(self):
+    def test_default_data_dir_is_kiro_knowledge(self):
         old = os.environ.pop('KNOWLEDGE_HOME', None)
         try:
-            self.assertEqual(quiz.data_dir(), (Path.home() / '.claude' / 'knowledge').resolve())
+            self.assertEqual(quiz.data_dir(), (Path.home() / '.kiro' / 'knowledge').resolve())
         finally:
             if old is not None:
                 os.environ['KNOWLEDGE_HOME'] = old

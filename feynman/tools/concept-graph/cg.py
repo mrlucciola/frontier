@@ -2,10 +2,10 @@
 """cg: the concept graph behind the feynman skill.
 
 One file, standard library only, Python 3.9+. Installed at
-~/.claude/tools/concept-graph/cg.py; the prompt hook (hooks/concept-graph/recall.sh)
+~/.kiro/tools/concept-graph/cg.py; the prompt hook (tools/concept-graph/recall.sh)
 calls `cg.py hook-recall` so every read and write of the store goes through here.
 
-Store (CONCEPT_GRAPH_ROOT, default ~/.claude/concepts):
+Store (CONCEPT_GRAPH_ROOT, default ~/.kiro/concepts):
   cards/<slug>.md   source of truth: YAML-subset frontmatter + four body sections
   index.json        derived from cards; rebuilt by every write
   lexicon.txt       derived: one lowercase token per line, for the hook's fast path
@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 
-ROOT = os.path.expanduser(os.environ.get("CONCEPT_GRAPH_ROOT", "~/.claude/concepts"))
+ROOT = os.path.expanduser(os.environ.get("CONCEPT_GRAPH_ROOT", "~/.kiro/concepts"))
 CARDS = os.path.join(ROOT, "cards")
 INDEX = os.path.join(ROOT, "index.json")
 LEXICON = os.path.join(ROOT, "lexicon.txt")
@@ -59,7 +59,7 @@ they those your does done each more most much some such only also just like make
 when where why who whom work works used using based mode type kind part thing things
 """.split())
 
-CG_CMD = "python3 ~/.claude/tools/concept-graph/cg.py"
+CG_CMD = "python3 ~/.kiro/tools/concept-graph/cg.py"
 
 
 # ----------------------------------------------------------------- utilities
@@ -96,7 +96,8 @@ def phrase_tokens(phrase):
 
 
 def session_id():
-    return os.environ.get("CLAUDE_CODE_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID") or ""
+    # PM_SESSION_ID is the portable identity; a kiro-exported session variable is a CONFIRM recon item.
+    return os.environ.get("PM_SESSION_ID") or ""
 
 
 def age_label(iso):
@@ -1022,6 +1023,7 @@ def cmd_hook_recall(a):
         if a.plain:
             sys.stdout.write(text + "\n")
         else:
+            # The envelope below is the carried-over shape; CONFIRM the kiro v3 hook stdout contract.
             sys.stdout.write(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit", "additionalContext": text}}) + "\n")
     sys.exit(0)
@@ -1034,7 +1036,9 @@ def cmd_index(a):
 
 def cmd_grade(a):
     meta, sections = load_card(a.slug)
-    model = a.model or os.environ.get("CONCEPT_GRAPH_GRADE_MODEL") or "claude-opus-5-5"
+    if not a.grader:
+        die("no grader argv: pass --grader (the headless model-call contract on kiro v3 is CONFIRM)", 2)
+    model = a.model or os.environ.get("CONCEPT_GRAPH_GRADE_MODEL") or "unspecified"
     prompt = (
         "You are grading a learner's explanation of a concept using the Feynman technique. "
         "You have NOT seen their notes; judge only the text below. Score 1-5: 5 = a bright "
@@ -1044,7 +1048,7 @@ def cmd_grade(a):
         "Concept: %s\n\nSimple explanation:\n%s\n\nAnalogy:\n%s\nWhere it breaks:\n%s\n\nPitch:\n%s\n"
     ) % (meta.get("title"), sections.get("Simple explanation", ""), sections.get("Analogy", ""),
          sections.get("Where it breaks", ""), sections.get("Pitch", ""))
-    cmd = (a.grader.split() if a.grader else ["claude", "-p", "--model", model])
+    cmd = a.grader.split()
     try:
         r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=180)
     except FileNotFoundError:
@@ -1092,7 +1096,7 @@ def build_parser():
     s.set_defaults(fn=cmd_recall)
 
     s = sub.add_parser("hook-recall", help="UserPromptSubmit entry point; JSON payload on stdin")
-    s.add_argument("--plain", action="store_true", help="bare block (Codex) instead of the Claude JSON envelope")
+    s.add_argument("--plain", action="store_true", help="bare block instead of the JSON envelope (the kiro v3 hook stdout contract is CONFIRM)")
     s.set_defaults(fn=cmd_hook_recall)
 
     s = sub.add_parser("add", help="create a card")
@@ -1166,7 +1170,7 @@ def build_parser():
     s = sub.add_parser("grade", help="blind grading by a model (explicit, never automatic)")
     s.add_argument("slug")
     s.add_argument("--model")
-    s.add_argument("--grader", help="override the grader argv (tests)")
+    s.add_argument("--grader", required=True, help="grader argv: reads the prompt on stdin, prints {score, note}")
     s.set_defaults(fn=cmd_grade)
     return p
 

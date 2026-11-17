@@ -77,7 +77,7 @@ Their pauses become stage boundaries. Their "I always check X before Y" become c
 **2. Find the hidden form.** Ask the owner (or infer and confirm): what is the repeating unit here? Where does work enter and leave? The mess usually contains a real pipeline, library, or map that grew without a skeleton: extract it, don't replace it.
 
 **3. Classify every file** into one of five roles:
-- **Catalog**: identity and routing (becomes or feeds `AGENTS.md` and index files; an existing `CLAUDE.md`, `GEMINI.md` or similar becomes a one-line pointer once its content has a home in `AGENTS.md` or a shelf, at step 6)
+- **Catalog**: identity and routing (becomes or feeds `AGENTS.md` and index files)
 - **Contract**: how a step works (becomes a `CONTEXT.md`)
 - **Factory**: stable reference (goes to `_shared/`)
 - **Product**: run-specific artifacts (goes to a stage's `output/` or a record folder)

@@ -1,6 +1,6 @@
 # Card schema
 
-One file per concept at `~/.claude/concepts/cards/<slug>.md`. Written only by `cg`.
+One file per concept at `~/.kiro/concepts/cards/<slug>.md`. Written only by `cg`.
 
 ```markdown
 ---

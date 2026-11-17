@@ -4,11 +4,11 @@
 # starting python. On a hit, cg.py hook-recall verifies whole phrases against the
 # prompt, applies scope and per-session dedup, and prints at most one JSON object.
 # Always exit 0; never print anything but that object.
-# Lives beside cg.py; linked at ~/.claude/tools/concept-graph/ (feynman/INSTALL.md).
+# Lives beside cg.py; linked at ~/.kiro/tools/concept-graph/ (feynman/INSTALL.md).
 set -u
 
 here="$(cd "$(dirname "$0")" && pwd)"
-root="${CONCEPT_GRAPH_ROOT:-$HOME/.claude/concepts}"
+root="${CONCEPT_GRAPH_ROOT:-$HOME/.kiro/concepts}"
 cg="${CONCEPT_GRAPH_CG:-$here/cg.py}"
 py="${CONCEPT_GRAPH_PYTHON:-python3}"
 lex="$root/lexicon.txt"

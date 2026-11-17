@@ -14,7 +14,7 @@ Locate `scripts/quiz.py` beside this file and use its absolute path. The install
 form, which the permission rule matches, is:
 
 ```
-python3 ~/.claude/skills/adaptive-quiz/scripts/quiz.py <subcommand> ...
+python3 ~/.kiro/skills/adaptive-quiz/scripts/quiz.py <subcommand> ...
 ```
 
 `QUIZ` below means that command. Presentation and grading rules:
@@ -52,7 +52,7 @@ quiz, for each concept the user got wrong unaided, offer to record it on the mat
 card as an open gap:
 
 ```
-python3 ~/.claude/tools/concept-graph/cg.py gap <key> add "<the missed question's idea, as a question>"
+python3 ~/.kiro/tools/concept-graph/cg.py gap <key> add "<the missed question's idea, as a question>"
 ```
 
 Only if the feynman component is installed and the card exists (`cg show <key>`);

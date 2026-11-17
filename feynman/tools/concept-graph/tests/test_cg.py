@@ -24,7 +24,7 @@ def check(cond, msg):
 
 
 def run(root, *args, cwd=None, stdin=None, env=None, expect=0):
-    e = dict(os.environ, CONCEPT_GRAPH_ROOT=str(root), CLAUDE_CODE_SESSION_ID="test-session")
+    e = dict(os.environ, CONCEPT_GRAPH_ROOT=str(root), PM_SESSION_ID="test-session")
     if env:
         e.update(env)
     r = subprocess.run([sys.executable, str(CG)] + list(args), cwd=cwd or str(pathlib.Path(root).parent),
