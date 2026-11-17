@@ -63,10 +63,11 @@ the `pm` that a live session is using.
    ```
 
    Expect the first line to read `closed`.
-8. No repo the new wt will drive has a live `.worktrees/<id>`. The new wt puts worktrees
-   at `<repo>/.wt/<id>` and never reads `.worktrees` (hard cutover, fc-7cce80), so a
-   worktree left there is invisible to `wt status`, `finish`, `park` and the pm plugin.
-   Finish or park each one with the old tools first; frontier's may be removed instead.
+8. Every live worktree in a repo the new wt will drive is at `<repo>/.wt/<id>`. The new
+   wt reads no other location (hard cutover, fc-7cce80), so a worktree anywhere else is
+   invisible to `wt status`, `finish`, `park` and the pm plugin. Move one with
+   `git -C <repo> worktree move <path> .wt/<id>`, or finish or park it with the old tools
+   first; frontier's may be removed instead.
 
    ```sh
    git -C /Users/matthias/projects/frontier-clean worktree list
@@ -157,7 +158,7 @@ runbook, so the operator files the ticket.
    wt start <id> --as <actor>
    ```
 
-   Expect the worktree path `/Users/matthias/frontier/.worktrees/<id>`. Open the session
+   Expect the worktree path `/Users/matthias/frontier/.wt/<id>`. Open the session
    there and hand it the ticket id; the ticket body is its spec. Everything it needs is
    in the step 4A table below. A reader that hard-codes `pm` on `PATH` takes
    `PM_BIN` (default `pm`) instead.
@@ -165,8 +166,8 @@ runbook, so the operator files the ticket.
    it through `PM_BIN`.
 
    ```sh
-   env PM_BIN=/Users/matthias/projects/frontier-clean/pm/cli/pm /usr/bin/python3 /Users/matthias/frontier/.worktrees/<id>/bin/test --hermetic
-   env PM_BIN=/Users/matthias/projects/frontier-clean/pm/cli/pm /usr/bin/python3 /Users/matthias/frontier/.worktrees/<id>/tests/test_bin_test_pm_validate.py
+   env PM_BIN=/Users/matthias/projects/frontier-clean/pm/cli/pm /usr/bin/python3 /Users/matthias/frontier/.wt/<id>/bin/test --hermetic
+   env PM_BIN=/Users/matthias/projects/frontier-clean/pm/cli/pm /usr/bin/python3 /Users/matthias/frontier/.wt/<id>/tests/test_bin_test_pm_validate.py
    ```
 
    Expect exit 0 from both, and also from every test file the core-hooks `.deploy.json`
@@ -220,8 +221,8 @@ exists only in the old `tickets.jsonl`.
    `/Users/matthias/work/lai`, `/Users/matthias/work/lai/00-initialization`,
    `/Users/matthias/work/lai/loop`, `/Users/matthias/work/portside`,
    `/Users/matthias/work/portside/engineering`, `/Users/matthias/projects/macos-orchestration`.
-   `/Users/matthias/work/lai/00-initialization/.worktrees/lin-381db0` exists today
-   (read 2026-11-15): finish or park it here.
+   `/Users/matthias/work/lai/00-initialization` had a worktree `lin-381db0` outside
+   `.wt/` (read 2026-11-15): finish or park it here, or move it per item 8 above.
 2. Prove the step 0 branch still fast-forwards onto frontier `main`, so step 4A item 2
    cannot refuse. No other commit may land on frontier `main` from here to step 4A. This
    comes before the hashes because its remedy rewrites frontier's `tickets.jsonl`.
@@ -232,7 +233,7 @@ exists only in the old `tickets.jsonl`.
 
    Expect exit 0 and no output. Exit 1 means `main` moved: resume the ticket with
    `wt start <id> --as <actor>` from `/Users/matthias/frontier`, run `git -C
-   /Users/matthias/frontier/.worktrees/<id> rebase main`, rerun step 0 item 3, and
+   /Users/matthias/frontier/.wt/<id> rebase main`, rerun step 0 item 3, and
    park it again with the line of step 0 item 4, then repeat this item.
 3. Record a baseline of the posture gate with the old pm, as the posture gate in
    frontier's instructions names it. A red result here is fixed before the cutover,
@@ -631,7 +632,7 @@ findings value (`wt/docs/contract.md:76-78`), and the branch is merged by `git` 
    wt start <id> --as <actor>
    ```
 
-   Expect the worktree path `/Users/matthias/frontier/.worktrees/<id>`. I have not run
+   Expect the worktree path `/Users/matthias/frontier/.wt/<id>`. I have not run
    the old `wt start` on a parked ticket whose branch exists; if it refuses, send me the
    line.
 
@@ -640,10 +641,10 @@ findings value (`wt/docs/contract.md:76-78`), and the branch is merged by `git` 
    `log` lists the revert commits from R1.
 
    ```sh
-   git -C /Users/matthias/frontier/.worktrees/<id> merge --ff-only main
+   git -C /Users/matthias/frontier/.wt/<id> merge --ff-only main
    git --no-pager -C /Users/matthias/frontier log --oneline <merged>..HEAD
-   git -C /Users/matthias/frontier/.worktrees/<id> revert --no-edit <merged>..main
-   git --no-pager -C /Users/matthias/frontier/.worktrees/<id> diff <merged> HEAD --stat
+   git -C /Users/matthias/frontier/.wt/<id> revert --no-edit <merged>..main
+   git --no-pager -C /Users/matthias/frontier/.wt/<id> diff <merged> HEAD --stat
    ```
 
    Expect the `log` to list only `Revert ...` commits and the last command to print
@@ -1103,11 +1104,11 @@ deployed in step 4A, right after the `PATH` switch. Item 1 only proves that it d
 
 ### 8.3 Inbound references, every hit
 
-The two searches, re-run 2026-11-15 on `/Users/matthias/frontier` (`.git`, `.worktrees`,
+The two searches, re-run 2026-11-15 on `/Users/matthias/frontier` (`.git`, `.wt`,
 `.pm` excluded). Re-run them before item 6 and compare:
 
 ```sh
-rg -n 'runtime-tools/pm|runtime-tools/wt|skills/pm|worktree-lifecycle|pm-hooks|hooks/pm' /Users/matthias/frontier --glob '!.git' --glob '!.worktrees' --glob '!.pm/**'
+rg -n 'runtime-tools/pm|runtime-tools/wt|skills/pm|worktree-lifecycle|pm-hooks|hooks/pm' /Users/matthias/frontier --glob '!.git' --glob '!.wt' --glob '!.pm/**'
 rg -n "pm ticket|\bwt (start|finish|park|land|status|prune|pending)" /Users/matthias/frontier/hooks/core-hooks
 ```
 
@@ -1145,7 +1146,7 @@ read:
 6. Prove the sweep, after the edits above.
 
    ```sh
-   rg -n 'runtime-tools/pm|runtime-tools/wt|skills/pm|worktree-lifecycle|pm-hooks|hooks/pm' /Users/matthias/frontier --glob '!.git' --glob '!.worktrees' --glob '!.pm/**' --glob '!docs/**' --glob '!posture/**' --glob '!tests/test_posture.py' --glob '!deploy/registry.json'
+   rg -n 'runtime-tools/pm|runtime-tools/wt|skills/pm|worktree-lifecycle|pm-hooks|hooks/pm' /Users/matthias/frontier --glob '!.git' --glob '!.wt' --glob '!.pm/**' --glob '!docs/**' --glob '!posture/**' --glob '!tests/test_posture.py' --glob '!deploy/registry.json'
    python3 /Users/matthias/frontier/bin/deploy lint
    python3 /Users/matthias/frontier/bin/deploy status
    ```

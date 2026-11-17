@@ -411,7 +411,7 @@ else:
 tid = re.search(r"\bcs-[0-9a-z]+", create.stdout).group(0)
 print("id", tid)
 sh([WT, "start", tid, "--as", "claude"], show=True)
-wtpath = REPO + "/.worktrees/" + tid
+wtpath = REPO + "/.wt/" + tid
 if os.path.isdir(wtpath):
     with open(wtpath + "/work.txt", "w") as f:
         f.write("work\n")

@@ -65,7 +65,7 @@ the cut.
 | SKILL | 96 | `.tmp/` is scratch; never `rm` it | contract | "Rules wt does not enforce", scratch bullet |
 | SKILL | 97-98 | `.local/` is durable; never delete, move or `git clean` it | printed | tools/verbs/park.zsh:8 (help) and :91 (refusal); the rest in the contract, same bullet |
 | SKILL | 99-100 | a fresh worktree has no installs or env; never copy secrets in | contract | "Rules wt does not enforce", scratch bullet |
-| SKILL | 101-103 | gitignore `.tmp/`, `.local/`, `.worktrees/`; heading: provider notes | contract | "Rules wt does not enforce", scratch bullet |
+| SKILL | 101-103 | gitignore `.tmp/`, `.local/`, `.wt/`; heading: provider notes | contract | "Rules wt does not enforce", scratch bullet |
 | SKILL | 104-105 | Claude block markers | dropped | markup |
 | SKILL | 106 | wt is allow-listed; stay rooted in the main checkout | contract | "Sandbox notes", Claude, first bullet and "Stay rooted" bullet |
 | SKILL | 107-108 | each worktree adds deny paths; budget a restart (E2BIG) | contract | "Sandbox notes", Claude, first bullet |
@@ -99,13 +99,13 @@ from the rewritten contract on purpose; each is accounted for here.
 
 | Section | Says | Disposition | Where or why |
 | --- | --- | --- | --- |
-| What the hooks deny | `rm -r` of `.worktrees`, `branch -D` without the cherry check, `worktree remove --force`, `git switch`/`stash`/`add -A` are denied or asked | dropped | the hooks print their own denial with a remedy (`~/frontier/hooks/core-hooks`); wt prints the one-line form in cli/wt:26 and the contract keeps the rules, "Rules wt does not enforce" |
+| What the hooks deny | `rm -r` of `.wt`, `branch -D` without the cherry check, `worktree remove --force`, `git switch`/`stash`/`add -A` are denied or asked | dropped | the hooks print their own denial with a remedy (`~/frontier/hooks/core-hooks`); wt prints the one-line form in cli/wt:26 and the contract keeps the rules, "Rules wt does not enforce" |
 | wt is allow-listed | `wt *` runs with no prompt | contract | "Sandbox notes", Claude, first bullet |
 | Deny-path budget (E2BIG) | about three deny paths per worktree; restart near 220 | contract | "Sandbox notes", Claude, first bullet |
 | Linked-worktree admin dirs | `EPERM` on `rmdir` depends on when the sandbox was rebuilt; deferred teardown handles it | contract | "Sandbox notes", Claude, first bullet there; printed at tools/lib/teardown.zsh:128; the probe history and the deny-list numbers are dropped (measurements, not instructions) |
 | `.vscode` segment deny | tracked `.vscode/*` breaks add and remove; `.claude/` leaves residue | contract | "Sandbox notes", Claude, `.vscode` bullet; printed at tools/lib/teardown.zsh:187 and tools/verbs/start.zsh:120 |
 | `.git/config` and `.git/hooks` write-deny | `branch -d` prints a config error and still deletes; `git init` cannot run sandboxed | contract | "Sandbox notes", Claude, `.git/config` bullet; the `git init` clause is dropped: `wt selftest` handles its own scratch repo and prints its own failures |
-| Stay rooted in the main checkout | no `cd`; `git -C .worktrees/<id>`; commits pass the git guard | contract | "Sandbox notes", Claude, last bullet; tools/verbs/start.zsh:152 prints `git -C` |
+| Stay rooted in the main checkout | no `cd`; `git -C .wt/<id>`; commits pass the git guard | contract | "Sandbox notes", Claude, last bullet; tools/verbs/start.zsh:152 prints `git -C` |
 | Codex: profile | lifecycle needs the maintainer profile; under the floor stop and report | contract | "Sandbox notes", Codex, first bullet |
 | Codex: session root | launch at the main checkout | contract | "Sandbox notes", Codex, second bullet |
 | Codex: no escalation | the lifecycle works with no rule; never ask for an allow rule | contract | "Sandbox notes", Codex, no-escalation bullet |

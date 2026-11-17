@@ -17,7 +17,7 @@
 
 `emit` appends a plugin's event. pm stores it and gives it no meaning.
 
-  $ pm emit t-1 wt.start branch=t-1 path=.worktrees/t-1
+  $ pm emit t-1 wt.start branch=t-1 path=.wt/t-1
   $ pm emit t-1 wt.park sha=abc123
   $ pm get t-1 wt.branch wt.sha
   t-1
@@ -34,5 +34,5 @@
   $ pm log t-1
   {"ts":"2026-01-01T00:00:00Z","by":"ada#e8bc163c","op":"new","id":"t-1","labels":["lang"],"title":"write the lexer"}
   {"ts":"2026-01-01T00:00:00Z","by":"ada#e8bc163c","op":"take","id":"t-1"}
-  {"ts":"2026-01-01T00:00:00Z","by":"ada#e8bc163c","op":"wt.start","id":"t-1","branch":"t-1","path":".worktrees/t-1"}
+  {"ts":"2026-01-01T00:00:00Z","by":"ada#e8bc163c","op":"wt.start","id":"t-1","branch":"t-1","path":".wt/t-1"}
   {"ts":"2026-01-01T00:00:00Z","by":"ada#e8bc163c","op":"wt.park","id":"t-1","sha":"abc123"}
