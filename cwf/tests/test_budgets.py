@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG_CEILING = 544
-BLOCK_CEILING = 762
+BLOCK_CEILING = 654
 
 
 def catalog_bytes():
