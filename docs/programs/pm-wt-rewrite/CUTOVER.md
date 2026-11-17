@@ -63,6 +63,16 @@ the `pm` that a live session is using.
    ```
 
    Expect the first line to read `closed`.
+8. No repo the new wt will drive has a live `.worktrees/<id>`. The new wt puts worktrees
+   at `<repo>/.wt/<id>` and never reads `.worktrees` (hard cutover, fc-7cce80), so a
+   worktree left there is invisible to `wt status`, `finish`, `park` and the pm plugin.
+   Finish or park each one with the old tools first; frontier's may be removed instead.
+
+   ```sh
+   git -C /Users/matthias/projects/frontier-clean worktree list
+   ```
+
+   Expect only the main checkout and `.wt/<id>` paths.
 
 ## Before and after
 
@@ -679,7 +689,7 @@ findings value (`wt/docs/contract.md:76-78`), and the branch is merged by `git` 
    ```
 
    Expect `<id> done`, then a first line reading `done`. The `wt` plugin's `pre-done`
-   passes because `park` already removed `.worktrees/<id>`
+   passes because no `.wt/<id>` exists for the ticket
    (`wt/pm-plugin/pre-done:3`). I have not run `pm done` on a parked ticket; the help
    says only the holder finishes a taken one. If it refuses, send me the line.
 
