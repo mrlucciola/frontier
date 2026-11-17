@@ -17,7 +17,12 @@ Run the cwf checks from the repository root.
 ```sh
 python3 -B cwf/tests/test_cwf.py
 python3 -B cwf/tests/test_deploy.py
+python3 -B cwf/tests/test_budgets.py
 ```
+
+`test_budgets.py` holds the skill catalog and the instruction block to byte
+ceilings, because both cost tokens on every step. A change that grows either
+raises the ceiling in the same commit and records the measured bytes.
 
 Do not add local plans, databases, logs or secrets to this directory.
 
