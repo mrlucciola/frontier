@@ -51,4 +51,3 @@ Use the guide relevant to your change.
 | [pm](/pm/README.md) | Ticket store for agent work | [pm maintenance](/pm/AGENTS.md) |
 | [wt](/wt/README.md) | Worktree lifecycle for ticketed work | [wt maintenance](/wt/AGENTS.md) |
 | [swe-kb](/swe-kb/README.md) | Tabled: software design knowledge base, not used | [swe-kb maintenance](/swe-kb/AGENTS.md) |
-| [Kiro](/kiro/README.md) | Kiro CLI 2.x provider adapter: gated deploy, paste transport, recon probe | [Kiro maintenance](/kiro/AGENTS.md) |

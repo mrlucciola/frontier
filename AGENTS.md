@@ -13,6 +13,7 @@ put the checkout path in front before opening one.
 | Instruction placement, skills, hooks, or context loading | [Instruction delivery](/docs/instruction-delivery.md) |
 | Component implementation or tests | The component's `AGENTS.md` and its task-specific routes, then the [component principles](/docs/component-principles.md) |
 | Ticketed work | The ticket body, notes, and applicable workstream contract through the ticket store |
+| Kiro branch rules: v3 runtime, merge policy, work-machine transfer | [Kiro branch policy](/docs/kiro-branch.md) |
 
 ## Roles
 
