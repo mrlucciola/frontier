@@ -50,3 +50,4 @@ Use the guide relevant to your change.
 | [CWF](/cwf/README.md) | Contextual discovery, task continuity, and coordinated work | [CWF maintenance](/cwf/AGENTS.md) |
 | [pm](/pm/README.md) | Ticket store for agent work | [pm maintenance](/pm/AGENTS.md) |
 | [wt](/wt/README.md) | Worktree lifecycle for ticketed work | [wt maintenance](/wt/AGENTS.md) |
+| [swe-kb](/swe-kb/README.md) | Tabled: software design knowledge base, not used | [swe-kb maintenance](/swe-kb/AGENTS.md) |
