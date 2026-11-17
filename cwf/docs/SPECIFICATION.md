@@ -324,7 +324,7 @@ No scenario below has been executed against an implementation yet. IDs are stabl
 | A19 | Cache corruption, locked DB, read-only state location | Safe fallback or clear persistence failure; no lost-update success claim |
 | A20 | Two personalized installations sharing one repository | Same usable procedures; independent private state and preserved personal settings |
 | A21 | Existing skill name/path collision and existing global rules | No overwrite; actionable visibility diagnosis and effective activation handling |
-| A22 | Upgrade failure and user edits after installation | Recover owned changes only; preserve unrelated edits and report rollback conflicts |
+| A22 | Rerunning `deploy.sh` after user edits to the instruction file | Replace only the marked block; preserve every byte outside it |
 | A23 | Enable/disable, uninstall, and optional adapters absent | Disabled tools/state inactive; no residual forced routing; core work succeeds without adapters |
 | A24 | Different local code/document conventions | Adapt through evidence or optional mappings; no hard-coded docs layout |
 | A25 | Mechanical deprecation rule with negative test | Detect newly introduced forbidden reference; command provenance and failures preserved |
@@ -334,7 +334,7 @@ No scenario below has been executed against an implementation yet. IDs are stabl
 
 ### Automated mechanics suite
 
-Implement unit/integration tests for path boundaries, deterministic ordering, schemas, cache invalidation, partial results, ownership revisions, dependency cycles, and installer recovery. Use temporary homes/repos, paths with spaces, dirty trees, symlinks, and case-collision fixtures. JSON Schema 2020-12 documents the records; runtime validators can be explicit standard-library code, with conformance tested against the published schemas. Do not add a production dependency solely for schema validation if not necessary.
+Implement unit/integration tests for path boundaries, deterministic ordering, schemas, cache invalidation, partial results, ownership revisions, dependency cycles, and deploy idempotence. Use temporary homes/repos, paths with spaces, dirty trees, symlinks, and case-collision fixtures. JSON Schema 2020-12 documents the records; runtime validators can be explicit standard-library code, with conformance tested against the published schemas. Do not add a production dependency solely for schema validation if not necessary.
 
 ### Behavioral evaluation protocol
 
@@ -350,7 +350,7 @@ Earlier conversation token tables were hypothetical and are not release evidence
 
 - **G1 -- Build correctness:** all required automated tests pass; schemas consistent; no unresolved destructive-operation defects.
 - **G2 — Behavioral candidate:** all critical safety/coexistence cases pass; A01–A06, A08, A11, A14–A18 demonstrate expected behavior in the tested model configuration. Any failure is reported, not averaged away.
-- **G3 -- Local compatibility:** run clean/personalized install, activation, disable, upgrade, and rollback on macOS CLI and IDE. Record OS, architecture, Python, Git, opencode version and surface, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
+- **G3 -- Local compatibility:** run clean and personalized deploy, activation, disable, and removal on macOS CLI and IDE. Record OS, architecture, Python, Git, opencode version and surface, model, and relevant configuration. Untested CPU/runtime combinations remain explicitly unqualified.
 - **G4 — Pilot qualification:** minimum two independent users/computers, shared and independent repositories, and a non-Git workspace. Include ticket-free single/batch work. Human review confirms useful results and acceptable correction/overhead behavior. This small pilot does not establish universal reliability.
 
 Only combinations passing the relevant gates may be labeled qualified. “Production-ready” must identify its supported configurations and known limitations; it is not a blanket label for the archive.
