@@ -557,6 +557,7 @@ class TimeoutTests(FixtureCase):
                  f"           cwd=Path({str(self.cwd)!r}), phase='fresh', session_id='{SID}', prompt='go', timeout=120)\n")
         runner = subprocess.Popen([sys.executable, "-B", "-c", child], stderr=subprocess.DEVNULL)
         self.addCleanup(runner.wait)
+        self.addCleanup(lambda: runner.poll() is not None or runner.kill())
         turn = None
         deadline = time.monotonic() + 20
         while turn is None and time.monotonic() < deadline:
