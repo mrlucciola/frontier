@@ -20,11 +20,12 @@ STEPS={
 3. Compare meaningful options, stakeholder incentives, capacity assumptions, opportunity cost, and differentiation. State what is deliberately deferred.
 4. Produce testable requirements or a strategy with outcomes, risks, and reconsideration criteria. Keep rejected alternatives concise.
 5. Check internal consistency and links to affected design/planning artifacts. Do not publish tickets or messages without that action being authorized.""",
- "design":"""1. State the behavior, invariants, workload/quality requirements, and the decision actually needed.
-2. Inspect representative existing boundaries, consumers, schemas, tests, and accepted decisions. Search for behavior, not only the proposed symbol name.
-3. Compare reuse, extension, migration, and a new implementation. Similar text does not prove equivalent behavior; examine preconditions, effects, and independent reasons to change.
-4. Evaluate simplicity, dependencies, failure modes, consistency, security, operability, evolution, and reversibility as relevant. Do not add layers just to follow a named pattern.
-5. Explain the smallest contextually sound design and how to falsify it. Surface material conflicts with team conventions or product requirements. A design request alone does not authorize implementation.""",
+ "design":"""1. State the behavior, invariants, workload/quality requirements, and the decision actually needed. Name which module owns the behavior and which public contract it touches.
+2. Inspect representative existing boundaries, consumers, schemas, tests, and accepted decisions. Search for behavior, not only the proposed symbol name. Find the existing pattern for this kind of change and follow it unless you can name the reason to deviate.
+3. Compare reuse, extension, migration, and a new implementation. Similar text does not prove equivalent behavior; examine preconditions, effects, and independent reasons to change. Decide whether any abstraction is proven by real cases or speculative, and prefer the smallest reversible change (revertable in one commit, no caller edits).
+4. Evaluate simplicity, dependencies, failure modes, consistency, security, operability, evolution, and reversibility as relevant. Do not add layers just to follow a named pattern. Name the evidence at the public boundary that would prove the change, and what would make the design wrong.
+5. Stop before editing when: ownership is unclear; two plausible designs have meaningful tradeoffs the request does not settle; a public contract would change without the request authorizing it; a new production dependency is needed (that goes through the dependency-adoption process); a new framework or generic layer is being invented; validation cannot prove the change; or a requirement would have to be guessed. Stopping means no file edits: state the decision needed, the options with their tradeoffs, and ask. Explicit authorization in the request clears the contract stop. A clear task with an obvious owner and one sound design is not a stop; do not ask about it.
+6. Before any implementation, emit: Boundary map; Design choice; Rejected alternatives; Validation; Stop conditions (checked, none hit, or which hit). Surface material conflicts with team conventions or product requirements. A design request alone does not authorize implementation; when the request asks to implement and no stop condition holds, emit this and then implement.""",
  "docs":"""1. Identify audience, document purpose, affected behavior, and canonical sources. Editing prose does not require an initiative.
 2. Inspect the supplied document plus relevant source/decision references. Distinguish current behavior from intended behavior and draft claims from accepted ones.
 3. Search for related definitions, duplicate explanations, and contradicting statements within scope. Do not assume README or the newest file is authoritative by name/time alone.
@@ -101,7 +102,7 @@ Use only questions relevant to the current task. None grants tool permission.
 | P03 Equivalence | Preconditions, side effects, error semantics, reasons to change | Similar arithmetic can encode different business rules; reuse only when justified |
 | P04 Authority | Source, acceptance provenance, revision, freshness | Newest document need not be authoritative; surface conflicts |
 | P05 Context | Relevant team/domain conventions and tooling | Consistency does not justify broken invariants; explain departures |
-| P06 Simplicity | Smallest adequate change and meaningful alternatives | DRY is not minimizing lines; avoid unnecessary coupling |
+| P06 Simplicity | Smallest adequate change and meaningful alternatives | DRY is not minimizing lines; avoid unnecessary coupling; extract only from repeated cases with shared meaning, not structural similarity |
 | P07 Traceability | Requirements/design/docs/code agree on affected behavior | Passing tests can encode the wrong requirement; resolve contradictions |
 | P08 Scope | Requested outcome, allowed mutations, dependent work | Finding duplication does not authorize global refactoring |
 | P09 Ownership | Dependencies, exclusive write surfaces, shared services | Different tickets/worktrees may still conflict; integrate explicitly |
@@ -110,7 +111,7 @@ Use only questions relevant to the current task. None grants tool permission.
 | P12 Promote | Observed/inferred/accepted distinction and attribution | Repeated agent claims do not become team policy; use review process |
 
 For product/strategy: distinguish diagnosis from solution; compare opportunity costs, stakeholders, capacity assumptions, measurable outcomes, and reconsideration criteria.
-For architecture: cover relevant workload/quality needs, consistency, failures, security boundaries, operability, migration, and reversibility.
+For architecture: cover relevant workload/quality needs, consistency, failures, security boundaries, operability, migration, and reversibility; name lifecycle states with one owner per transition, a deleter for each artifact created, and the owning module for new behavior; pin an interface with a test before moving internals; validate the narrowest slice before widening.
 For documentation: establish audience, canonical sources, intended versus observed behavior, terminology, and affected links.
 For planning: choose the next executable slice, identify dependencies and review points, and avoid parallel work with uncoordinated shared resources.
 """

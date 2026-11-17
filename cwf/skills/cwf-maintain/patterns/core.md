@@ -9,7 +9,7 @@ Use only questions relevant to the current task. None grants tool permission.
 | P03 Equivalence | Preconditions, side effects, error semantics, reasons to change | Similar arithmetic can encode different business rules; reuse only when justified |
 | P04 Authority | Source, acceptance provenance, revision, freshness | Newest document need not be authoritative; surface conflicts |
 | P05 Context | Relevant team/domain conventions and tooling | Consistency does not justify broken invariants; explain departures |
-| P06 Simplicity | Smallest adequate change and meaningful alternatives | DRY is not minimizing lines; avoid unnecessary coupling |
+| P06 Simplicity | Smallest adequate change and meaningful alternatives | DRY is not minimizing lines; avoid unnecessary coupling; extract only from repeated cases with shared meaning, not structural similarity |
 | P07 Traceability | Requirements/design/docs/code agree on affected behavior | Passing tests can encode the wrong requirement; resolve contradictions |
 | P08 Scope | Requested outcome, allowed mutations, dependent work | Finding duplication does not authorize global refactoring |
 | P09 Ownership | Dependencies, exclusive write surfaces, shared services | Different tickets/worktrees may still conflict; integrate explicitly |
@@ -18,6 +18,6 @@ Use only questions relevant to the current task. None grants tool permission.
 | P12 Promote | Observed/inferred/accepted distinction and attribution | Repeated agent claims do not become team policy; use review process |
 
 For product/strategy: distinguish diagnosis from solution; compare opportunity costs, stakeholders, capacity assumptions, measurable outcomes, and reconsideration criteria.
-For architecture: cover relevant workload/quality needs, consistency, failures, security boundaries, operability, migration, and reversibility.
+For architecture: cover relevant workload/quality needs, consistency, failures, security boundaries, operability, migration, and reversibility; name lifecycle states with one owner per transition, a deleter for each artifact created, and the owning module for new behavior; pin an interface with a test before moving internals; validate the narrowest slice before widening.
 For documentation: establish audience, canonical sources, intended versus observed behavior, terminology, and affected links.
 For planning: choose the next executable slice, identify dependencies and review points, and avoid parallel work with uncoordinated shared resources.
