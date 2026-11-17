@@ -12,6 +12,10 @@ STAGE_RE = re.compile(r"^(\d\d)[-_].+")
 REVIEWER_RE = re.compile(r"^\s*(?:[-*]\s*)?reviewer:\s*(human|script|model)\b\s*(.*)$", re.I | re.M)
 BLOCK_RE = re.compile(r"^```icm-review\n(.*?)^```", re.S | re.M)
 POINTER_NAMES = ("CLAUDE.md", "GEMINI.md")
+# A model that never loads icm-run follows the entry file's own routes, and "output exists" reads as
+# "passed"; this line in the entry file is what keeps such a model at the check.
+ROUTE_LINE = ("Status, runs, continues and stage approvals in this workspace go through the icm-run skill. "
+              "A stage's output existing does not mean it passed its check.")
 
 
 def sha(path: Path) -> str:
@@ -57,6 +61,13 @@ def entry_status(root: Path) -> str:
         if not (len(lines) == 1 and "AGENTS.md" in lines[0] and len(lines[0]) <= 120):
             return f"conflict: {name} has its own content; it must be a one-line pointer to AGENTS.md"
     return "ok"
+
+
+def route_status(root: Path) -> str:
+    agents = root / "AGENTS.md"
+    if agents.is_file() and "icm-run" in agents.read_text(errors="replace"):
+        return "ok"
+    return f'missing: ask the owner to add this line under the AGENTS.md title: "{ROUTE_LINE}"'
 
 
 def sections(text: str):
@@ -238,4 +249,4 @@ def workspace_state(start: Path):
             "stale": f"re-run or re-review {s}; its review no longer matches the files",
             "blocked": f"blocked: {s}: {'; '.join(current['detail'])}",
         }[current["state"]]
-    return {"root": str(root), "entry": entry, "stages": rows, "next": nxt}
+    return {"root": str(root), "entry": entry, "route": route_status(root), "stages": rows, "next": nxt}

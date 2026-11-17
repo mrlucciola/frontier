@@ -68,7 +68,7 @@ class Workspace:
         (base / "_shared/rules.md").write_text("Be brief.\n")
         (base / "CONTEXT.md").write_text("# Pipeline\n\n01-draft then 02-edit.\n")
         if entry:
-            (base / "AGENTS.md").write_text("# Demo\n\nRoute: stages in order.\n")
+            (base / "AGENTS.md").write_text("# Demo\n\nStage work goes through the icm-run skill.\n")
         (base / "stages/01-draft/CONTEXT.md").write_text(STAGE_A)
         (base / "stages/02-edit/CONTEXT.md").write_text(STAGE_B.replace("{check}", check_b))
 
@@ -254,6 +254,16 @@ class StateTests(unittest.TestCase):
         w.write("AGENTS.md", "Read CLAUDE.md first.\n")
         w.write("CLAUDE.md", "# Demo\n\nRouting.\n")
         self.assertTrue(w.state()["entry"].startswith("conflict: AGENTS.md points"))
+
+    def test_missing_route_line_is_named_but_does_not_block(self):
+        w = self.ws()
+        self.assertEqual(w.state()["route"], "ok")
+        w.write("AGENTS.md", "# Demo\n\nRoute: stages in order.\n")
+        st = w.state()
+        self.assertTrue(st["route"].startswith("missing: ask the owner"))
+        self.assertIn("go through the icm-run skill", st["route"])
+        self.assertEqual(st["next"], "run 01-draft")
+        self.assertIn("\nroute: missing", run("state.py", str(w.root))[1])
 
     def test_nested_stage_directory_resolves_its_root(self):
         w = self.ws()

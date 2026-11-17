@@ -18,6 +18,8 @@ def render(st):
     if st["root"] is None:
         return st["next"]
     lines = [f"ICM workspace: {st['root']}", f"entry: {st['entry']}"]
+    if st["route"] != "ok":
+        lines.append(f"route: {st['route']}")
     for r in st["stages"]:
         detail = list(r["detail"])
         if r.get("waiting_on"):

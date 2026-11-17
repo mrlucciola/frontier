@@ -15,6 +15,7 @@ Run `python3 <this skill's directory>/scripts/state.py <dir>`, where `<dir>` is 
 
 - Exit 1, "not an ICM workspace": stop using this skill and handle the request as ordinary work.
 - `next: stop: entry ...`: report it and propose making `AGENTS.md` the entry with one-line pointers (`CLAUDE.md` holding `@AGENTS.md`). Change nothing.
+- `route: missing`: the workspace's `AGENTS.md` lacks the line that keeps a model which skips this skill at the check. Ask the owner; add the line state.py prints only on their yes. It does not block the current request.
 - States: `unproduced` (required output absent, empty or partial), `pending` (output exists, no current verdict), `rejected`, `accepted` (verdict bound to the current outputs, inputs and contract), `stale` (a file changed after the verdict), `blocked`.
 
 A file being present never means accepted. Neither does a closed ticket, an earlier conversation, or your own Audit.
