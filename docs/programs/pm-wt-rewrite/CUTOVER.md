@@ -76,19 +76,19 @@ the `pm` that a live session is using.
 
 ## Before and after
 
-All numbers are from [pm/docs/cost.md](/pm/docs/cost.md), measured 2026-11-14 at commit
+All numbers are from [docs/programs/pm-wt-rewrite/cost.md](/docs/programs/pm-wt-rewrite/cost.md), measured 2026-11-14 at commit
 `98f4310`; cited, not re-measured. They are bytes, not tokens
-(`pm/docs/cost.md:4`).
+(`docs/programs/pm-wt-rewrite/cost.md:4`).
 
 | Claim | Old | New | Where |
 | --- | --- | --- | --- |
-| Always carried in a Claude session in a store repo | 6400 bytes | 730 bytes (session-start only) | `pm/docs/cost.md:46`, `pm/docs/cost.md:93` |
-| Same, in a directory with no store | the two skill descriptions and three CLAUDE.md rows, 887 + 4195 bytes (sum of the rows at `pm/docs/cost.md:26-34`) | 0 | `pm/docs/cost.md:98` |
-| Both skills read on invocation | 11533 bytes source; the deployed worktree-lifecycle copy is 17011 | no skills | `pm/docs/cost.md:50-61` |
-| `wt help`, read on request | none | 748 bytes | `pm/docs/cost.md:113` |
+| Always carried in a Claude session in a store repo | 6400 bytes | 730 bytes (session-start only) | `docs/programs/pm-wt-rewrite/cost.md:46`, `docs/programs/pm-wt-rewrite/cost.md:93` |
+| Same, in a directory with no store | the two skill descriptions and three CLAUDE.md rows, 887 + 4195 bytes (sum of the rows at `docs/programs/pm-wt-rewrite/cost.md:26-34`) | 0 | `docs/programs/pm-wt-rewrite/cost.md:98` |
+| Both skills read on invocation | 11533 bytes source; the deployed worktree-lifecycle copy is 17011 | no skills | `docs/programs/pm-wt-rewrite/cost.md:50-61` |
+| `wt help`, read on request | none | 748 bytes | `docs/programs/pm-wt-rewrite/cost.md:113` |
 
 The "new" column is only true once step 8 retires the two skills and step 9 shrinks
-CLAUDE.md (`pm/docs/cost.md:104-106`); until then the old rows stay in a session.
+CLAUDE.md (`docs/programs/pm-wt-rewrite/cost.md:104-106`); until then the old rows stay in a session.
 
 ## Rollback summary
 
@@ -505,7 +505,7 @@ against `/Users/matthias/projects/frontier-clean/pm/cli/pm` while `PATH` still h
 | `hooks/core-hooks/policies/done_gate.py:92-99` | `_load_pm_stop` imports `hooks/pm/stop.py` for `token_of` (`:253`) and `split_assignee` (`:257`); raises `Unavailable` when missing, which fails open | copy the two functions (`hooks/pm/stop.py` `token_of`: first 8 hex of sha256 of the session id) into the policy, or drop the claim check. I have not checked that the new pm computes its `by` token the same way (`pm/tools`); do that first |
 | `hooks/core-hooks/policies/done_gate.py:129` | `pm ticket show <id> --json` | `pm show <id> --json` |
 | `done_gate.py:131` | looks for `no such ticket` in stderr | I have not found what the new pm prints for an unknown id; read `pm/tools` refusal text before editing |
-| `done_gate.py:141` | `pm ticket list --status claimed --json`; the old list spanned every store (`pm/docs/cost.md:179`) | `pm ls taken -n 0 --all-stores --json`: plain `pm ls` reads only the local store and shows 20 rows (`pm ls` usage, `pm/tools/verbs/ls.py:56-58`) |
+| `done_gate.py:141` | `pm ticket list --status claimed --json`; the old list spanned every store (`docs/programs/pm-wt-rewrite/cost.md:179`) | `pm ls taken -n 0 --all-stores --json`: plain `pm ls` reads only the local store and shows 20 rows (`pm ls` usage, `pm/tools/verbs/ls.py:56-58`) |
 | `done_gate.py:248` | ticket counts as closed when `status == "closed"` | `"done"` (`pm/docs/design.md:51-55,74`); the `Ticket: <id> <pm status>` closing line then ends `done` (step 9) |
 | `done_gate.py:257` | `row.get("assignee")` | `row.get("holder")` (`pm/tools/store.py:113,148`); the value is `by` (`name#token`, `pm/docs/design.md:44`) |
 | `done_gate.py:15-16` | docstring names `pm ticket show --json` and `hooks/pm/stop.py` | update the words |
@@ -1043,7 +1043,7 @@ deployed in step 4A, right after the `PATH` switch. Item 1 only proves that it d
    never had it; read it and go on. From here the old pm is gone from the machine.
    `~/.claude/skills/pm`, `~/.claude/skills/worktree-lifecycle` and `~/.claude/hooks/pm`
    are gone, which is what ends the 6400-byte always-carried cost in a store repo
-   (`pm/docs/cost.md:46`).
+   (`docs/programs/pm-wt-rewrite/cost.md:46`).
 
 ### 8.2 Remove the sources and fix the data files
 
@@ -1171,7 +1171,7 @@ read:
 ## Step 9. Shrink the pm and wt text in the global instructions to pointers
 
 Buys: the always-carried instruction cost in a directory with no store goes to zero
-(`pm/docs/cost.md:98`); today it is 887 + 4195 bytes of which the CLAUDE.md rows are the
+(`docs/programs/pm-wt-rewrite/cost.md:98`); today it is 887 + 4195 bytes of which the CLAUDE.md rows are the
 second figure.
 
 Source. `instructions/claude-global/CLAUDE.md` is its own source: `tools/gen_instructions.py`
@@ -1275,7 +1275,7 @@ Edits, in `/Users/matthias/frontier` (a frontier ticket, in a worktree; the edit
    ```
 
    Keep the printed hash for step 10.6. Expect both `verify` ok; `wc -c` is smaller than
-   before by about 4000 bytes (the old rows, `pm/docs/cost.md:26-34`; I did not measure
+   before by about 4000 bytes (the old rows, `docs/programs/pm-wt-rewrite/cost.md:26-34`; I did not measure
    the deployed file before).
 
 ## Step 10. Rollback

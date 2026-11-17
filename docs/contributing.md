@@ -174,8 +174,8 @@ print -rn -- "$text" >"$target"
 ````
 
 The sentinel `x` keeps zsh from dropping the file's trailing newlines, which is
-what makes the write byte-exact outside the markers. `cwf/deploy.sh` is the first
-script of this kind. The structure check does not read deploy scripts yet; a
+what makes the write byte-exact outside the markers. `cwf/deploy.sh` follows this
+form. The structure check does not read deploy scripts yet; a
 reviewer holds them to this section.
 
 Each deploy script has one black-box test: run it twice with `HOME` set to a

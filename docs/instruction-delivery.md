@@ -31,8 +31,8 @@ obligations. Document each provider's supported triggers and limitations.
   distinct requirements.
 - Keep agent task procedures in the owning skill and link operation-specific
   references from its command or trigger table.
-- Put operator setup in the component guide and detailed design or historical
-  evidence in component `docs/`. Link to the owning document instead of repeating
+- Put operator setup in the component guide and detailed design and reference
+  material in component `docs/`. Link to the owning document instead of repeating
   its content.
 - Give each route a concrete reason to read its target. Load the relevant section
   and follow further references as the task requires.

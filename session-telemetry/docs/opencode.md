@@ -188,14 +188,14 @@ fc-3868ea) showed:
 - A fresh session's totals exceeded its one step (by 637 input, 7 output and 375
   reasoning tokens in one row; by 5, 20 and 372 in another). A resumed turn's
   delta equalled its step both times.
-- Before the runner set `PWD`, the session was located in the caller's
-  directory. With `PWD` set to `--cwd`, a run launched from another directory
-  reported the session in `--cwd`.
-- With the prompt passed as one argument, the user message was the prompt
-  wrapped in double quotes (the digests match exactly). Passing it one word per
-  argument, rerun on a fresh row and resume rows (2026-11-13), gave
-  `prompt_echoed` true, empty `diagnostics`, `location_is_cwd` true, and a user
-  message digest equal to `prompt_sha256`.
+- Without `PWD`, OpenCode locates the session in the caller's directory. With
+  `PWD` set to `--cwd`, as the runner does, a run launched from another
+  directory reported the session in `--cwd`.
+- A prompt passed as one argument reaches the model wrapped in double quotes
+  (the digests match exactly). Passed one word per argument, as the runner does,
+  fresh and resume rows (2026-11-13) gave `prompt_echoed` true, empty
+  `diagnostics`, `location_is_cwd` true, and a user message digest equal to
+  `prompt_sha256`.
 - The same fresh prompt arrived as 503 input plus 8,192 cache-read tokens in one
   row and 4,622 plus 4,096 in another, about 8,700 either way. The split between
   `input` and `cache_read` follows the provider's cache state, not the workload.

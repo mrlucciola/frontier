@@ -1,17 +1,13 @@
 # pm design: an event log, a CLI that teaches itself, plugins by file presence
 
-Status: ruled by the operator 2026-11-14; built 2026-11-14 (epic fc-2a6562), amended
-2026-11-15 (epic fc-359b5b). This page is the specification for the pm that replaces
-the ported one. The transcripts under `pm/tests/t/` are the
+This page is the specification for pm. The transcripts under `pm/tests/t/` are the
 same specification in executable form and are the gate. Where the two disagree, the
 overseer decides and fixes one of them; a worker changes neither.
 
 ## Why
 
-The ported pm rewrites one row file on every change and commits it to git. Most of
-its code exists to manage that: history states, a pending marker, batching,
-compaction, archiving, nineteen invariants. An append-only log has none of those
-problems, so none of that code is needed.
+pm keeps an append-only log. Nothing is ever rewritten, so pm needs no history
+states, pending marker, batching, compaction, archiving or invariant set.
 
 Three goals decide every choice below.
 
@@ -35,7 +31,8 @@ The store for a command is the nearest ancestor of the working directory that ha
 `.pm/config.json` or a `.pm/log.jsonl`, so a store inside another store's directory
 is its own store even before it has a log. When that store has no log and the
 directory is in a linked worktree, the main checkout's store is used if it has one,
-which is how a linked worktree finds its store. A store with a config and no log is
+which is how a linked worktree finds its store. A log belongs to one checkout;
+stores are not shared across clones. A store with a config and no log is
 refused: with a spec v2 `.pm/tickets.jsonl` beside it, `pm: this store has not been
 imported yet. Fill its log: pm import`; otherwise the restore line under "Backup". pm
 works in a directory that is not a git repository.
@@ -176,7 +173,7 @@ Rules that hold across verbs:
   `-m` or an earlier note. Each id given must exist.
 - **Duplicates.** `new` refuses when an open ticket, or one done within 30 days,
   shares enough rare words with the new title and body. The measure is
-  `find_duplicates` from the ported `create.py`, unchanged. `--new` files anyway.
+  `find_duplicates` in `tools/verbs/new.py`. `--new` files anyway.
 - **`ls` words.** Status words (`open taken parked done all`) select statuses and
   default to everything not done. `ready`, `mine` and `epics` narrow. `under:id`
   and `label:x` narrow. Any other word must appear in the title or body. Order is
@@ -335,25 +332,6 @@ The dispatcher holds one table of verb, short usage and summary; `pm help` print
 it. Each verb file holds its own arguments, logic and full help. Bare `pm` runs
 `tools/verbs/orient.py`.
 
-## Not carried over
-
-| Ported pm | Here |
-| --- | --- |
-| `ticket` and `view` families | Verbs directly under `pm` |
-| `history`, the `pm-store` ref, a commit per change | The log, and one blob ref as backup |
-| sharing a store across clones through the `pm-store` ref | Dropped by operator ruling 2026-11-15: a log belongs to one checkout, and no `pm sync` is planned |
-| `archive`, compaction, auto-archive, interval batching | Not needed: nothing is rewritten |
-| `validate`, `lint`, invariants I-01 to I-19 | `doctor`; a change that would break state is refused before it is written |
-| `lint <id>` dispatch headings; the pilot contract in `lint` and `summary` | Plugins `dispatch` and `pilot`, shipped in `pm/plugins/` |
-| `board`, `overview` | A separate component, reached as a plugin |
-| `tree` | `show` lists direct links and an epic's children; the transitive view is dropped |
-| `where`, `where --mutate` | `pm get <id> store`, and `--dry-run` |
-| `claim --take-over`, `claim --reopen`, `close --via wt` | `take --force`, `take` on a parked ticket, and wt's own `pre-done` |
-| `<prefix>/<id>` ids, `legacy_prefixes`, frozen stores | The id alone, and registry lines |
-| typed lifecycle notes | The event's `op` is the type; `-k` keeps `decision`, `finding`, `measurement` |
-| `bin/deploy close-check`, exit 4 | A `pre-done` plugin owned by frontier |
-| the pm skill, global instruction sections | Command output and `pm hook` |
-
 ## Design record
 
 ```text
@@ -369,13 +347,6 @@ Boundary map:
 Design choice:
   append-only event log; verbs shaped by the agent's workflow; guidance in output;
   plugins found by file presence.
-Rejected alternatives:
-  Keep spec v2 and the ported code: carries the rewrite-and-commit machinery forever.
-  One markdown file per ticket: agents would edit files directly, and a claim needs
-  an atomic check that only one writer can give.
-  Plugins found on PATH: any `pm-<name>` executable would run under pm's allow rule.
-Implementation plan:
-  the tickets of epic fc-2a6562, in docs/programs/pm-wt-rewrite/PLAN.md.
 Validation:
   /usr/bin/python3 -B pm/tests/run_transcripts.py exits 0 with pending 0;
   pm/tests/test_budgets.py passes; pm/tests/import_check.py finds every ticket of

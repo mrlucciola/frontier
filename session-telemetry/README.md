@@ -3,7 +3,7 @@
 `tools/fresh_codex.py` observes one authorized fresh Codex task through its newly
 created thread stream. Measurements require an authenticated host that can launch
 the installed CLI. Read the [qualification record](/session-telemetry/docs/qualification.md) for
-provenance, component boundaries, and measured limits.
+component boundaries, recorded evidence, and measured limits.
 
 `tools/opencode_session.py` observes one authorized OpenCode turn in a fresh
 session or a session resumed by exact ID. Its invocation, fields, unavailable

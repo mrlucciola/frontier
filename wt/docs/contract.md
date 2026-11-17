@@ -78,7 +78,7 @@ branch keeps moving under `pm` commits. `finish` and `park` warn when `--finding
 missing, and refuse before any merge or teardown once the store sets
 `findings_required`.
 
-## Settled rules
+## Rules
 
 - `park` removes the worktree and keeps the branch; it commits WIP first; a non-empty
   `<worktree>/.local` blocks the park.
@@ -107,22 +107,7 @@ missing, and refuse before any merge or teardown once the store sets
   is why `park`'s `.local/` check is wt's own.
 - A stale worktree of a ticket that is already done and merged is torn down by
   `wt finish <id>`.
-
-## Dropped or changed from the old wt
-
-- `wt pending` is dropped: parked tickets are `pm ls parked`. `wt pending` answers
-  `wt: no verb 'pending'. Parked tickets are listed by: pm ls parked`.
-- `.pm/config.json` `gate` and `known_red` are replaced by an executable `.wt/gate`
-  and `.wt/known-red`: wt keeps its own settings out of pm's store.
-- A non-executable `.wt/gate` refuses `finish` and `land`, as a non-list `gate` did.
-- The deploy check that made the old `close` exit 4 is now a `pre-done` plugin of
-  whoever installs one; to wt it is one more reason `pm done` can refuse after a merge
-  (the `merged ... but pm done failed` line below), so the `ticket NOT closed: deployed
-  copy` line is gone.
-- `selftest` removing its scratch directory is the one `rm -r` wt runs.
-- The stale worktree of a closed ticket is torn down by `finish`, a deviation the suite
-  pins on the new side.
-- The rebase-conflict resume is kept as it was, pending fc-f0cc16.
+- wt keeps its own settings (`.wt/gate`, `.wt/known-red`) out of pm's store.
 
 ## Deferred teardown and prune
 
@@ -174,6 +159,8 @@ agent's. `wt status` labels such an entry `deferred-teardown`.
   the sandbox that refused the delete.
 - On `.git/index.lock` (a `pm` commit collided with yours): wait a few seconds and
   re-run the verb. Never delete the lock file.
+- `wt pending` answers `wt: no verb 'pending'. Parked tickets are listed by: pm ls
+  parked`.
 
 ## Rules wt does not enforce
 
@@ -248,5 +235,4 @@ every `wt_say` and `wt_fail` template in `tools/` with 24-byte stand-ins for var
 it runs with
 `/usr/bin/python3 -B -m unittest discover -s wt/tests -p 'test_budgets.py' -v`. Failure
 lines that carry git's own error or an operator command list can exceed the ceiling with
-long paths; the test does not see those. Where each line of the retired skill and of the
-global instructions went: [instruction map](/wt/docs/instruction-map.md).
+long paths; the test does not see those.

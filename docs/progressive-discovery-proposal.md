@@ -1,7 +1,7 @@
 # Proposal: progressive discovery with a small zsh reader
 
-Status: proposed; no runtime changes or installation. This document refines the
-initial routing-manifest idea into a bounded pilot for `frontier-clean`.
+Status: proposed; no runtime changes or installation. This document specifies a
+bounded pilot for `frontier-clean`.
 
 ## Purpose and acceptance rule
 

@@ -27,7 +27,7 @@ plugin transcripts; the last runs the byte-ceiling tests.
 | A characterization test that looks wrong | Stop and report it. `tests/test_wt_cli.py` is accepted; edit it only on an explicit ruling |
 
 wt never runs `git branch -D`, `git worktree remove --force` or `rm -rf`. A
-port that needs one of them is wrong. The one exception is `selftest`, which
+change that needs one of them is wrong. The one exception is `selftest`, which
 runs `rm -r` on its own scratch directory. wt does print `rm -rf` and
 `git worktree remove --force` in its failure lines as commands for the operator; it
 hands them over, quoted, and never runs them.
