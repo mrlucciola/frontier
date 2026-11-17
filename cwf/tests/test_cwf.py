@@ -245,16 +245,16 @@ class StateTests(Environment):
         with self.assertRaises(Fault): resume(self.home,{'scope':str(other),'id':'task1'},self.config)
         code,out=self.cli('state','export',request={'scope':str(self.repo)})
         self.assertEqual(code,0); self.assertNotIn('Update widget',json.dumps(out)); self.assertNotIn(str(self.repo),json.dumps(out))
-    def test_unknown_schema_is_not_overwritten(self):
-        with State(self.home) as s: s.db.execute('PRAGMA user_version=99')
-        with self.assertRaises(Fault): State(self.home,fallback=True)
     def test_off_still_allows_explicit_state_management(self):
         checkpoint(self.home,{'scope':str(self.repo),'record':self.task()},self.config)
         write_json(self.home/'.config/cwf/config.json',{'schema_version':'cwf/v1','mode':'off'})
         code,out=self.cli('state','export',request={'scope':str(self.repo)})
         self.assertEqual(code,0); self.assertEqual(out['data']['counts']['task'],1)
-    def test_release_pin_mismatch_blocks(self):
-        with self.assertRaises(Fault): checkpoint(self.home,{'scope':str(self.repo),'record':self.task(framework_version='9.0.0')},self.config)
+    def test_old_record_with_a_version_field_still_resumes(self):
+        checkpoint(self.home,{'scope':str(self.repo),'record':self.task()},self.config)
+        with State(self.home) as s:
+            s.db.execute("UPDATE records SET payload=json_set(payload,'$.framework_version','0.0.1') WHERE kind='task'"); s.db.commit()
+        self.assertTrue(resume(self.home,{'scope':str(self.repo),'id':'task1'},self.config)['ready_to_resume'])
 
 
 class CoordinationTests(Environment):

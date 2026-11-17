@@ -9,7 +9,6 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import VERSION
 from .common import Fault, digest, scope_info, within, git, valid_id, result
 from .contracts import validate, TASK, OBSERVATION, BATCH, CHECK
 from .discovery import safe_read, ignored
@@ -46,8 +45,6 @@ def observation(home,req,config):
 def checkpoint(home,req,config):
     root=str(Path(req["scope"]).resolve()); record=validate(req["record"],TASK)
     if Path(record["scope_root"]).resolve()!=Path(root): raise Fault("Task root does not match scope")
-    if record.get("framework_version",VERSION)!=VERSION: raise Fault("Task pinned to another release","blocked")
-    record=dict(record,framework_version=VERSION)
     if record["status"]=="complete":
         covered={x["criterion"] for x in record.get("evidence",[])+record.get("waivers",[])}
         if not record["acceptance"] or not set(record["acceptance"])<=covered:
@@ -56,19 +53,13 @@ def checkpoint(home,req,config):
         checks=revalidate_sources(root,record.get("sources",[]),config)
         if any(x["status"]!="verified" for x in checks): raise Fault("Completion sources changed","blocked",checks)
     with State(home) as state:
-        expected=req.get("expected_revision",0)
-        if expected:
-            old=state.get("task",root,record["id"])["record"]
-            if old.get("framework_version")!=VERSION: raise Fault("Use the task's pinned release; migration not implicit","blocked")
-        return state.put("task",root,record["id"],record,expected)
+        return state.put("task",root,record["id"],record,req.get("expected_revision",0))
 
 
 def resume(home,req,config):
     root=str(Path(req["scope"]).resolve())
     with State(home) as state:
         saved=state.get("task",root,valid_id(req["id"]))
-    version=saved["record"].get("framework_version")
-    if version!=VERSION: raise Fault("Resume using the retained task release","blocked",{"required_version":version})
     saved["source_validation"]=revalidate_sources(root,saved["record"].get("sources",[]),config)
     saved["ready_to_resume"]=all(x["status"]=="verified" for x in saved["source_validation"])
     return saved

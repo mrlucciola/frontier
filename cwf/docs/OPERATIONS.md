@@ -120,7 +120,7 @@ Codes: 0 complete/skip; 2 invalid input/configuration; 3 blocked; 4 required che
 
 ## 8. Update and remove
 
-Edit the source files; skill and runtime edits take effect through the links, and `cwf/deploy.sh` is run again only to change the block or add a skill. Removal is the command list in [setup](/cwf/INSTALL.md). It cannot erase text already loaded into an agent session; verify discovery in a fresh session. Checkpoints stay pinned to the schema version that wrote them; incompatible schemas are refused and retained.
+Edit the source files; skill and runtime edits take effect through the links, and `cwf/deploy.sh` is run again only to change the block or add a skill. Removal is the command list in [setup](/cwf/INSTALL.md). It cannot erase text already loaded into an agent session; verify discovery in a fresh session. Checkpoints and the state database carry no version: any checkout's tool reads them.
 
 ## 9. Privacy and reporting
 

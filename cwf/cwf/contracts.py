@@ -45,8 +45,8 @@ TASK = obj({"schema_version": VER, "id": ID, "outcome": SHORT,
             "blockers": STRINGS, "next_action": S,
             "evidence": arr(obj({"criterion": SHORT, "source": SHORT}, ["criterion", "source"])),
             "waivers": arr(obj({"criterion": SHORT, "accepted_by": SHORT, "source": SHORT},
-                              ["criterion", "accepted_by", "source"])),
-            "framework_version": SHORT}, ["schema_version", "id", "outcome", "scope_root", "status", "acceptance"])
+                              ["criterion", "accepted_by", "source"]))},
+           ["schema_version", "id", "outcome", "scope_root", "status", "acceptance"])
 OBSERVATION = obj({"schema_version": VER, "id": ID, "statement": S,
                    "claim_status": {"enum": ["observed", "inferred", "accepted"]},
                    "sources": arr(SOURCE, 30), "accepted_by": SHORT,

@@ -189,11 +189,6 @@
         "additionalProperties": false
       },
       "maxItems": 1000
-    },
-    "framework_version": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
     }
   },
   "required": [

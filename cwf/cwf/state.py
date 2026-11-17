@@ -22,9 +22,6 @@ class State:
                     raise Fault("State database is a symlink", "blocked")
             self.db = sqlite3.connect(":memory:" if ephemeral else str(self.path), timeout=1)
             self.db.execute("PRAGMA busy_timeout=1000")
-            version = self.db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1):
-                raise Fault("Incompatible state schema; preserve database and use its release", "blocked")
             self.db.executescript("""
                 CREATE TABLE IF NOT EXISTS scopes (identity TEXT PRIMARY KEY, id TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS roots (root TEXT PRIMARY KEY, id TEXT NOT NULL);
@@ -33,7 +30,6 @@ class State:
                   PRIMARY KEY(kind,root,id));
                 CREATE TABLE IF NOT EXISTS cache (
                   root TEXT, key TEXT, updated TEXT, payload TEXT, PRIMARY KEY(root,key));
-                PRAGMA user_version=1;
             """)
             if not ephemeral:
                 os.chmod(self.path, 0o600)

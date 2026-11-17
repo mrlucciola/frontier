@@ -79,10 +79,14 @@ cohort (opencode 2.0.32, 2026-11-15, three runs per scenario per arm).
 | --- | --- | --- |
 | Quality | No scenario passes less often than the baseline | Fails: the short-answer scenario passed 1/3 against 3/3 |
 | Cost to accepted result | Median total input at least 20% below the baseline | Fails: +3.3% |
-| Activation without naming (R06) | Not set | Planning skill 3/3; build and design skills 0/6 |
+| Activation without naming (R06) | In each scenario whose task matches a CWF skill, that skill loads in at least 2 of 3 runs | Fails: planning skill 3/3; build and design skills 0/6 |
 | Activation when named | Every named skill loads | 9/9 |
 | Stays out of unrelated requests | No CWF skill loads | Holds; the six skill descriptions still cost about 390 tokens on every step |
-| Fixed cost per step | Not set | About 390 tokens |
+| Fixed cost per step | In scenarios where no CWF skill loads, median total input at most 1% above the baseline | Fails: +3% to +5% |
+
+The activation and fixed-cost targets were set on 2026-11-16. The fixed-cost
+target is what makes R12 checkable on work CWF does not touch: there, any
+overhead is pure cost.
 
 The first cohort's decision was revise. The gains to keep: the planning scenario
 passed 3/3 against 0/3, and the coding scenario used 12.7% less total input.
@@ -101,10 +105,10 @@ passed 3/3 against 0/3, and the coding scenario used 12.7% less total input.
 | JSON schemas | R07 | Keep |
 | `observe` and the observation store | R09 | Kept; worth developing, no work planned |
 | `checkpoint`, `resume` | R04, for untracked work only | Kept; overlaps the ticket store, no work planned |
-| Worktree helpers | R08 isolation | Review: overlaps the worktree tool |
-| Discovery cache | None: a cached result is never returned | Cut candidate |
-| Checkpoint version pin and state schema version | None (R13) | Cut candidate |
-| `scripts/author_content.py`, generating skills and patterns from Python strings | None: the skill file is not its own source | Review |
+| Worktree helpers | Non-goal: managing checkouts | Cut, ruled 2026-11-16; scheduled after the pattern-link fix (fc-4e0b99) |
+| Discovery cache | None: a cached result is never returned | Cut, ruled 2026-11-16; same ticket |
+| Checkpoint version pin and state schema version | None (R13) | Removed 2026-11-16 |
+| `scripts/author_content.py`, generating skills and patterns from Python strings | None today: the skill file is not its own source | Kept until the pattern-link fix lands; that fix copies the patterns into every skill directory through it. Revisit then |
 
 ## Evidence
 
