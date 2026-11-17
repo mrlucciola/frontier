@@ -1,6 +1,6 @@
 # Tool usage
 
-Use the installed `~/.local/bin/cwf` launcher (or its explicitly configured location). In a staging bundle, use `python3 -B /absolute/bundle/cwf.py`. Requests are JSON files or stdin (`--input -`). Never interpolate task text into a shell command. Use a safely written request file and quote paths. `--home` is for explicit target homes, especially isolated tests; do not change HOME.
+Use `~/.local/bin/cwf`, a link to `cwf.py` in the checkout. Requests are JSON files or stdin (`--input -`). Never interpolate task text into a shell command. Use a safely written request file and quote paths. `--home` is for explicit target homes, especially isolated tests; do not change HOME.
 
 Example discovery request:
 
@@ -20,4 +20,4 @@ For meaningful continuation, `checkpoint` takes `scope`, `expected_revision` (0 
 
 `check` accepts `scope` and `checks`: either `absent_literal` with explicit paths/literal, or `command` with argv, timeout, expected_exit and an authorization reference. Commands execute only under existing user/runtime authority. A reference string is not proof of permission. Raw command output is not retained by CWF; use ordinary authorized tools if diagnostics are needed.
 
-Use `doctor` for installation integrity; it does not prove live model activation. `disable` changes future tool behavior/skill discovery but cannot retract context already loaded. Consult the bundle's `docs/OPERATIONS.md` for install/state management, not during ordinary work.
+Setting `mode` off in the config changes future tool behavior but cannot retract context already loaded. Consult `cwf/docs/OPERATIONS.md` for deployment and state management, not during ordinary work.
