@@ -96,7 +96,7 @@ passed 3/3 against 0/3, and the coding scenario used 12.7% less total input.
 | Mechanism | Serves | Status |
 | --- | --- | --- |
 | Six skills | R03, R05, R06 | Keep; build and design miss R06 |
-| Shared pattern files | R05 | Keep; the skills reach them by a relative link that breaks under a symlinked skill directory |
+| Shared pattern files | R05 | Keep; each skill directory carries its own copy, linked by a skill-relative path (fc-122dd5) |
 | Instruction block | R06 | Keep |
 | `deploy.sh` | R01, R13 | Keep |
 | `discover`, `inspect-source` | R05, R07 | Keep |
@@ -108,7 +108,7 @@ passed 3/3 against 0/3, and the coding scenario used 12.7% less total input.
 | Worktree helpers | Non-goal: managing checkouts | Cut, ruled 2026-11-16; scheduled after the pattern-link fix (fc-4e0b99) |
 | Discovery cache | None: a cached result is never returned | Cut, ruled 2026-11-16; same ticket |
 | Checkpoint version pin and state schema version | None (R13) | Removed 2026-11-16 |
-| `scripts/author_content.py`, generating skills and patterns from Python strings | None today: the skill file is not its own source | Kept until the pattern-link fix lands; that fix copies the patterns into every skill directory through it. Revisit then |
+| `scripts/author_content.py`, generating skills and patterns from Python strings | R05: keeps the six per-skill pattern copies identical to `patterns/` | Kept; the pattern-link fix (fc-122dd5) copies the patterns into every skill directory through it |
 
 ## Evidence
 
